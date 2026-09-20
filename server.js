@@ -368,6 +368,40 @@ app.post('/api/subscription/upgrade', requireRole('creator', 'dosen'), (req, res
 
 // ---------- LIVE GAME MULTIPLAYER ENGINE (QUIZIZZ-STYLE) ----------
 
+// ---------- LIVE GAME ROOM SYSTEM (INTERACTIVE & STUDENT-PACED ALA QUIZIZZ) ----------
+
+// 0. Check Active Live Room for Host (Persistent Reconnection)
+app.get('/api/rooms/active', requireRole('creator', 'dosen'), (req, res) => {
+  const activeRoom = db.prepare(`
+    SELECT r.*, q.title as quiz_title,
+      (SELECT COUNT(*) FROM questions WHERE quiz_id = r.quiz_id) as total_questions,
+      (SELECT COUNT(*) FROM room_players WHERE pin = r.pin) as players_count
+    FROM game_rooms r
+    JOIN quizzes q ON q.id = r.quiz_id
+    WHERE r.host_id = ? AND r.status != 'finished'
+    ORDER BY r.created_at DESC
+    LIMIT 1
+  `).get(req.auth.user_id);
+
+  if (!activeRoom) {
+    return res.json({ has_active: false });
+  }
+
+  res.json({
+    has_active: true,
+    room: {
+      pin: activeRoom.pin,
+      status: activeRoom.status,
+      quiz_id: activeRoom.quiz_id,
+      quiz_title: activeRoom.quiz_title,
+      total_questions: activeRoom.total_questions,
+      players_count: activeRoom.players_count,
+      game_mode: activeRoom.game_mode || 'self_paced',
+      created_at: activeRoom.created_at
+    }
+  });
+});
+
 // 1. Host Create Live Room
 app.post('/api/rooms/create', requireRole('creator', 'dosen'), async (req, res) => {
   const { quiz_id } = req.body || {};
@@ -389,8 +423,11 @@ app.post('/api/rooms/create', requireRole('creator', 'dosen'), async (req, res) 
     attempts++;
   }
 
-  db.prepare(`INSERT INTO game_rooms (pin, quiz_id, host_id, status, current_q_idx, q_started_at)
-    VALUES (?, ?, ?, 'lobby', 0, 0)`).run(pin, quiz.id, req.auth.user_id);
+  // Tutup room lama milik host jika ada yang masih aktif
+  db.prepare("UPDATE game_rooms SET status = 'finished' WHERE host_id = ? AND status != 'finished'").run(req.auth.user_id);
+
+  db.prepare(`INSERT INTO game_rooms (pin, quiz_id, host_id, status, current_q_idx, q_started_at, game_mode)
+    VALUES (?, ?, ?, 'lobby', 0, 0, 'self_paced')`).run(pin, quiz.id, req.auth.user_id);
 
   const base = process.env.PUBLIC_BASE_URL || req.headers.origin || `http://localhost:${process.env.PORT || 3000}`;
   const joinUrl = `${base.replace(/\/$/, '')}/?pin=${pin}`;
@@ -402,6 +439,43 @@ app.post('/api/rooms/create', requireRole('creator', 'dosen'), async (req, res) 
     qr,
     quiz: { id: quiz.id, title: quiz.title, total_questions: questionsCount }
   });
+});
+
+// 1b. Host Reopen / Resume Live Room
+app.post('/api/rooms/:pin/reopen', requireRole('creator', 'dosen'), async (req, res) => {
+  const pin = req.params.pin;
+  const room = db.prepare(`
+    SELECT r.*, q.title as quiz_title 
+    FROM game_rooms r 
+    JOIN quizzes q ON q.id = r.quiz_id 
+    WHERE r.pin = ? AND r.host_id = ?
+  `).get(pin, req.auth.user_id);
+
+  if (!room) return res.status(404).json({ error: 'Room tidak ditemukan atau Anda bukan host' });
+
+  const questionsCount = db.prepare('SELECT COUNT(*) as count FROM questions WHERE quiz_id = ?').get(room.quiz_id).count;
+  const base = process.env.PUBLIC_BASE_URL || req.headers.origin || `http://localhost:${process.env.PORT || 3000}`;
+  const joinUrl = `${base.replace(/\/$/, '')}/?pin=${pin}`;
+  const qr = await QRCode.toDataURL(joinUrl, { margin: 1, width: 280, color: { dark: '#1a103c', light: '#ffffff' } });
+
+  res.json({
+    ok: true,
+    pin: room.pin,
+    status: room.status,
+    join_url: joinUrl,
+    qr,
+    quiz: { id: room.quiz_id, title: room.quiz_title, total_questions: questionsCount }
+  });
+});
+
+// 1c. Host End Live Room Session
+app.post('/api/rooms/:pin/end', requireRole('creator', 'dosen'), (req, res) => {
+  const pin = req.params.pin;
+  const room = db.prepare('SELECT * FROM game_rooms WHERE pin = ? AND host_id = ?').get(pin, req.auth.user_id);
+  if (!room) return res.status(403).json({ error: 'Bukan host room ini' });
+
+  db.prepare("UPDATE game_rooms SET status = 'finished' WHERE pin = ?").run(pin);
+  res.json({ ok: true, status: 'finished' });
 });
 
 // 2. Player Join Live Room with Game PIN
@@ -422,8 +496,8 @@ app.post('/api/rooms/join', (req, res) => {
   const playerToken = crypto.randomBytes(16).toString('hex');
   const chosenAvatar = avatar || ['🦁', '🦊', '🚀', '⚡', '🎮', '🦄', '🌟', '🍕'][Math.floor(Math.random() * 8)];
 
-  db.prepare(`INSERT OR REPLACE INTO room_players (pin, player_token, name, avatar, score, streak, updated_at)
-    VALUES (?, ?, ?, ?, 0, 0, ?)`).run(p, playerToken, name, chosenAvatar, Date.now());
+  db.prepare(`INSERT OR REPLACE INTO room_players (pin, player_token, name, avatar, score, streak, current_q_idx, finished, answers_json, updated_at)
+    VALUES (?, ?, ?, ?, 0, 0, 0, 0, '{}', ?)`).run(p, playerToken, name, chosenAvatar, Date.now());
 
   res.json({
     ok: true,
@@ -436,7 +510,7 @@ app.post('/api/rooms/join', (req, res) => {
   });
 });
 
-// 3. Room State (Polled by Host & Players)
+// 3. Room State (Polled by Host & Players with Live A, B, C, D Distribution & Self-Paced Progress)
 app.get('/api/rooms/:pin/state', (req, res) => {
   const pin = req.params.pin;
   const playerToken = req.query.player_token;
@@ -445,17 +519,52 @@ app.get('/api/rooms/:pin/state', (req, res) => {
 
   const quiz = db.prepare('SELECT id, title, cover_emoji FROM quizzes WHERE id = ?').get(room.quiz_id);
   const questions = db.prepare('SELECT * FROM questions WHERE quiz_id = ? ORDER BY position ASC').all(room.quiz_id);
-  const players = db.prepare('SELECT player_token, name, avatar, score, streak, last_correct, last_points FROM room_players WHERE pin = ? ORDER BY score DESC').all(pin);
+  const players = db.prepare('SELECT * FROM room_players WHERE pin = ? ORDER BY score DESC, updated_at ASC').all(pin);
 
   const totalQuestions = questions.length;
-  const currentQ = questions[room.current_q_idx] || null;
 
-  let myInfo = null;
-  if (playerToken) {
-    myInfo = players.find(p => p.player_token === playerToken) || null;
+  // Hitung Distribusi Jawaban Pilihan A, B, C, D untuk Host secara Realtime
+  const answersDistribution = {};
+  for (let i = 0; i < totalQuestions; i++) {
+    answersDistribution[i] = { 0: 0, 1: 0, 2: 0, 3: 0, total: 0 };
   }
 
-  // Hitung leaderboard top 5
+  let totalFinishedPlayers = 0;
+  const playersProgress = players.map(p => {
+    const answersMap = JSON.parse(p.answers_json || '{}');
+    const answeredCount = Object.keys(answersMap).length;
+    const isFinished = Boolean(p.finished || (totalQuestions > 0 && answeredCount >= totalQuestions));
+    if (isFinished) totalFinishedPlayers++;
+
+    for (const [qIdxStr, ans] of Object.entries(answersMap)) {
+      const qIdx = Number(qIdxStr);
+      if (answersDistribution[qIdx] && ans.answer_idx !== undefined) {
+        const optIdx = Number(ans.answer_idx);
+        if (answersDistribution[qIdx][optIdx] !== undefined) {
+          answersDistribution[qIdx][optIdx]++;
+          answersDistribution[qIdx].total++;
+        }
+      }
+    }
+
+    const progressPct = totalQuestions > 0 ? Math.round((answeredCount / totalQuestions) * 100) : 0;
+    return {
+      player_token: p.player_token,
+      name: p.name,
+      avatar: p.avatar,
+      score: p.score,
+      streak: p.streak,
+      current_q_idx: p.current_q_idx || 0,
+      answered_count: answeredCount,
+      total_questions: totalQuestions,
+      pct: progressPct,
+      progress_pct: progressPct,
+      finished: isFinished,
+      is_finished: isFinished
+    };
+  });
+
+  // Hitung Leaderboard Top Ranking
   const leaderboard = players.map((p, idx) => ({
     rank: idx + 1,
     name: p.name,
@@ -464,61 +573,87 @@ app.get('/api/rooms/:pin/state', (req, res) => {
     streak: p.streak,
     last_correct: p.last_correct,
     last_points: p.last_points,
+    is_finished: Boolean(p.finished || (totalQuestions > 0 && Object.keys(JSON.parse(p.answers_json || '{}')).length >= totalQuestions)),
     is_me: playerToken ? p.player_token === playerToken : false
   }));
 
-  // Sanitasi data pertanyaan untuk pemain (jangan bocorkan correct_idx saat kuis berjalan)
-  let safeQuestion = null;
-  if (currentQ) {
-    const isReview = room.status === 'leaderboard' || room.status === 'finished';
-    safeQuestion = {
-      index: room.current_q_idx,
-      total: totalQuestions,
-      text: currentQ.text,
-      options: JSON.parse(currentQ.options || '[]'),
-      time_limit: currentQ.time_limit || 20,
-      points: currentQ.points || 1000,
-      q_started_at: room.q_started_at,
-      ...(isReview ? { correct_idx: currentQ.correct_idx, explanation: currentQ.explanation } : {})
-    };
+  // Sanitasi & Personalisasi Pertanyaan untuk Pemain (Student-Paced Self Progression)
+  let playerQuestion = null;
+  let isPlayerFinished = false;
+  let myInfo = null;
+
+  if (playerToken) {
+    myInfo = players.find(p => p.player_token === playerToken) || null;
+    if (myInfo) {
+      const answersMap = JSON.parse(myInfo.answers_json || '{}');
+      const playerQIdx = Number(myInfo.current_q_idx) || 0;
+      isPlayerFinished = Boolean(myInfo.finished || (totalQuestions > 0 && playerQIdx >= totalQuestions));
+
+      if (room.status === 'question' && !isPlayerFinished) {
+        const qData = questions[playerQIdx];
+        if (qData) {
+          playerQuestion = {
+            index: playerQIdx,
+            total: totalQuestions,
+            text: qData.text,
+            options: JSON.parse(qData.options || '[]'),
+            time_limit: qData.time_limit || 20,
+            points: qData.points || 1000,
+            has_answered: answersMap[playerQIdx] !== undefined
+          };
+        }
+      }
+    }
   }
+
+  // Data Soal Lengkap untuk Layar Host / Projector
+  const hostQuestions = questions.map((q, idx) => ({
+    index: idx,
+    total: totalQuestions,
+    text: q.text,
+    options: JSON.parse(q.options || '[]'),
+    correct_idx: q.correct_idx,
+    explanation: q.explanation,
+    time_limit: q.time_limit || 20,
+    points: q.points || 1000,
+    distribution: answersDistribution[idx] || { 0: 0, 1: 0, 2: 0, 3: 0, total: 0 }
+  }));
 
   res.json({
     pin: room.pin,
     status: room.status,
+    game_mode: room.game_mode || 'self_paced',
+    quiz_id: room.quiz_id,
     quiz_title: quiz.title,
-    current_q_idx: room.current_q_idx,
     total_questions: totalQuestions,
-    question: safeQuestion,
-    players_count: players.length,
-    players: players.map(p => ({ name: p.name, avatar: p.avatar, score: p.score, streak: p.streak })),
-    leaderboard: leaderboard.slice(0, 10),
+    // Informasi untuk Pemain
+    question: playerQuestion,
+    player_finished: isPlayerFinished,
     my_rank: myInfo ? leaderboard.findIndex(l => l.is_me) + 1 : null,
     my_score: myInfo ? myInfo.score : 0,
-    my_streak: myInfo ? myInfo.streak : 0
+    my_streak: myInfo ? myInfo.streak : 0,
+    // Informasi untuk Host
+    players_count: players.length,
+    players: players.map(p => ({ name: p.name, avatar: p.avatar, score: p.score, streak: p.streak })),
+    players_progress: playersProgress,
+    total_finished_players: totalFinishedPlayers,
+    answers_distribution: answersDistribution,
+    host_questions: hostQuestions,
+    leaderboard: leaderboard.slice(0, 15)
   });
 });
 
-// 4. Host Control Action (Start, Next Question, Show Leaderboard, Finish)
+// 4. Host Control Action (Start, Leaderboard, Finish)
 app.post('/api/rooms/:pin/control', requireRole('creator', 'dosen'), (req, res) => {
   const pin = req.params.pin;
   const { action } = req.body || {};
   const room = db.prepare('SELECT * FROM game_rooms WHERE pin = ? AND host_id = ?').get(pin, req.auth.user_id);
   if (!room) return res.status(403).json({ error: 'Bukan host room ini' });
 
-  const totalQuestions = db.prepare('SELECT COUNT(*) as c FROM questions WHERE quiz_id = ?').get(room.quiz_id).c;
-
   if (action === 'start') {
     db.prepare(`UPDATE game_rooms SET status = 'question', current_q_idx = 0, q_started_at = ? WHERE pin = ?`).run(Date.now(), pin);
   } else if (action === 'leaderboard') {
     db.prepare(`UPDATE game_rooms SET status = 'leaderboard' WHERE pin = ?`).run(pin);
-  } else if (action === 'next') {
-    const nextIdx = room.current_q_idx + 1;
-    if (nextIdx >= totalQuestions) {
-      db.prepare(`UPDATE game_rooms SET status = 'finished' WHERE pin = ?`).run(pin);
-    } else {
-      db.prepare(`UPDATE game_rooms SET status = 'question', current_q_idx = ?, q_started_at = ? WHERE pin = ?`).run(nextIdx, Date.now(), pin);
-    }
   } else if (action === 'finish') {
     db.prepare(`UPDATE game_rooms SET status = 'finished' WHERE pin = ?`).run(pin);
   }
@@ -526,25 +661,32 @@ app.post('/api/rooms/:pin/control', requireRole('creator', 'dosen'), (req, res) 
   res.json({ ok: true, action });
 });
 
-// 5. Player Submit Live Answer
+// 5. Player Submit Live Answer (Self-Paced Progression)
 app.post('/api/rooms/:pin/answer', (req, res) => {
   const pin = req.params.pin;
   const { player_token, answer_idx, time_spent_ms } = req.body || {};
   const room = db.prepare('SELECT * FROM game_rooms WHERE pin = ?').get(pin);
   if (!room || room.status !== 'question') {
-    return res.status(400).json({ error: 'Waktu menjawab telah selesai atau belum dimulai' });
+    return res.status(400).json({ error: 'Waktu menjawab telah selesai atau kuis belum dimulai' });
   }
 
   const player = db.prepare('SELECT * FROM room_players WHERE pin = ? AND player_token = ?').get(pin, player_token);
   if (!player) return res.status(404).json({ error: 'Player tidak ditemukan' });
 
-  const currentQ = db.prepare('SELECT * FROM questions WHERE quiz_id = ? AND position = ?').get(room.quiz_id, room.current_q_idx + 1);
+  const questions = db.prepare('SELECT * FROM questions WHERE quiz_id = ? ORDER BY position ASC').all(room.quiz_id);
+  const totalQuestions = questions.length;
+  const playerQIdx = Number(player.current_q_idx) || 0;
+
+  if (playerQIdx >= totalQuestions) {
+    return res.status(400).json({ error: 'Kamu telah menyelesaikan semua pertanyaan kuis ini!' });
+  }
+
+  const currentQ = questions[playerQIdx];
   if (!currentQ) return res.status(404).json({ error: 'Pertanyaan tidak ditemukan' });
 
-  // Cek apakah sudah pernah jawab pertanyaan ini
   const answersMap = JSON.parse(player.answers_json || '{}');
-  if (answersMap[room.current_q_idx] !== undefined) {
-    return res.status(409).json({ error: 'Kamu sudah menjawab soal ini!' });
+  if (answersMap[playerQIdx] !== undefined) {
+    return res.status(409).json({ error: 'Kamu sudah menjawab pertanyaan ini!' });
   }
 
   const isCorrect = Number(answer_idx) === currentQ.correct_idx;
@@ -561,8 +703,10 @@ app.post('/api/rooms/:pin/answer', (req, res) => {
     pointsEarned = basePts + speedBonus + streakBonus;
   }
 
-  answersMap[room.current_q_idx] = { answer_idx, is_correct: isCorrect, points: pointsEarned };
+  answersMap[playerQIdx] = { answer_idx: Number(answer_idx), is_correct: isCorrect, points: pointsEarned };
   const newScore = player.score + pointsEarned;
+  const nextQIdx = playerQIdx + 1;
+  const isFinished = nextQIdx >= totalQuestions ? 1 : 0;
 
   db.prepare(`UPDATE room_players SET 
     score = ?, 
@@ -570,18 +714,24 @@ app.post('/api/rooms/:pin/answer', (req, res) => {
     last_correct = ?, 
     last_points = ?, 
     answers_json = ?,
+    current_q_idx = ?,
+    finished = ?,
     updated_at = ?
     WHERE pin = ? AND player_token = ?`).run(
-      newScore, newStreak, isCorrect ? 1 : 0, pointsEarned, JSON.stringify(answersMap), Date.now(), pin, player_token
+      newScore, newStreak, isCorrect ? 1 : 0, pointsEarned, JSON.stringify(answersMap), nextQIdx, isFinished, Date.now(), pin, player_token
     );
 
   res.json({
+    ok: true,
     correct: isCorrect,
     correct_idx: currentQ.correct_idx,
     explanation: currentQ.explanation,
     points_earned: pointsEarned,
     new_score: newScore,
-    streak: newStreak
+    streak: newStreak,
+    is_finished: Boolean(isFinished),
+    next_q_idx: nextQIdx,
+    total_questions: totalQuestions
   });
 });
 

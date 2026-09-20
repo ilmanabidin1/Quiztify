@@ -520,7 +520,30 @@
       </div>
     </div>
 
-    <!-- State 4: Final Podium -->
+    <!-- State 4: Finished Waiting for Host Final Podium -->
+    <div id="arena-finished-waiting" class="hidden">
+      <div class="q-display-card" style="min-height:360px;flex-direction:column;gap:18px;text-align:center">
+        <div style="font-size:56px;animation:flamePulse 1.5s infinite alternate">🏁</div>
+        <h2 style="font-size:26px;font-weight:900" class="gradient-text">Kamu Menyelesaikan Semua Soal!</h2>
+        <p style="color:var(--text-muted);font-size:15px;max-width:480px">Luar biasa! Seluruh pertanyaan kuis telah kamu jawab. Menunggu Host mengakhiri sesi untuk melihat Podium Juara.</p>
+        <div style="display:flex;gap:20px;justify-content:center;margin:8px 0;flex-wrap:wrap">
+          <div style="background:rgba(255,255,255,0.06);padding:14px 24px;border-radius:16px;border:1px solid var(--border)">
+            <div style="font-size:12px;color:var(--text-muted);font-weight:700">Total Skor Kamu</div>
+            <div style="font-size:24px;font-weight:900;color:var(--gold)" id="waiting-my-score">0 PTS</div>
+          </div>
+          <div style="background:rgba(255,255,255,0.06);padding:14px 24px;border-radius:16px;border:1px solid var(--border)">
+            <div style="font-size:12px;color:var(--text-muted);font-weight:700">Peringkat Sementara</div>
+            <div style="font-size:24px;font-weight:900;color:var(--cyan)" id="waiting-my-rank">#1</div>
+          </div>
+        </div>
+        <div style="padding:10px 20px;border-radius:20px;background:rgba(6,182,212,0.12);color:var(--cyan);font-size:13.5px;display:inline-flex;align-items:center;gap:8px;font-weight:700">
+          <i class="fa-solid fa-spinner fa-spin"></i> Menunggu host mengumumkan podium juara...
+        </div>
+        <div id="waiting-leaderboard-preview" style="width:100%;max-width:440px;margin-top:10px"></div>
+      </div>
+    </div>
+
+    <!-- State 5: Final Podium -->
     <div id="arena-podium" class="hidden" style="text-align:center">
       <h2 style="font-size:30px;font-weight:900" class="gradient-text">🏆 PERMAINAN SELESAI! 🏆</h2>
       <p style="color:var(--text-muted);font-size:15px">Selamat kepada para juara terhebat!</p>
@@ -548,6 +571,9 @@
   <div class="feedback-title" id="feedback-title">TEPAT SEKALI!</div>
   <div class="feedback-pts" id="feedback-points">+980 PTS</div>
   <div class="feedback-exp" id="feedback-explanation"></div>
+  <button id="feedback-next-btn" class="btn-nav btn-nav-primary" style="margin-top:18px;padding:12px 30px;font-size:16px;border-radius:14px;cursor:pointer;font-weight:800;box-shadow:0 4px 20px rgba(0,0,0,0.4)" onclick="advanceNextQuestion()">
+    <span>Lanjut ke Soal Berikutnya</span> <i class="fa-solid fa-arrow-right"></i>
+  </button>
 </div>
 
 <script>
@@ -564,6 +590,8 @@ let currentQIndex = -1;
 let questionStartTime = 0;
 let timerAnimationId = null;
 let hasAnsweredCurrentQ = false;
+let autoAdvanceTimer = null;
+let latestAnswerResult = null;
 
 // Update Sound Icon
 function updateSoundIcon() {
@@ -705,27 +733,36 @@ async function pollRoomState() {
     const state = await res.json();
 
     // Update Header Badges
-    document.getElementById('player-score-badge').textContent = `${state.my_score.toLocaleString()} PTS`;
-    document.getElementById('player-streak-badge').textContent = `Streak x${state.my_streak}`;
+    if (state.my_score !== undefined) {
+      document.getElementById('player-score-badge').textContent = `${state.my_score.toLocaleString()} PTS`;
+    }
+    if (state.my_streak !== undefined) {
+      document.getElementById('player-streak-badge').textContent = `Streak x${state.my_streak}`;
+    }
 
     // Handle State Transitions
     if (state.status === 'lobby') {
       showArenaState('lobby');
       document.getElementById('lobby-player-count').textContent = state.players_count;
-    } else if (state.status === 'question') {
-      if (currentQIndex !== state.current_q_idx) {
-        currentQIndex = state.current_q_idx;
-        hasAnsweredCurrentQ = false;
-        renderQuestion(state.question);
-      }
-      showArenaState('question');
-    } else if (state.status === 'leaderboard') {
-      showArenaState('intermission');
-      renderLeaderboard(state);
     } else if (state.status === 'finished') {
       showArenaState('podium');
       renderPodium(state);
       if (pollInterval) clearInterval(pollInterval);
+    } else if (state.player_finished) {
+      showArenaState('waiting');
+      renderWaitingState(state);
+    } else if (state.status === 'question') {
+      if (state.question) {
+        if (currentQIndex !== state.question.index) {
+          currentQIndex = state.question.index;
+          hasAnsweredCurrentQ = false;
+          renderQuestion(state.question);
+        }
+        showArenaState('question');
+      }
+    } else if (state.status === 'leaderboard') {
+      showArenaState('intermission');
+      renderLeaderboard(state);
     }
 
     lastRoomStatus = state.status;
@@ -738,6 +775,7 @@ function showArenaState(stateName) {
   document.getElementById('arena-lobby').classList.toggle('hidden', stateName !== 'lobby');
   document.getElementById('arena-question').classList.toggle('hidden', stateName !== 'question');
   document.getElementById('arena-intermission').classList.toggle('hidden', stateName !== 'intermission');
+  document.getElementById('arena-finished-waiting').classList.toggle('hidden', stateName !== 'waiting');
   document.getElementById('arena-podium').classList.toggle('hidden', stateName !== 'podium');
   document.getElementById('timer-container').classList.toggle('hidden', stateName !== 'question');
 }
@@ -782,15 +820,23 @@ function startTimerBar(seconds) {
 
     if (remaining > 0 && !hasAnsweredCurrentQ) {
       timerAnimationId = requestAnimationFrame(update);
+    } else if (remaining <= 0 && !hasAnsweredCurrentQ) {
+      handleTimeExpired(seconds);
     }
   }
   update();
+}
+
+function handleTimeExpired(timeLimitSec) {
+  if (hasAnsweredCurrentQ) return;
+  submitAnswer(-1, timeLimitSec);
 }
 
 // Submit Answer
 async function submitAnswer(ansIdx, timeLimitSec) {
   if (hasAnsweredCurrentQ) return;
   hasAnsweredCurrentQ = true;
+  if (timerAnimationId) cancelAnimationFrame(timerAnimationId);
   soundEngine.play('click');
 
   // Disable all buttons immediately
@@ -812,18 +858,20 @@ async function submitAnswer(ansIdx, timeLimitSec) {
       })
     });
     const data = await res.json();
-    showFeedbackBanner(data);
+    latestAnswerResult = data;
+    showFeedbackBanner(data, ansIdx === -1);
   } catch (err) {
     console.error('Answer error', err);
   }
 }
 
-function showFeedbackBanner(data) {
+function showFeedbackBanner(data, isTimedOut = false) {
   const banner = document.getElementById('feedback-banner');
   const icon = document.getElementById('feedback-icon');
   const title = document.getElementById('feedback-title');
   const pts = document.getElementById('feedback-points');
   const exp = document.getElementById('feedback-explanation');
+  const nextBtn = document.getElementById('feedback-next-btn');
 
   banner.className = `feedback-banner ${data.correct ? 'correct' : 'wrong'}`;
   banner.classList.remove('hidden');
@@ -833,6 +881,11 @@ function showFeedbackBanner(data) {
     title.textContent = 'TEPAT SEKALI!';
     pts.textContent = `+${data.points_earned} PTS`;
     soundEngine.play(data.streak >= 2 ? 'streak' : 'correct');
+  } else if (isTimedOut) {
+    icon.textContent = '⏰';
+    title.textContent = 'WAKTU HABIS!';
+    pts.textContent = '+0 PTS';
+    soundEngine.play('wrong');
   } else {
     icon.textContent = '❌';
     title.textContent = 'YAH, KURANG TEPAT';
@@ -841,10 +894,57 @@ function showFeedbackBanner(data) {
   }
 
   exp.textContent = data.explanation || '';
+  if (nextBtn) {
+    nextBtn.innerHTML = data.is_finished 
+      ? `<span>Lihat Hasil Akhir</span> <i class="fa-solid fa-flag-checkered"></i>`
+      : `<span>Lanjut ke Soal Berikutnya</span> <i class="fa-solid fa-arrow-right"></i>`;
+  }
 
-  setTimeout(() => {
-    banner.classList.add('hidden');
+  // Update header badges immediately
+  if (data.new_score !== undefined) {
+    document.getElementById('player-score-badge').textContent = `${data.new_score.toLocaleString()} PTS`;
+  }
+  if (data.streak !== undefined) {
+    document.getElementById('player-streak-badge').textContent = `Streak x${data.streak}`;
+  }
+
+  if (autoAdvanceTimer) clearTimeout(autoAdvanceTimer);
+  autoAdvanceTimer = setTimeout(() => {
+    advanceNextQuestion();
   }, 2200);
+}
+
+function advanceNextQuestion() {
+  if (autoAdvanceTimer) clearTimeout(autoAdvanceTimer);
+  const banner = document.getElementById('feedback-banner');
+  banner.classList.add('hidden');
+
+  if (latestAnswerResult && latestAnswerResult.is_finished) {
+    showArenaState('waiting');
+    pollRoomState();
+  } else {
+    hasAnsweredCurrentQ = false;
+    pollRoomState();
+  }
+}
+
+function renderWaitingState(state) {
+  document.getElementById('waiting-my-score').textContent = `${(state.my_score || 0).toLocaleString()} PTS`;
+  document.getElementById('waiting-my-rank').textContent = state.my_rank ? `#${state.my_rank}` : '-';
+
+  const cont = document.getElementById('waiting-leaderboard-preview');
+  if (state.leaderboard && state.leaderboard.length > 0) {
+    cont.innerHTML = state.leaderboard.slice(0, 5).map(p => `
+      <div style="display:flex;align-items:center;justify-content:space-between;padding:8px 12px;border-radius:10px;margin-bottom:6px;background:${p.is_me ? 'rgba(124,58,237,0.25)' : 'rgba(255,255,255,0.04)'};border:${p.is_me ? '1px solid var(--purple)' : '1px solid transparent'}">
+        <div style="display:flex;align-items:center;gap:8px;font-size:13px">
+          <b style="color:var(--gold);width:20px">#${p.rank}</b>
+          <span>${p.avatar}</span>
+          <b>${p.name} ${p.is_me ? '(Kamu)' : ''}</b>
+        </div>
+        <b style="color:var(--gold);font-size:13px">${p.score.toLocaleString()} PTS</b>
+      </div>
+    `).join('');
+  }
 }
 
 // Render Leaderboard

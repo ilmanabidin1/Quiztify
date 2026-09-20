@@ -159,6 +159,10 @@ safeAddColumn('questions', 'explanation TEXT DEFAULT ""');
 safeAddColumn('students', 'points INTEGER DEFAULT 0');
 safeAddColumn('students', 'avatar TEXT DEFAULT "🦊"');
 
+safeAddColumn('game_rooms', 'game_mode TEXT DEFAULT "self_paced"');
+safeAddColumn('room_players', 'current_q_idx INTEGER DEFAULT 0');
+safeAddColumn('room_players', 'finished INTEGER DEFAULT 0');
+
 db.exec(`PRAGMA user_version = ${SCHEMA_VERSION}`);
 
 module.exports = db;
