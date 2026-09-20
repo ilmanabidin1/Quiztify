@@ -371,11 +371,130 @@
               <th>Mata Kuliah / Bidang</th>
               <th>Kode Gabung</th>
               <th>Jumlah Siswa</th>
+              <th>Kuis di Kelas</th>
               <th>Aksi</th>
             </tr>
           </thead>
           <tbody id="classes-table-body"></tbody>
         </table>
+      </div>
+    </div>
+
+    <!-- VIEW 4.5: CLASS DETAIL & GRADEBOOK HUB (KUMPULAN KUIS & PENILAIAN AKHIR) -->
+    <div id="view-class-detail" class="hidden">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px">
+        <button class="btn btn-ghost" onclick="switchNav('classes')">
+          <i class="fa-solid fa-arrow-left"></i> <span>Kembali ke Daftar Kelas</span>
+        </button>
+        <div style="display:flex;gap:10px">
+          <button class="btn btn-ghost" onclick="openAssignQuizModal()">
+            <i class="fa-solid fa-link"></i> <span>+ Hubungkan Kuis dari Library</span>
+          </button>
+          <button class="btn btn-emerald" onclick="createQuizForCurrentClass()">
+            <i class="fa-solid fa-plus"></i> <span>Buat Kuis untuk Kelas Ini</span>
+          </button>
+        </div>
+      </div>
+
+      <!-- Class Header Banner -->
+      <div style="background:linear-gradient(135deg, var(--bg-card), var(--bg-card-hover));border:2px solid var(--border);border-radius:24px;padding:26px;margin-bottom:24px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:16px">
+        <div>
+          <div style="display:flex;align-items:center;gap:10px;margin-bottom:6px">
+            <span class="q-badge q-badge-standard" id="class-hub-code">QZ-2026</span>
+            <span style="color:var(--cyan);font-size:12.5px;font-weight:700"><i class="fa-solid fa-book-open"></i> <span id="class-hub-course">Mata Kuliah</span></span>
+          </div>
+          <h2 style="font-size:26px;font-weight:900" id="class-hub-name">Nama Kelas</h2>
+          <p style="color:var(--text-muted);font-size:13.5px;margin-top:4px">
+            <i class="fa-solid fa-users"></i> <span id="class-hub-students-count">0</span> Mahasiswa terdaftar &nbsp;•&nbsp; 
+            <i class="fa-solid fa-list-check"></i> <span id="class-hub-quizzes-count">0</span> Kuis aktif untuk penilaian akhir
+          </p>
+        </div>
+        <button class="btn btn-primary" onclick="exportClassGradebookCsv()">
+          <i class="fa-solid fa-file-excel"></i> <span>Unduh Rekap Nilai Akhir (CSV)</span>
+        </button>
+      </div>
+
+      <!-- Class Sub Navigation Tabs -->
+      <div style="display:flex;gap:10px;margin-bottom:22px;border-bottom:1px solid var(--border);padding-bottom:12px">
+        <button class="btn btn-ghost" id="tab-btn-class-quizzes" onclick="switchClassTab('quizzes')" style="border-radius:20px;padding:8px 18px">
+          <i class="fa-solid fa-layer-group"></i> <span>Kumpulan Kuis Kelas</span>
+        </button>
+        <button class="btn btn-ghost" id="tab-btn-class-gradebook" onclick="switchClassTab('gradebook')" style="border-radius:20px;padding:8px 18px">
+          <i class="fa-solid fa-award" style="color:var(--gold)"></i> <span>Buku Nilai Akhir Mata Kuliah</span>
+        </button>
+        <button class="btn btn-ghost" id="tab-btn-class-students" onclick="switchClassTab('students')" style="border-radius:20px;padding:8px 18px">
+          <i class="fa-solid fa-users"></i> <span>Daftar Mahasiswa</span>
+        </button>
+      </div>
+
+      <!-- Subtab 1: Kumpulan Kuis Kelas -->
+      <div id="subtab-class-quizzes">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px">
+          <h3 style="font-size:17px;font-weight:800">Daftar Kuis Mata Kuliah Ini</h3>
+          <span style="font-size:13px;color:var(--text-muted)">Klik "Lihat Hasil & Nilai" pada kuis untuk melihat skor mahasiswa</span>
+        </div>
+        <div class="quizzes-grid" id="class-quizzes-grid"></div>
+      </div>
+
+      <!-- Subtab 2: Buku Nilai Akhir (Gradebook Mata Kuliah) -->
+      <div id="subtab-class-gradebook" class="hidden">
+        <div class="metrics-grid" style="margin-bottom:20px">
+          <div class="metric-card">
+            <div class="metric-icon" style="background:rgba(16,185,129,0.2);color:var(--emerald)"><i class="fa-solid fa-chart-simple"></i></div>
+            <div>
+              <div class="metric-lbl">Rata-Rata Nilai Kelas</div>
+              <div class="metric-val" id="gb-metric-avg">0</div>
+            </div>
+          </div>
+          <div class="metric-card">
+            <div class="metric-icon" style="background:rgba(6,182,212,0.2);color:var(--cyan)"><i class="fa-solid fa-user-check"></i></div>
+            <div>
+              <div class="metric-lbl">Tingkat Kelulusan</div>
+              <div class="metric-val" id="gb-metric-pass">0%</div>
+            </div>
+          </div>
+          <div class="metric-card">
+            <div class="metric-icon" style="background:rgba(245,158,11,0.2);color:var(--amber)"><i class="fa-solid fa-book-bookmark"></i></div>
+            <div>
+              <div class="metric-lbl">Total Kuis Terhitung</div>
+              <div class="metric-val" id="gb-metric-quizzes">0</div>
+            </div>
+          </div>
+        </div>
+
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px">
+          <div>
+            <h3 style="font-size:17px;font-weight:800">Matriks Nilai Akhir Mahasiswa</h3>
+            <p style="color:var(--text-muted);font-size:12.5px">Rekapitulasi seluruh kuis semester ini beserta konversi Nilai Mutu Huruf (A, B, C, D, E).</p>
+          </div>
+          <div style="font-size:12px;color:var(--text-muted);display:flex;gap:12px;align-items:center">
+            <span><b>Skala Mutu:</b> A: ≥85 • B: 75-84 • C: 65-74 • D: 50-64 • E: &lt;50</span>
+          </div>
+        </div>
+
+        <div class="table-card" style="margin-top:0;overflow-x:auto">
+          <table id="gradebook-table">
+            <thead id="gradebook-thead"></thead>
+            <tbody id="gradebook-tbody"></tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- Subtab 3: Daftar Mahasiswa -->
+      <div id="subtab-class-students" class="hidden">
+        <div class="table-card" style="margin-top:0">
+          <table>
+            <thead>
+              <tr>
+                <th>Mahasiswa</th>
+                <th>ID / NPM</th>
+                <th>Poin Gamifikasi</th>
+                <th>Tanggal Terdaftar</th>
+              </tr>
+            </thead>
+            <tbody id="class-students-tbody"></tbody>
+          </table>
+        </div>
       </div>
     </div>
 
@@ -583,6 +702,109 @@
   </div>
 </div>
 
+<!-- DETAIL NILAI KUIS MODAL -->
+<div id="modal-quiz-attempts" class="modal-overlay hidden">
+  <div class="modal-box" style="max-width:760px">
+    <div style="display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid var(--border);padding-bottom:14px;margin-bottom:18px">
+      <div>
+        <div style="display:flex;align-items:center;gap:8px;margin-bottom:4px">
+          <span class="q-badge q-badge-standard" id="modal-qa-type">STANDAR</span>
+          <span style="color:var(--cyan);font-size:12px;font-weight:700" id="modal-qa-class">Nama Kelas</span>
+        </div>
+        <h2 style="font-size:20px;font-weight:800" id="modal-qa-title">Judul Kuis</h2>
+      </div>
+      <button class="btn btn-ghost" style="padding:6px 12px" onclick="closeQuizAttemptsModal()"><i class="fa-solid fa-xmark"></i></button>
+    </div>
+
+    <!-- Stat Cards -->
+    <div class="metrics-grid" style="grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:18px">
+      <div class="metric-card" style="padding:14px">
+        <div>
+          <div class="metric-lbl">Rata-Rata</div>
+          <div class="metric-val" style="font-size:20px" id="modal-qa-avg">-</div>
+        </div>
+      </div>
+      <div class="metric-card" style="padding:14px">
+        <div>
+          <div class="metric-lbl">Tertinggi</div>
+          <div class="metric-val" style="font-size:20px;color:var(--emerald)" id="modal-qa-max">-</div>
+        </div>
+      </div>
+      <div class="metric-card" style="padding:14px">
+        <div>
+          <div class="metric-lbl">Terendah</div>
+          <div class="metric-val" style="font-size:20px;color:var(--amber)" id="modal-qa-min">-</div>
+        </div>
+      </div>
+      <div class="metric-card" style="padding:14px">
+        <div>
+          <div class="metric-lbl">Partisipasi</div>
+          <div class="metric-val" style="font-size:20px;color:var(--cyan)" id="modal-qa-participation">-</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Student Scores Table -->
+    <div class="table-card" style="margin-top:0">
+      <table>
+        <thead>
+          <tr>
+            <th>Mahasiswa</th>
+            <th>ID / NPM</th>
+            <th>Status</th>
+            <th>Nilai (0-100)</th>
+            <th>Jawaban Benar</th>
+            <th>Nilai Mutu</th>
+          </tr>
+        </thead>
+        <tbody id="modal-qa-tbody"></tbody>
+      </table>
+    </div>
+
+    <div style="display:flex;justify-content:flex-end;margin-top:20px">
+      <button class="btn btn-ghost" onclick="closeQuizAttemptsModal()">Tutup</button>
+    </div>
+  </div>
+</div>
+
+<!-- ASSIGN QUIZ MODAL -->
+<div id="modal-assign-quiz" class="modal-overlay hidden">
+  <div class="modal-box">
+    <div style="display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid var(--border);padding-bottom:14px;margin-bottom:16px">
+      <h2 style="font-size:18px;font-weight:800">Hubungkan Kuis ke Kelas</h2>
+      <button class="btn btn-ghost" style="padding:6px 12px" onclick="closeAssignQuizModal()"><i class="fa-solid fa-xmark"></i></button>
+    </div>
+    <p style="color:var(--text-muted);font-size:13px;margin-bottom:16px">Pilih kuis dari Library Anda untuk dimasukkan ke dalam daftar kuis dan penilaian akhir kelas ini:</p>
+    <label style="font-size:12px;font-weight:700;color:var(--text-muted)">PILIH KUIS DARI LIBRARY</label>
+    <select id="assign-quiz-select" class="input" style="margin-top:6px"></select>
+    <div style="display:flex;justify-content:flex-end;gap:10px;margin-top:24px">
+      <button class="btn btn-ghost" onclick="closeAssignQuizModal()">Batal</button>
+      <button class="btn btn-emerald" onclick="submitAssignQuiz()">Hubungkan Kuis ➔</button>
+    </div>
+  </div>
+</div>
+
+<!-- VIEW CLASS STUDENTS MODAL -->
+<div id="modal-class-students" class="modal-overlay hidden">
+  <div class="modal-box" style="max-width:680px">
+    <div style="display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid var(--border);padding-bottom:14px;margin-bottom:16px">
+      <h2 style="font-size:18px;font-weight:800" id="modal-cs-title">Daftar Mahasiswa</h2>
+      <button class="btn btn-ghost" style="padding:6px 12px" onclick="closeClassStudentsModal()"><i class="fa-solid fa-xmark"></i></button>
+    </div>
+    <div class="table-card" style="margin-top:0">
+      <table>
+        <thead>
+          <tr><th>Mahasiswa</th><th>ID / NPM</th><th>Poin</th><th>Terdaftar</th></tr>
+        </thead>
+        <tbody id="modal-cs-tbody"></tbody>
+      </table>
+    </div>
+    <div style="display:flex;justify-content:flex-end;margin-top:20px">
+      <button class="btn btn-ghost" onclick="closeClassStudentsModal()">Tutup</button>
+    </div>
+  </div>
+</div>
+
 <script>
 // ---------- STUDIO STATE & ENGINE ----------
 let me = null;
@@ -627,8 +849,9 @@ function doLogout() {
 }
 
 function switchNav(tab) {
-  ['dash', 'library', 'builder', 'classes', 'reports', 'pricing'].forEach(t => {
-    document.getElementById(`view-${t}`).classList.toggle('hidden', t !== tab);
+  ['dash', 'library', 'builder', 'classes', 'class-detail', 'reports', 'pricing'].forEach(t => {
+    const el = document.getElementById(`view-${t}`);
+    if (el) el.classList.toggle('hidden', t !== tab);
     const b = document.getElementById(`btn-nav-${t}`);
     if (b) b.classList.toggle('active', t === tab);
   });
@@ -998,7 +1221,9 @@ async function saveQuiz() {
   }
 }
 
-// ---------- CLASSES & REPORTS ----------
+// ---------- CLASSES & GRADEBOOK HUB ----------
+let currentClassId = null;
+
 async function loadClasses() {
   try {
     const res = await fetch('/api/dosen/classes');
@@ -1007,20 +1232,337 @@ async function loadClasses() {
     const tbody = document.getElementById('classes-table-body');
     tbody.innerHTML = classes.map(c => `
       <tr>
-        <td><b>${c.name}</b></td>
+        <td><b style="font-size:14px">${c.name}</b></td>
         <td>${c.course || '-'}</td>
         <td><span class="q-badge q-badge-standard">${c.code || 'QZ-101'}</span></td>
-        <td>${c.n_students} Siswa</td>
+        <td><b>${c.n_students}</b> Mahasiswa</td>
+        <td><span class="q-badge" style="background:rgba(6,182,212,0.2);color:var(--cyan)">${c.n_quizzes || 0} Kuis</span></td>
         <td>
-          <button class="btn btn-ghost" style="padding:6px 12px;font-size:12px" onclick="viewClassStudents(${c.id})">Lihat Siswa</button>
+          <div style="display:flex;gap:6px">
+            <button class="btn btn-emerald" style="padding:7px 14px;font-size:12.5px;gap:6px" onclick="openClassHub(${c.id})">
+              <i class="fa-solid fa-folder-open"></i> Buka Kelas & Kuis
+            </button>
+            <button class="btn btn-ghost" style="padding:7px 10px;font-size:12px" onclick="viewClassStudents(${c.id})" title="Lihat Siswa">
+              <i class="fa-solid fa-users"></i>
+            </button>
+            <button class="btn btn-danger" style="padding:7px 10px;font-size:12px" onclick="deleteClass(${c.id})" title="Hapus Kelas">
+              <i class="fa-solid fa-trash"></i>
+            </button>
+          </div>
         </td>
       </tr>
     `).join('');
 
     // Update select di laporan
     const sel = document.getElementById('report-class-select');
-    sel.innerHTML = classes.map(c => `<option value="${c.id}">${c.name}</option>`).join('');
+    if (sel) sel.innerHTML = classes.map(c => `<option value="${c.id}">${c.name}</option>`).join('');
   } catch (e) {}
+}
+
+async function openClassHub(classId) {
+  currentClassId = classId;
+  switchNav('class-detail');
+  switchClassTab('quizzes');
+  await loadClassHubData(classId);
+}
+
+function switchClassTab(tab) {
+  ['quizzes', 'gradebook', 'students'].forEach(t => {
+    const sub = document.getElementById(`subtab-class-${t}`);
+    const btn = document.getElementById(`tab-btn-class-${t}`);
+    if (sub) sub.classList.toggle('hidden', t !== tab);
+    if (btn) {
+      if (t === tab) {
+        btn.className = 'btn btn-primary';
+      } else {
+        btn.className = 'btn btn-ghost';
+      }
+    }
+  });
+}
+
+async function loadClassHubData(classId) {
+  try {
+    // 1. Fetch Class Quizzes
+    const resQ = await fetch(`/api/classes/${classId}/quizzes`);
+    const dataQ = await resQ.json();
+    if (!resQ.ok) throw dataQ;
+
+    document.getElementById('class-hub-code').textContent = dataQ.class.code || 'QZ-101';
+    document.getElementById('class-hub-course').textContent = dataQ.class.course || 'Mata Kuliah Umum';
+    document.getElementById('class-hub-name').textContent = dataQ.class.name;
+    document.getElementById('class-hub-students-count').textContent = dataQ.total_students;
+    document.getElementById('class-hub-quizzes-count').textContent = dataQ.quizzes.length;
+
+    const qGrid = document.getElementById('class-quizzes-grid');
+    if (dataQ.quizzes.length === 0) {
+      qGrid.innerHTML = `
+        <div style="grid-column:1/-1;text-align:center;padding:44px 20px;background:var(--bg-card);border-radius:20px;border:1px dashed var(--border)">
+          <div style="font-size:40px;margin-bottom:12px">📚</div>
+          <h3 style="font-size:18px;font-weight:800;margin-bottom:6px">Belum Ada Kuis di Kelas Ini</h3>
+          <p style="color:var(--text-muted);font-size:13px;max-width:480px;margin:0 auto 20px">
+            Tambahkan kuis dari library Anda atau buat kuis baru untuk dimasukkan ke dalam komponen penilaian akhir kelas ini.
+          </p>
+          <div style="display:flex;justify-content:center;gap:12px">
+            <button class="btn btn-ghost" onclick="openAssignQuizModal()"><i class="fa-solid fa-link"></i> Hubungkan dari Library</button>
+            <button class="btn btn-emerald" onclick="createQuizForCurrentClass()"><i class="fa-solid fa-plus"></i> Buat Kuis Baru</button>
+          </div>
+        </div>
+      `;
+    } else {
+      qGrid.innerHTML = dataQ.quizzes.map(q => {
+        const badgeClass = q.type === 'pre' ? 'q-badge-pre' : (q.type === 'post' ? 'q-badge-post' : 'q-badge-standard');
+        const badgeText = q.type === 'pre' ? 'PRE-TEST' : (q.type === 'post' ? 'POST-TEST' : 'KUIS MATKUL');
+        return `
+          <div class="quiz-item-card" style="box-shadow: 0 4px 20px rgba(0,0,0,0.25)">
+            <div>
+              <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
+                <span class="q-badge ${badgeClass}">${badgeText}</span>
+                <span style="font-size:24px">${q.cover_emoji || '⚡'}</span>
+              </div>
+              <h3 style="font-size:16px;font-weight:700;margin-bottom:6px">${q.title}</h3>
+              <p style="color:var(--text-muted);font-size:12.5px;line-height:1.4;margin-bottom:16px">${q.description || 'Kuis penilaian capaian belajar mata kuliah'}</p>
+
+              <div style="background:var(--bg-side);padding:10px 14px;border-radius:12px;margin-bottom:16px;font-size:12.5px;display:flex;flex-direction:column;gap:6px">
+                <div style="display:flex;justify-content:space-between">
+                  <span style="color:var(--text-muted)">Partisipasi:</span>
+                  <b>${q.attempt_count} / ${dataQ.total_students} Mhs (${q.completion_rate}%)</b>
+                </div>
+                <div style="display:flex;justify-content:space-between">
+                  <span style="color:var(--text-muted)">Rata-Rata Nilai:</span>
+                  <b style="color:var(--gold)">${q.avg_score !== null ? q.avg_score + ' / 100' : 'Belum ada nilai'}</b>
+                </div>
+              </div>
+            </div>
+
+            <div style="display:flex;gap:8px;border-top:1px solid var(--border);padding-top:14px">
+              <button class="btn btn-primary" style="flex:2;justify-content:center;padding:10px" onclick="openQuizAttemptsDetail(${q.id})">
+                <i class="fa-solid fa-chart-pie"></i> <span>Lihat Hasil & Nilai</span>
+              </button>
+              <button class="btn btn-emerald" style="padding:10px 14px" onclick="hostLiveGame(${q.id})" title="Host Live Game">
+                <i class="fa-solid fa-gamepad"></i>
+              </button>
+              <button class="btn btn-ghost" style="padding:10px 12px" onclick="showQrModal(${q.id})" title="QR / Link Kuis">
+                <i class="fa-solid fa-qrcode"></i>
+              </button>
+            </div>
+          </div>
+        `;
+      }).join('');
+    }
+
+    // 2. Fetch Class Gradebook Matrix
+    const resGB = await fetch(`/api/classes/${classId}/gradebook`);
+    const dataGB = await resGB.json();
+
+    document.getElementById('gb-metric-avg').textContent = `${dataGB.summary.class_average}`;
+    document.getElementById('gb-metric-pass').textContent = `${dataGB.summary.pass_rate_percent}% (${dataGB.summary.passed_count}/${dataGB.summary.total_students} Lulus)`;
+    document.getElementById('gb-metric-quizzes').textContent = `${dataGB.summary.total_quizzes} Kuis`;
+
+    // Render Gradebook Thead
+    const thead = document.getElementById('gradebook-thead');
+    thead.innerHTML = `
+      <tr>
+        <th style="width:40px">No</th>
+        <th>Nama Mahasiswa</th>
+        <th>NPM / ID</th>
+        ${dataGB.quizzes.map((q, idx) => `<th>Kuis #${idx + 1}<br><small style="font-weight:normal;opacity:0.75">${q.title.slice(0, 16)}...</small></th>`).join('')}
+        <th style="background:rgba(124,58,237,0.15);color:#c4b5fd">Nilai Akhir (Rata-Rata)</th>
+        <th style="background:rgba(124,58,237,0.15);color:#c4b5fd">Nilai Mutu</th>
+        <th style="background:rgba(124,58,237,0.15);color:#c4b5fd">Status</th>
+      </tr>
+    `;
+
+    // Render Gradebook Tbody
+    const tbody = document.getElementById('gradebook-tbody');
+    if (dataGB.students.length === 0) {
+      tbody.innerHTML = `<tr><td colspan="${5 + dataGB.quizzes.length}" style="text-align:center;color:var(--text-muted);padding:30px">Belum ada mahasiswa yang terdaftar di kelas ini.</td></tr>`;
+    } else {
+      tbody.innerHTML = dataGB.students.map((s, idx) => {
+        let badgeColor = 'var(--text-muted)';
+        let badgeBg = 'rgba(255,255,255,0.05)';
+        if (s.letter_grade === 'A') { badgeColor = 'var(--emerald)'; badgeBg = 'rgba(16,185,129,0.2)'; }
+        else if (s.letter_grade === 'B') { badgeColor = 'var(--cyan)'; badgeBg = 'rgba(6,182,212,0.2)'; }
+        else if (s.letter_grade === 'C') { badgeColor = 'var(--amber)'; badgeBg = 'rgba(245,158,11,0.2)'; }
+        else if (s.letter_grade === 'D') { badgeColor = '#fb923c'; badgeBg = 'rgba(249,115,22,0.2)'; }
+        else if (s.letter_grade === 'E') { badgeColor = 'var(--rose)'; badgeBg = 'rgba(244,63,94,0.2)'; }
+
+        const statusColor = s.status === 'Lulus' ? 'var(--emerald)' : (s.status === 'Remedial' ? 'var(--amber)' : 'var(--rose)');
+
+        return `
+          <tr>
+            <td>${idx + 1}</td>
+            <td><span style="margin-right:6px">${s.avatar || '🦁'}</span> <b>${s.nama}</b></td>
+            <td>${s.npm}</td>
+            ${dataGB.quizzes.map(q => {
+              const val = s.quiz_scores[q.id];
+              return `<td style="font-weight:700;color:${val !== null ? (val >= 75 ? 'var(--emerald)' : (val >= 60 ? 'var(--amber)' : 'var(--rose)')) : 'var(--text-muted)'}">${val !== null ? val : '-'}</td>`;
+            }).join('')}
+            <td style="font-size:16px;font-weight:800;color:var(--gold);background:rgba(124,58,237,0.08)">${s.final_score}</td>
+            <td style="background:rgba(124,58,237,0.08)">
+              <span class="q-badge" style="background:${badgeBg};color:${badgeColor};font-size:13px;padding:4px 10px">
+                ${s.letter_grade} (${s.grade_label})
+              </span>
+            </td>
+            <td style="background:rgba(124,58,237,0.08)">
+              <b style="color:${statusColor}">${s.status}</b>
+            </td>
+          </tr>
+        `;
+      }).join('');
+    }
+
+    // 3. Fetch Class Students List
+    const resS = await fetch(`/api/dosen/classes/${classId}/students`);
+    const students = await resS.json();
+    const sTbody = document.getElementById('class-students-tbody');
+    sTbody.innerHTML = students.map(s => `
+      <tr>
+        <td><span style="margin-right:6px">${s.avatar || '🦁'}</span> <b>${s.nama}</b></td>
+        <td>${s.npm}</td>
+        <td><b style="color:var(--gold)">${(s.points || 0).toLocaleString()} PTS</b></td>
+        <td>${s.created_at || '-'}</td>
+      </tr>
+    `).join('');
+
+  } catch (err) {
+    console.error('Error loadClassHubData', err);
+  }
+}
+
+// Open Quiz Attempts Detail Modal
+async function openQuizAttemptsDetail(quizId) {
+  try {
+    const res = await fetch(`/api/quizzes/${quizId}/attempts-detail`);
+    const data = await res.json();
+    if (!res.ok) throw data;
+
+    document.getElementById('modal-qa-title').textContent = data.quiz.title;
+    document.getElementById('modal-qa-class').textContent = data.quiz.class_name || 'Kelas Terdaftar';
+    document.getElementById('modal-qa-type').textContent = (data.quiz.type || 'standar').toUpperCase();
+
+    document.getElementById('modal-qa-avg').textContent = data.stats.avg_score !== null ? `${data.stats.avg_score}` : '-';
+    document.getElementById('modal-qa-max').textContent = data.stats.max_score !== null ? `${data.stats.max_score}` : '-';
+    document.getElementById('modal-qa-min').textContent = data.stats.min_score !== null ? `${data.stats.min_score}` : '-';
+    document.getElementById('modal-qa-participation').textContent = `${data.stats.completed_count} / ${data.stats.total_students} Mhs`;
+
+    const tbody = document.getElementById('modal-qa-tbody');
+    tbody.innerHTML = data.students.map(s => {
+      const isDone = s.status === 'completed';
+      return `
+        <tr>
+          <td><span style="margin-right:6px">${s.avatar || '🦁'}</span> <b>${s.nama}</b></td>
+          <td>${s.npm}</td>
+          <td>
+            ${isDone 
+              ? '<span style="color:var(--emerald);font-weight:700"><i class="fa-solid fa-circle-check"></i> Selesai</span>' 
+              : '<span style="color:var(--text-muted)"><i class="fa-solid fa-clock"></i> Belum Mengerjakan</span>'}
+          </td>
+          <td>
+            ${isDone ? `<b style="color:var(--gold);font-size:16px">${s.score}</b>` : '<span style="color:var(--text-muted)">-</span>'}
+          </td>
+          <td>
+            ${isDone ? `${s.correct_count} / ${s.total_count} Soal` : '-'}
+          </td>
+          <td>
+            ${isDone && s.letter_grade 
+              ? `<b style="color:${s.score >= 75 ? 'var(--emerald)' : (s.score >= 50 ? 'var(--amber)' : 'var(--rose)')}">${s.letter_grade.grade} (${s.letter_grade.status})</b>` 
+              : '-'}
+          </td>
+        </tr>
+      `;
+    }).join('');
+
+    document.getElementById('modal-quiz-attempts').classList.remove('hidden');
+    window.QuizSound.play('click');
+  } catch (err) {
+    alert(err.error || 'Gagal memuat hasil kuis');
+  }
+}
+
+function closeQuizAttemptsModal() {
+  document.getElementById('modal-quiz-attempts').classList.add('hidden');
+}
+
+// Assign Quiz from Library
+async function openAssignQuizModal() {
+  try {
+    const res = await fetch('/api/creator/quizzes');
+    const quizzes = await res.json();
+    const sel = document.getElementById('assign-quiz-select');
+    sel.innerHTML = quizzes.map(q => `
+      <option value="${q.id}">${q.cover_emoji || '⚡'} ${q.title} (${q.type}) - ${q.question_count || 0} Soal</option>
+    `).join('');
+    document.getElementById('modal-assign-quiz').classList.remove('hidden');
+  } catch (e) {
+    alert('Gagal mengambil daftar kuis');
+  }
+}
+
+function closeAssignQuizModal() {
+  document.getElementById('modal-assign-quiz').classList.add('hidden');
+}
+
+async function submitAssignQuiz() {
+  const quizId = document.getElementById('assign-quiz-select').value;
+  if (!quizId || !currentClassId) return;
+
+  try {
+    const res = await fetch(`/api/classes/${currentClassId}/assign-quiz`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ quiz_id: quizId })
+    });
+    const data = await res.json();
+    if (!res.ok) throw data;
+
+    closeAssignQuizModal();
+    window.QuizSound.play('correct');
+    await loadClassHubData(currentClassId);
+  } catch (err) {
+    alert(err.error || 'Gagal menghubungkan kuis');
+  }
+}
+
+function createQuizForCurrentClass() {
+  switchNav('builder');
+  builderQuestions = [];
+  addQuestionCard();
+}
+
+function exportClassGradebookCsv() {
+  if (!currentClassId) return;
+  window.open(`/api/classes/${currentClassId}/export-csv`, '_blank');
+}
+
+async function viewClassStudents(classId) {
+  try {
+    const res = await fetch(`/api/dosen/classes/${classId}/students`);
+    const students = await res.json();
+    const tbody = document.getElementById('modal-cs-tbody');
+    tbody.innerHTML = students.map(s => `
+      <tr>
+        <td><span style="margin-right:6px">${s.avatar || '🦁'}</span> <b>${s.nama}</b></td>
+        <td>${s.npm}</td>
+        <td><b style="color:var(--gold)">${(s.points || 0).toLocaleString()} PTS</b></td>
+        <td>${s.created_at || '-'}</td>
+      </tr>
+    `).join('');
+    document.getElementById('modal-class-students').classList.remove('hidden');
+  } catch (e) {
+    alert('Gagal memuat siswa kelas');
+  }
+}
+
+function closeClassStudentsModal() {
+  document.getElementById('modal-class-students').classList.add('hidden');
+}
+
+async function deleteClass(classId) {
+  if (confirm('Yakin ingin menghapus kelas ini? Semua kuis dan rekap nilai di kelas ini akan terhapus.')) {
+    await fetch(`/api/dosen/classes/${classId}`, { method: 'DELETE' });
+    loadClasses();
+  }
 }
 
 function openAddClassModal() {

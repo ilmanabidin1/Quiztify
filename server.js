@@ -76,6 +76,16 @@ function ngain(pre, post) {
   return Math.max(0, Math.round(((post - pre) / (100 - pre)) * 100) / 100);
 }
 
+// Konversi Nilai Angka ke Nilai Mutu Huruf Akademik (A, B, C, D, E)
+function getLetterGrade(score) {
+  if (score === null || score === undefined || isNaN(score)) return { grade: '-', label: 'Belum Ada Nilai', status: 'Pending' };
+  if (score >= 85) return { grade: 'A', label: 'Sangat Baik', status: 'Lulus' };
+  if (score >= 75) return { grade: 'B', label: 'Baik', status: 'Lulus' };
+  if (score >= 65) return { grade: 'C', label: 'Cukup', status: 'Lulus' };
+  if (score >= 50) return { grade: 'D', label: 'Kurang', status: 'Remedial' };
+  return { grade: 'E', label: 'Gagal / Tidak Lulus', status: 'Tidak Lulus' };
+}
+
 // ---------- SEED DATA ----------
 function seedInitialData() {
   // 1. Akun Creator Default
@@ -167,6 +177,52 @@ function seedInitialData() {
       VALUES (?, ?, ?, ?, ?, ?, 1000, ?)`);
     questions.forEach((q, idx) => {
       insQ.run(quizId, idx + 1, q.text, JSON.stringify(q.options), q.correct, q.time, q.explanation);
+    });
+  }
+
+  // 4. Sample Siswa & Attempts untuk Kelas
+  const studentCount = db.prepare('SELECT COUNT(*) as c FROM students WHERE class_id = ?').get(defaultClass.id).c;
+  if (studentCount === 0) {
+    const sampleStudents = [
+      { nama: 'Budi Santoso', npm: '10020101', avatar: '🦁', score1: 100, score2: 90 },
+      { nama: 'Siti Rahma', npm: '10020102', avatar: '🦊', score1: 80, score2: 85 },
+      { nama: 'Ahmad Fauzi', npm: '10020103', avatar: '🚀', score1: 60, score2: 70 },
+      { nama: 'Dewi Lestari', npm: '10020104', avatar: '🦄', score1: 90, score2: 95 }
+    ];
+    const insStudent = db.prepare('INSERT INTO students (class_id, nama, npm, password_hash, avatar, points) VALUES (?, ?, ?, ?, ?, ?)');
+    const insAttempt = db.prepare('INSERT INTO attempts (quiz_id, student_id, score, correct_count, total_count, answers, time_spent_sec) VALUES (?, ?, ?, ?, ?, ?, ?)');
+    const quiz1 = db.prepare('SELECT id FROM quizzes WHERE class_id = ? LIMIT 1').get(defaultClass.id);
+
+    // Buat kuis kedua (Kuis 2: Pemrograman Web Modern)
+    const creator = db.prepare('SELECT id FROM dosen LIMIT 1').get();
+    let quiz2 = db.prepare('SELECT id FROM quizzes WHERE title LIKE ?').get('%Kuis 2%');
+    let q2Id = quiz2 ? quiz2.id : null;
+    if (!quiz2) {
+      const q2Info = db.prepare(`INSERT INTO quizzes 
+        (class_id, creator_id, title, description, category, type, cover_emoji, time_per_q, points_per_q)
+        VALUES (?, ?, ?, ?, ?, 'standard', '💻', 20, 1000)`).run(
+          defaultClass.id,
+          creator.id,
+          'Kuis 2: Fondasi Web & REST API 💻',
+          'Evaluasi pemahaman konsep HTTP methods, routing, dan frontend modern.',
+          'Pemrograman'
+        );
+      q2Id = q2Info.lastInsertRowid;
+      const insQ2 = db.prepare(`INSERT INTO questions (quiz_id, position, text, options, correct_idx, time_limit, points, explanation) VALUES (?, ?, ?, ?, ?, ?, 1000, ?)`);
+      insQ2.run(q2Id, 1, 'HTTP status code yang menandakan request berhasil adalah...', JSON.stringify(['200 OK', '404 Not Found', '500 Server Error', '301 Moved']), 0, 20, '200 OK menandakan request sukses.');
+      insQ2.run(q2Id, 2, 'Metode HTTP yang lazim digunakan untuk memperbarui sebagian data adalah...', JSON.stringify(['POST', 'PATCH', 'GET', 'DELETE']), 1, 20, 'PATCH untuk partial update.');
+      insQ2.run(q2Id, 3, 'Format pertukaran data standar web paling populer adalah...', JSON.stringify(['JSON', 'XML', 'CSV', 'YAML']), 0, 20, 'JSON adalah format paling banyak dipakai di REST API.');
+    }
+
+    sampleStudents.forEach(s => {
+      const info = insStudent.run(defaultClass.id, s.nama, s.npm, hashPassword('student123'), s.avatar, s.score1 * 10);
+      const studentId = info.lastInsertRowid;
+      if (quiz1) {
+        insAttempt.run(quiz1.id, studentId, s.score1, Math.round((s.score1 / 100) * 5), 5, '{}', 45);
+      }
+      if (q2Id) {
+        insAttempt.run(q2Id, studentId, s.score2, Math.round((s.score2 / 100) * 3), 3, '{}', 35);
+      }
     });
   }
 }
@@ -601,6 +657,47 @@ app.get('/api/dosen/classes/:id/students', requireRole('creator', 'dosen'), (req
   res.json(db.prepare('SELECT id, nama, npm, avatar, points, created_at FROM students WHERE class_id = ? ORDER BY nama').all(c.id));
 });
 
+// Daftar Kumpulan Kuis di Kelas Tertentu
+app.get('/api/classes/:id/quizzes', requireRole('creator', 'dosen'), (req, res) => {
+  const c = db.prepare('SELECT id, name, course, code FROM classes WHERE id = ?').get(req.params.id);
+  if (!c) return res.status(404).json({ error: 'Kelas tidak ditemukan' });
+
+  const totalStudents = db.prepare('SELECT COUNT(*) as count FROM students WHERE class_id = ?').get(c.id).count;
+
+  const quizzes = db.prepare(`SELECT q.*,
+    (SELECT COUNT(*) FROM questions WHERE quiz_id = q.id) as question_count,
+    (SELECT COUNT(*) FROM attempts WHERE quiz_id = q.id) as attempt_count,
+    (SELECT AVG(score) FROM attempts WHERE quiz_id = q.id) as avg_score,
+    (SELECT MAX(score) FROM attempts WHERE quiz_id = q.id) as max_score,
+    (SELECT MIN(score) FROM attempts WHERE quiz_id = q.id) as min_score
+    FROM quizzes q
+    WHERE q.class_id = ?
+    ORDER BY q.created_at DESC`).all(c.id);
+
+  res.json({
+    class: c,
+    total_students: totalStudents,
+    quizzes: quizzes.map(q => ({
+      ...q,
+      avg_score: q.avg_score !== null ? Math.round(q.avg_score) : null,
+      completion_rate: totalStudents > 0 ? Math.round((q.attempt_count / totalStudents) * 100) : 0
+    }))
+  });
+});
+
+// Hubungkan Kuis dari Library ke Kelas Ini
+app.post('/api/classes/:id/assign-quiz', requireRole('creator', 'dosen'), (req, res) => {
+  const { quiz_id } = req.body || {};
+  const c = db.prepare('SELECT id FROM classes WHERE id = ? AND dosen_id = ?').get(req.params.id, req.auth.user_id);
+  if (!c) return res.status(404).json({ error: 'Kelas tidak ditemukan' });
+
+  const q = db.prepare('SELECT id FROM quizzes WHERE id = ?').get(Number(quiz_id));
+  if (!q) return res.status(404).json({ error: 'Kuis tidak ditemukan' });
+
+  db.prepare('UPDATE quizzes SET class_id = ? WHERE id = ?').run(c.id, q.id);
+  res.json({ ok: true, message: 'Kuis berhasil dihubungkan ke kelas' });
+});
+
 // Create Quiz (Studio Pro)
 app.post('/api/dosen/quizzes', requireRole('creator', 'dosen'), (req, res) => {
   const { class_id, title, description, category, type, duration_min, time_per_q, deadline, pair_key, cover_emoji, questions } = req.body || {};
@@ -736,13 +833,155 @@ app.get('/api/dosen/classes/:id/results', requireRole('creator', 'dosen'), (req,
   });
 });
 
-// Ekspor Rekap Nilai CSV
+// Detail Hasil & Nilai Mahasiswa per Kuis
+app.get('/api/quizzes/:id/attempts-detail', requireRole('creator', 'dosen'), (req, res) => {
+  const quiz = db.prepare('SELECT q.*, c.name as class_name FROM quizzes q LEFT JOIN classes c ON c.id = q.class_id WHERE q.id = ?').get(req.params.id);
+  if (!quiz) return res.status(404).json({ error: 'Kuis tidak ditemukan' });
+
+  const totalQuestions = db.prepare('SELECT COUNT(*) as c FROM questions WHERE quiz_id = ?').get(quiz.id).c;
+
+  let students = [];
+  if (quiz.class_id) {
+    students = db.prepare('SELECT id, nama, npm, avatar FROM students WHERE class_id = ? ORDER BY nama ASC').all(quiz.class_id);
+  } else {
+    students = db.prepare(`SELECT DISTINCT s.id, s.nama, s.npm, s.avatar 
+      FROM attempts a JOIN students s ON s.id = a.student_id WHERE a.quiz_id = ? ORDER BY s.nama ASC`).all(quiz.id);
+  }
+
+  const attempts = db.prepare('SELECT student_id, score, correct_count, total_count, time_spent_sec, created_at FROM attempts WHERE quiz_id = ?').all(quiz.id);
+  const attemptMap = Object.fromEntries(attempts.map(a => [a.student_id, a]));
+
+  const rows = students.map(s => {
+    const a = attemptMap[s.id];
+    return {
+      student_id: s.id,
+      nama: s.nama,
+      npm: s.npm,
+      avatar: s.avatar,
+      status: a ? 'completed' : 'pending',
+      score: a ? a.score : null,
+      correct_count: a ? a.correct_count : 0,
+      total_count: a ? a.total_count : totalQuestions,
+      time_spent_sec: a ? a.time_spent_sec : 0,
+      submitted_at: a ? a.created_at : null,
+      letter_grade: a ? getLetterGrade(a.score) : null
+    };
+  });
+
+  const completed = rows.filter(r => r.status === 'completed');
+  const scores = completed.map(r => r.score);
+  const avg = scores.length ? Math.round(scores.reduce((a, b) => a + b, 0) / scores.length) : null;
+  const max = scores.length ? Math.max(...scores) : null;
+  const min = scores.length ? Math.min(...scores) : null;
+
+  res.json({
+    quiz: {
+      id: quiz.id,
+      title: quiz.title,
+      type: quiz.type,
+      category: quiz.category,
+      class_id: quiz.class_id,
+      class_name: quiz.class_name,
+      total_questions: totalQuestions
+    },
+    stats: {
+      total_students: students.length,
+      completed_count: completed.length,
+      pending_count: students.length - completed.length,
+      avg_score: avg,
+      max_score: max,
+      min_score: min,
+      pass_count: completed.filter(r => r.score >= 65).length
+    },
+    students: rows
+  });
+});
+
+// Rekap Buku Nilai Akhir Kelas (Gradebook Mata Kuliah)
+app.get('/api/classes/:id/gradebook', requireRole('creator', 'dosen'), (req, res) => {
+  const c = db.prepare('SELECT id, name, course, code FROM classes WHERE id = ?').get(req.params.id);
+  if (!c) return res.status(404).json({ error: 'Kelas tidak ditemukan' });
+
+  const quizzes = db.prepare(`SELECT q.id, q.title, q.type, q.created_at,
+    (SELECT COUNT(*) FROM questions WHERE quiz_id = q.id) as question_count
+    FROM quizzes q WHERE q.class_id = ? ORDER BY q.created_at ASC`).all(c.id);
+
+  const students = db.prepare('SELECT id, nama, npm, avatar FROM students WHERE class_id = ? ORDER BY nama ASC').all(c.id);
+
+  const attempts = db.prepare(`SELECT a.student_id, a.quiz_id, a.score, a.created_at 
+    FROM attempts a JOIN quizzes q ON q.id = a.quiz_id WHERE q.class_id = ?`).all(c.id);
+
+  const attemptMap = {};
+  attempts.forEach(a => {
+    attemptMap[`${a.student_id}_${a.quiz_id}`] = a.score;
+  });
+
+  const studentRows = students.map(s => {
+    const scores = {};
+    let totalScore = 0;
+    let quizAttemptedCount = 0;
+
+    quizzes.forEach(q => {
+      const score = attemptMap[`${s.id}_${q.id}`];
+      if (score !== undefined) {
+        scores[q.id] = score;
+        totalScore += score;
+        quizAttemptedCount++;
+      } else {
+        scores[q.id] = null;
+      }
+    });
+
+    const finalAvg = quizzes.length > 0 
+      ? Math.round((totalScore / quizzes.length) * 10) / 10 
+      : 0;
+
+    const letterGrade = getLetterGrade(finalAvg);
+
+    return {
+      id: s.id,
+      nama: s.nama,
+      npm: s.npm,
+      avatar: s.avatar,
+      quiz_scores: scores,
+      completed_quizzes: quizAttemptedCount,
+      total_quizzes: quizzes.length,
+      final_score: finalAvg,
+      letter_grade: letterGrade.grade,
+      grade_label: letterGrade.label,
+      status: letterGrade.status
+    };
+  });
+
+  const completedAverages = studentRows.map(r => r.final_score);
+  const classAverage = completedAverages.length 
+    ? Math.round((completedAverages.reduce((a, b) => a + b, 0) / completedAverages.length) * 10) / 10 
+    : 0;
+
+  const passedCount = studentRows.filter(r => r.final_score >= 65).length;
+  const passRate = studentRows.length ? Math.round((passedCount / studentRows.length) * 100) : 0;
+
+  res.json({
+    class: c,
+    quizzes,
+    students: studentRows,
+    summary: {
+      total_students: students.length,
+      total_quizzes: quizzes.length,
+      class_average: classAverage,
+      pass_rate_percent: passRate,
+      passed_count: passedCount
+    }
+  });
+});
+
+// Ekspor Rekap Nilai Akhir CSV
 app.get('/api/classes/:id/export-csv', requireRole('creator', 'dosen'), (req, res) => {
-  const c = db.prepare('SELECT id, name FROM classes WHERE id = ? AND dosen_id = ?').get(req.params.id, req.auth.user_id);
+  const c = db.prepare('SELECT id, name, course FROM classes WHERE id = ?').get(req.params.id);
   if (!c) return res.status(404).send('Kelas tidak ditemukan');
 
   const students = db.prepare('SELECT id, nama, npm FROM students WHERE class_id = ? ORDER BY nama').all(c.id);
-  const quizzes = db.prepare('SELECT id, title, type, pair_key FROM quizzes WHERE class_id = ?').all(c.id);
+  const quizzes = db.prepare('SELECT id, title, type FROM quizzes WHERE class_id = ? ORDER BY created_at ASC').all(c.id);
   const attempts = db.prepare(`SELECT a.student_id, a.quiz_id, a.score FROM attempts a 
     JOIN quizzes q ON q.id = a.quiz_id WHERE q.class_id = ?`).all(c.id);
 
@@ -751,24 +990,24 @@ app.get('/api/classes/:id/export-csv', requireRole('creator', 'dosen'), (req, re
     attemptMap[`${a.student_id}_${a.quiz_id}`] = a.score;
   });
 
-  let csv = 'Nama Lengkap,ID/NPM,' + quizzes.map(q => `"${q.title} (${q.type})"`).join(',') + ',Rata-Rata Nilai\n';
+  let csv = 'Nama Lengkap,ID/NPM,' + quizzes.map(q => `"${q.title} (${q.type})"`).join(',') + ',Rata-Rata Nilai Akhir,Nilai Mutu Huruf,Status Kelulusan\n';
   students.forEach(s => {
-    let total = 0, count = 0;
+    let total = 0;
     const scores = quizzes.map(q => {
       const val = attemptMap[`${s.id}_${q.id}`];
       if (val !== undefined) {
         total += val;
-        count++;
         return val;
       }
-      return '-';
+      return 0;
     });
-    const avg = count > 0 ? Math.round(total / count) : 0;
-    csv += `"${s.nama}","${s.npm}",` + scores.join(',') + `,${avg}\n`;
+    const avg = quizzes.length > 0 ? Math.round((total / quizzes.length) * 10) / 10 : 0;
+    const grade = getLetterGrade(avg);
+    csv += `"${s.nama}","${s.npm}",` + scores.join(',') + `,${avg},"${grade.grade}","${grade.status}"\n`;
   });
 
   res.setHeader('Content-Type', 'text/csv; charset=utf-8');
-  res.setHeader('Content-Disposition', `attachment; filename="Rekap_Nilai_${c.name.replace(/[^a-zA-Z0-9]/g, '_')}.csv"`);
+  res.setHeader('Content-Disposition', `attachment; filename="Rekap_Nilai_Akhir_${c.name.replace(/[^a-zA-Z0-9]/g, '_')}.csv"`);
   res.send(csv);
 });
 
