@@ -1,7 +1,10 @@
 // node:sqlite (bawaan Node >= 22.5) - tanpa dependency native
 // Skema v2: akun (dosen & mahasiswa), kelas, quiz per kelas, attempts
 const { DatabaseSync } = require('node:sqlite');
-const db = new DatabaseSync(process.env.DB_PATH || 'quiz.db');
+// otomatis pakai persistent disk di /data kalau ada (Railway), fallback: env DB_PATH, lalu quiz.db lokal
+const DB_PATH = process.env.DB_PATH
+  || (require('fs').existsSync('/data') ? '/data/quiz.db' : 'quiz.db');
+const db = new DatabaseSync(DB_PATH);
 db.exec('PRAGMA journal_mode = WAL');
 db.exec('PRAGMA foreign_keys = ON');
 
