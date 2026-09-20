@@ -3,8 +3,28 @@
 const express = require('express');
 const crypto = require('crypto');
 const path = require('path');
+const fs = require('fs');
 const QRCode = require('qrcode');
 const db = require('./db');
+
+// Load environment variables from .env if present (Local / Dev)
+const envFile = path.join(__dirname, '.env');
+if (fs.existsSync(envFile)) {
+  try {
+    const rawEnv = fs.readFileSync(envFile, 'utf8');
+    for (const line of rawEnv.split('\n')) {
+      const trimmed = line.trim();
+      if (trimmed && !trimmed.startsWith('#')) {
+        const eqIdx = trimmed.indexOf('=');
+        if (eqIdx > 0) {
+          const k = trimmed.slice(0, eqIdx).trim();
+          const v = trimmed.slice(eqIdx + 1).trim().replace(/^["']|["']$/g, '');
+          if (!process.env[k]) process.env[k] = v;
+        }
+      }
+    }
+  } catch (_) {}
+}
 
 const app = express();
 app.use(express.json({ limit: '5mb' }));
@@ -557,37 +577,206 @@ app.post('/api/rooms/:pin/answer', (req, res) => {
   });
 });
 
-// ---------- AI SMART QUIZ GENERATOR ----------
-app.post('/api/quizzes/generate-ai', requireRole('creator', 'dosen'), (req, res) => {
-  const { topic, count } = req.body || {};
-  const t = norm(topic) || 'Teknologi Informasi & Pemrograman';
-  const n = Math.min(10, Math.max(3, Number(count) || 5));
+// ---------- DEEPSEEK AI SMART QUIZ GENERATOR (DeepSeek V4.1 Flash) ----------
 
-  // Cerdas & kontekstual generator bank soal
+async function callDeepSeekApi({ apiKey, model, topic, count, difficulty }) {
+  const n = Math.min(15, Math.max(3, Number(count) || 5));
+  const diff = difficulty || 'Menengah / Analisis (C3-C4)';
+
+  const systemPrompt = `Anda adalah sistem kecerdasan buatan pembuat kuis akademik dan interaktif untuk Quiztify.id.
+Tugas Anda adalah merancang paket soal kuis pilihan ganda yang akurat, relevan, menarik, dan berstandar akademik tinggi dalam Bahasa Indonesia.
+
+PENTING: Anda WAJIB memberikan respons HANYA dalam format json yang valid (json_object) sesuai struktur berikut:
+{
+  "topic": "Judul/Topik Kuis",
+  "category": "Kategori Bidang Ilmu",
+  "questions": [
+    {
+      "text": "Kalimat pertanyaan yang jelas, spesifik, dan tidak ambigu?",
+      "options": [
+        "Pilihan A",
+        "Pilihan B",
+        "Pilihan C",
+        "Pilihan D"
+      ],
+      "correct": 0,
+      "time_limit": 20,
+      "points": 1000,
+      "explanation": "Penjelasan mendalam mengapa jawaban tersebut benar dan konsep teorinya."
+    }
+  ]
+}
+
+Aturan Penulisan:
+1. Buat tepat ${n} butir soal pilihan ganda.
+2. Setiap butir soal WAJIB memiliki tepat 4 pilihan jawaban yang masuk akal dan kredibel.
+3. "correct" bernilai indeks integer 0, 1, 2, atau 3 (0 untuk pilihan pertama, 1 untuk kedua, dst).
+4. Buat kunci jawaban bervariasi secara proporsional antara indeks 0, 1, 2, dan 3.
+5. "time_limit" adalah durasi detik untuk menjawab (20 atau 30 detik).
+6. "points" adalah 1000.
+7. "explanation" memuat pembahasan ilmiah yang mendidik dan mudah dipahami.
+8. Output harus berupa objek json valid.`;
+
+  const userPrompt = `Buatkan ${n} butir soal kuis pilihan ganda akademik tentang materi/topik: "${topic}".
+Tingkat Kesulitan: ${diff}.
+Pastikan output adalah json valid sesuai format yang ditentukan.`;
+
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), 45000);
+
+  try {
+    const response = await fetch('https://api.deepseek.com/chat/completions', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${apiKey.trim()}`
+      },
+      body: JSON.stringify({
+        model: model,
+        messages: [
+          { role: 'system', content: systemPrompt },
+          { role: 'user', content: userPrompt }
+        ],
+        response_format: { type: 'json_object' },
+        max_tokens: 3500,
+        temperature: 0.7
+      }),
+      signal: controller.signal
+    });
+
+    clearTimeout(timeoutId);
+
+    if (!response.ok) {
+      const errText = await response.text();
+      let errMsg = `DeepSeek API HTTP ${response.status}`;
+      try {
+        const parsedErr = JSON.parse(errText);
+        if (parsedErr.error?.message) errMsg = parsedErr.error.message;
+      } catch (_) {}
+      return { ok: false, status: response.status, error: errMsg };
+    }
+
+    const data = await response.json();
+    const content = data.choices?.[0]?.message?.content;
+    if (!content) return { ok: false, error: 'Respons kosong dari DeepSeek API' };
+
+    const cleaned = content.replace(/^```(?:json)?\s*/i, '').replace(/\s*```$/, '').trim();
+    const parsed = JSON.parse(cleaned);
+
+    if (!parsed.questions || !Array.isArray(parsed.questions) || parsed.questions.length === 0) {
+      return { ok: false, error: 'Format respons DeepSeek tidak memuat array questions yang valid' };
+    }
+
+    const sanitizedQuestions = parsed.questions.map((q, idx) => {
+      let correctIdx = 0;
+      if (typeof q.correct === 'number') {
+        correctIdx = Math.max(0, Math.min(3, Math.round(q.correct)));
+      } else if (typeof q.correct === 'string') {
+        const char = q.correct.trim().toLowerCase();
+        const map = { 'a': 0, 'b': 1, 'c': 2, 'd': 3, '0': 0, '1': 1, '2': 2, '3': 3 };
+        correctIdx = map[char] ?? 0;
+      }
+
+      let opts = Array.isArray(q.options)
+        ? q.options.filter(o => o !== null && o !== undefined).map(o => String(o).trim())
+        : [];
+      if (opts.length < 4) {
+        while (opts.length < 4) opts.push(`Pilihan ${String.fromCharCode(65 + opts.length)}`);
+      } else if (opts.length > 4) {
+        opts = opts.slice(0, 4);
+      }
+
+      return {
+        text: String(q.text || `Pertanyaan #${idx + 1} tentang ${topic}`).trim(),
+        options: opts,
+        correct: correctIdx,
+        time_limit: Math.min(60, Math.max(10, Number(q.time_limit) || 20)),
+        points: Number(q.points) || 1000,
+        explanation: String(q.explanation || 'Jawaban benar berdasarkan konsep materi.').trim()
+      };
+    });
+
+    return {
+      ok: true,
+      topic: parsed.topic || topic,
+      category: parsed.category || 'Materi Umum',
+      questions: sanitizedQuestions
+    };
+  } catch (err) {
+    clearTimeout(timeoutId);
+    return { ok: false, error: err.name === 'AbortError' ? 'Koneksi ke DeepSeek API timeout (melebihi 45 detik)' : err.message };
+  }
+}
+
+app.post('/api/quizzes/generate-ai', requireRole('creator', 'dosen'), async (req, res) => {
+  const { topic, count, difficulty } = req.body || {};
+  const t = norm(topic) || 'Teknologi Informasi & Pemrograman Modern';
+  const n = Math.min(15, Math.max(3, Number(count) || 5));
+  const diff = norm(difficulty) || 'Menengah / Analisis (C3-C4)';
+
+  // Periksa environment variable dari Railway (mendukung huruf besar & kecil)
+  const apiKey = (process.env.DEEPSEEK_API_KEY || process.env.deepseek_api_key || process.env.DEEPSEEK_KEY || process.env.OPENAI_API_KEY || '').trim();
+
+  // Model resmi DeepSeek V4.1 Flash adalah 'deepseek-flash'
+  const primaryModel = process.env.DEEPSEEK_MODEL || 'deepseek-flash';
+  const fallbackModel = 'deepseek-chat';
+
+  if (apiKey) {
+    console.log(`[Quiztify AI] Mencoba generate kuis via DeepSeek API (Model: ${primaryModel}, Topik: "${t}", Jumlah: ${n})...`);
+    
+    // 1. Coba model utama (deepseek-flash)
+    let aiRes = await callDeepSeekApi({ apiKey, model: primaryModel, topic: t, count: n, difficulty: diff });
+
+    // 2. Jika model utama tidak ditemukan (misal gateway legacy), fallback ke deepseek-chat
+    if (!aiRes.ok && primaryModel !== fallbackModel && (aiRes.status === 404 || String(aiRes.error).toLowerCase().includes('model'))) {
+      console.warn(`[Quiztify AI] Model ${primaryModel} gagal/tidak ditemukan (${aiRes.error}). Mencoba fallback model: ${fallbackModel}...`);
+      aiRes = await callDeepSeekApi({ apiKey, model: fallbackModel, topic: t, count: n, difficulty: diff });
+    }
+
+    if (aiRes.ok) {
+      console.log(`[Quiztify AI] Sukses membuat ${aiRes.questions.length} soal kuis menggunakan DeepSeek AI!`);
+      return res.json({
+        success: true,
+        source: 'deepseek-api',
+        model: primaryModel,
+        model_display: 'DeepSeek V4.1 Flash',
+        topic: aiRes.topic,
+        category: aiRes.category,
+        generated_count: aiRes.questions.length,
+        questions: aiRes.questions
+      });
+    }
+
+    console.warn(`[Quiztify AI] Panggilan DeepSeek API gagal: ${aiRes.error}. Mengalihkan ke generator cadangan.`);
+  } else {
+    console.warn('[Quiztify AI] DEEPSEEK_API_KEY belum terdeteksi di env Railway/lokal. Menggunakan bank soal cerdas.');
+  }
+
+  // Generator Fallback Cadangan (Jika API Key belum diset atau kuota habis)
   const sampleBanks = {
     web: [
-      { text: 'Apa peran utama dari protokol HTTPS dibandingkan HTTP standar?', options: ['Mengompresi gambar', 'Enkripsi data melalui SSL/TLS', 'Mempercepat kecepatan internet', 'Menghapus cookies pengguna'], correct: 1, explanation: 'HTTPS mengamankan komunikasi data antara browser dan server dengan enkripsi SSL/TLS.' },
-      { text: 'CSS Flexbox dirancang untuk mengatur tata letak elemen secara...', options: ['Tiga dimensi kompleks', 'Satu dimensi (baris atau kolom)', 'Hanya tabel hierarki', 'Animasi video'], correct: 1, explanation: 'Flexbox adalah model layout satu dimensi untuk mendistribusikan ruang di antara item.' },
-      { text: 'Dalam JavaScript modern, kata kunci untuk mendeklarasikan variabel bernilai tetap (immutable reference) adalah...', options: ['var', 'let', 'const', 'static'], correct: 2, explanation: 'const digunakan untuk variabel yang referensinya tidak dapat diubah kembali.' }
+      { text: 'Apa peran utama dari protokol HTTPS dibandingkan HTTP standar?', options: ['Mengompresi gambar situs', 'Enkripsi data melalui SSL/TLS secara aman', 'Mempercepat kecepatan internet pengguna', 'Menghapus cookies sesi otomatis'], correct: 1, explanation: 'HTTPS mengamankan komunikasi data antara peramban dan server dengan enkripsi kriptografi SSL/TLS.' },
+      { text: 'CSS Flexbox dirancang untuk mengatur tata letak elemen secara...', options: ['Tiga dimensi spasial', 'Satu dimensi (baris atau kolom responsif)', 'Hanya tabel hierarki bertingkat', 'Pemrosesan animasi raster'], correct: 1, explanation: 'Flexbox adalah model tata letak satu dimensi untuk mendistribusikan ruang di antara elemen secara fleksibel.' },
+      { text: 'Dalam JavaScript modern (ES6+), kata kunci untuk mendeklarasikan variabel bernilai tetap (immutable reference) adalah...', options: ['var', 'let', 'const', 'static'], correct: 2, explanation: 'const digunakan untuk deklarasi variabel yang referensinya tidak dapat di-reassign kembali.' }
     ],
     math: [
       { text: 'Berapa nilai dari akar kuadrat 144?', options: ['10', '11', '12', '14'], correct: 2, explanation: '12 x 12 = 144.' },
-      { text: 'Berapa jumlah sudut dalam sebuah segitiga datar?', options: ['90 derajat', '180 derajat', '270 derajat', '360 derajat'], correct: 1, explanation: 'Total jumlah sudut segitiga Euclidean selalu 180 derajat.' }
+      { text: 'Berapa jumlah total sudut dalam sebuah bangun segitiga datar (Euclidean)?', options: ['90 derajat', '180 derajat', '270 derajat', '360 derajat'], correct: 1, explanation: 'Total jumlah ketiga sudut dalam segitiga Euclidean selalu tepat 180 derajat.' }
     ],
     general: [
-      { text: `Konsep dasar yang paling esensial dalam topik "${t}" adalah...`, options: ['Pemahaman fondasi dan teori utama', 'Hafalan tanpa penerapan', 'Meninggalkan dokumentasi resmi', 'Melakukan tindakan tanpa rencana'], correct: 0, explanation: `Memahami fondasi teori dan metodologi sangat krusial dalam menguasai ${t}.` },
-      { text: `Manakah strategi terbaik untuk mengevaluasi hasil pembelajaran ${t}?`, options: ['Mengabaikan umpan balik peserta', 'Asesmen formatif berkala & analisis N-Gain', 'Hanya mengadakan ujian sekali di awal', 'Tidak memberikan kunci jawaban'], correct: 1, explanation: 'Asesmen berkala dan pengukuran gain efektivitas memberikan wawasan pembelajaran terbaik.' },
-      { text: `Tantangan terbesar yang sering dihadapi praktisi saat mengimplementasikan ${t} adalah...`, options: ['Adaptasi terhadap perubahan & konsistensi', 'Terlalu banyak waktu luang', 'Tidak adanya referensi ilmiah', 'Biaya internet gratis'], correct: 0, explanation: 'Konsistensi dan adaptasi terhadap perkembangan baru merupakan kunci sukses keberlanjutan.' },
-      { text: `Langkah awal yang paling tepat dalam menyusun strategi pembelajaran ${t} interaktif adalah...`, options: ['Menentukan tujuan capaian pembelajaran (LO)', 'Langsung memberi hukuman jika salah', 'Menutup sesi tanya jawab', 'Membagikan materi tanpa penjelasan'], correct: 0, explanation: 'Perumusan Learning Outcomes (Capaian Pembelajaran) mengarahkan seluruh materi dan soal kuis.' },
-      { text: `Indikator keberhasilan dari penerapan inovasi pada domain ${t} terlihat dari...`, options: ['Peningkatan efisiensi, akurasi, dan pemahaman', 'Penurunan motivasi peserta', 'Stagnasi data', 'Meningkatnya keluhan pengguna'], correct: 0, explanation: 'Peningkatan efisiensi dan pemahaman terukur menandai keberhasilan inovasi.' }
+      { text: `Konsep dasar yang paling esensial dalam topik "${t}" adalah...`, options: ['Pemahaman fondasi dan metodologi utama', 'Menghafal rumus tanpa memahami konsep', 'Meninggalkan dokumentasi serta referensi resmi', 'Menjalankan instruksi secara spekulatif'], correct: 0, explanation: `Memahami fondasi teori dan metodologi sangat krusial dalam menguasai kompetensi ${t}.` },
+      { text: `Strategi asesmen paling tepat untuk mengukur efektivitas pembelajaran ${t} adalah...`, options: ['Mengabaikan umpan balik evaluasi peserta', 'Asesmen formatif berkala & analisis N-Gain', 'Hanya mengadakan ujian sekali di akhir tanpa evaluasi', 'Tidak memberikan kunci dan pembahasan soal'], correct: 1, explanation: 'Asesmen formatif berkala dan pengukuran gain efektivitas memberikan wawasan capaian pembelajaran terbaik.' },
+      { text: `Indikator keberhasilan dari penerapan inovasi pada materi ${t} terlihat dari...`, options: ['Peningkatan efisiensi, pemahaman konseptual, dan daya kritis', 'Penurunan partisipasi peserta didik', 'Stagnasi data pencapaian', 'Meningkatnya kebingungan pengguna'], correct: 0, explanation: 'Peningkatan efisiensi dan pemahaman terukur menandai keberhasilan inovasi pembelajaran.' },
+      { text: `Langkah awal yang paling tepat dalam menyusun strategi pembelajaran ${t} adalah...`, options: ['Menentukan tujuan capaian pembelajaran (Learning Outcomes)', 'Langsung memberi hukuman jika jawaban salah', 'Menutup sesi diskusi dan tanya jawab', 'Membagikan materi tanpa penjelasan konteks'], correct: 0, explanation: 'Perumusan Learning Outcomes mengarahkan seluruh materi, penyusunan kuis, dan evaluasi.' },
+      { text: `Tantangan terbesar yang sering dihadapi praktisi saat mengimplementasikan ${t} adalah...`, options: ['Adaptasi terhadap perkembangan baru & konsistensi', 'Terlalu banyak waktu luang', 'Tidak adanya referensi ilmiah', 'Biaya internet gratis'], correct: 0, explanation: 'Konsistensi dan adaptasi terhadap perkembangan baru merupakan kunci sukses keberlanjutan kompetensi.' }
     ]
   };
 
   const lowerT = t.toLowerCase();
   let selected = sampleBanks.general;
-  if (lowerT.includes('web') || lowerT.includes('coding') || lowerT.includes('js') || lowerT.includes('program')) {
+  if (lowerT.includes('web') || lowerT.includes('coding') || lowerT.includes('js') || lowerT.includes('program') || lowerT.includes('it')) {
     selected = [...sampleBanks.web, ...sampleBanks.general];
-  } else if (lowerT.includes('matematika') || lowerT.includes('hitung')) {
+  } else if (lowerT.includes('matematika') || lowerT.includes('hitung') || lowerT.includes('angka')) {
     selected = [...sampleBanks.math, ...sampleBanks.general];
   }
 
@@ -604,8 +793,14 @@ app.post('/api/quizzes/generate-ai', requireRole('creator', 'dosen'), (req, res)
     });
   }
 
-  res.json({
+  return res.json({
+    success: true,
+    source: 'fallback',
+    model: 'Smart Fallback Engine',
+    model_display: 'Smart Fallback Engine (Atur deepseek_api_key di Railway untuk aktivasi DeepSeek V4.1 Flash)',
+    warning: apiKey ? 'Gagal menghubungi DeepSeek API. Menggunakan bank soal cadangan.' : 'deepseek_api_key belum terpasang di Environment Railway.',
     topic: t,
+    category: t,
     generated_count: resultQuestions.length,
     questions: resultQuestions
   });
