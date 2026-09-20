@@ -587,20 +587,57 @@ app.post('/api/rooms/:pin/answer', (req, res) => {
 
 // ---------- DEEPSEEK AI SMART QUIZ GENERATOR (DeepSeek V4.1 Flash) ----------
 
+function extractJsonFromText(raw) {
+  if (!raw || typeof raw !== 'string') return null;
+  const s = raw.trim();
+  try {
+    return JSON.parse(s);
+  } catch (_) {}
+
+  // 1. Ekstrak dari blok markdown ```json ... ```
+  const codeBlock = s.match(/```(?:json)?\s*([\s\S]*?)\s*```/i);
+  if (codeBlock) {
+    try {
+      return JSON.parse(codeBlock[1].trim());
+    } catch (_) {}
+  }
+
+  // 2. Cari kurung kurawal terluar { ... }
+  const start = s.indexOf('{');
+  const end = s.lastIndexOf('}');
+  if (start !== -1 && end > start) {
+    try {
+      return JSON.parse(s.slice(start, end + 1));
+    } catch (_) {}
+  }
+
+  // 3. Cari array [ ... ] jika kuis berupa array langsung
+  const startArr = s.indexOf('[');
+  const endArr = s.lastIndexOf(']');
+  if (startArr !== -1 && endArr > startArr) {
+    try {
+      const arr = JSON.parse(s.slice(startArr, endArr + 1));
+      if (Array.isArray(arr)) return { questions: arr };
+    } catch (_) {}
+  }
+
+  return null;
+}
+
 async function callDeepSeekApi({ apiKey, model, topic, count, difficulty }) {
   const n = Math.min(15, Math.max(3, Number(count) || 5));
   const diff = difficulty || 'Menengah / Analisis (C3-C4)';
 
-  const systemPrompt = `Anda adalah sistem kecerdasan buatan pembuat kuis akademik dan interaktif untuk Quiztify.id.
-Tugas Anda adalah merancang paket soal kuis pilihan ganda yang akurat, relevan, menarik, dan berstandar akademik tinggi dalam Bahasa Indonesia.
+  const systemPrompt = `Anda adalah pakar pembuat soal kuis edukasi dan asesmen akademik untuk Quiztify.id.
+Tugas Anda adalah merancang paket soal kuis pilihan ganda yang akurat, berbobot, menantang, dan mendidik dalam Bahasa Indonesia.
 
-PENTING: Anda WAJIB memberikan respons HANYA dalam format json yang valid (json_object) sesuai struktur berikut:
+PENTING: Output Anda WAJIB berupa JSON yang valid (format: \`\`\`json ... \`\`\` atau teks JSON murni) tanpa ada teks pengantar atau penutup lain:
 {
-  "topic": "Judul/Topik Kuis",
-  "category": "Kategori Bidang Ilmu",
+  "topic": "Judul Topik Kuis",
+  "category": "Kategori Ilmu",
   "questions": [
     {
-      "text": "Kalimat pertanyaan yang jelas, spesifik, dan tidak ambigu?",
+      "text": "Teks pertanyaan yang jelas, spesifik, dan tidak ambigu?",
       "options": [
         "Pilihan A",
         "Pilihan B",
@@ -610,110 +647,156 @@ PENTING: Anda WAJIB memberikan respons HANYA dalam format json yang valid (json_
       "correct": 0,
       "time_limit": 20,
       "points": 1000,
-      "explanation": "Penjelasan mendalam mengapa jawaban tersebut benar dan konsep teorinya."
+      "explanation": "Penjelasan konsep kenapa opsi tersebut benar."
     }
   ]
 }
 
 Aturan Penulisan:
 1. Buat tepat ${n} butir soal pilihan ganda.
-2. Setiap butir soal WAJIB memiliki tepat 4 pilihan jawaban yang masuk akal dan kredibel.
-3. "correct" bernilai indeks integer 0, 1, 2, atau 3 (0 untuk pilihan pertama, 1 untuk kedua, dst).
+2. Setiap butir soal WAJIB memiliki tepat 4 opsi jawaban ("options").
+3. "correct" adalah indeks angka: 0 untuk opsi 1, 1 untuk opsi 2, 2 untuk opsi 3, atau 3 untuk opsi 4.
 4. Buat kunci jawaban bervariasi secara proporsional antara indeks 0, 1, 2, dan 3.
-5. "time_limit" adalah durasi detik untuk menjawab (20 atau 30 detik).
+5. "time_limit" adalah 20 atau 30 detik.
 6. "points" adalah 1000.
-7. "explanation" memuat pembahasan ilmiah yang mendidik dan mudah dipahami.
-8. Output harus berupa objek json valid.`;
+7. "explanation" wajib memuat pembahasan singkat materi yang bermanfaat.`;
 
-  const userPrompt = `Buatkan ${n} butir soal kuis pilihan ganda akademik tentang materi/topik: "${topic}".
+  const userPrompt = `Buatkan ${n} butir soal pilihan ganda tentang materi: "${topic}".
 Tingkat Kesulitan: ${diff}.
-Pastikan output adalah json valid sesuai format yang ditentukan.`;
+Keluarkan HANYA dalam format JSON yang valid.`;
 
-  const controller = new AbortController();
-  const timeoutId = setTimeout(() => controller.abort(), 45000);
+  // Coba model yang diminta (default: deepseek-flash), lalu fallback ke deepseek-chat jika perlu
+  const modelsToTry = [model];
+  if (model !== 'deepseek-chat') modelsToTry.push('deepseek-chat');
+  if (model !== 'deepseek-flash' && !modelsToTry.includes('deepseek-flash')) modelsToTry.push('deepseek-flash');
 
-  try {
-    const response = await fetch('https://api.deepseek.com/chat/completions', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${apiKey.trim()}`
-      },
-      body: JSON.stringify({
-        model: model,
-        messages: [
-          { role: 'system', content: systemPrompt },
-          { role: 'user', content: userPrompt }
-        ],
-        response_format: { type: 'json_object' },
-        max_tokens: 3500,
-        temperature: 0.7
-      }),
-      signal: controller.signal
-    });
+  let lastError = null;
 
-    clearTimeout(timeoutId);
+  for (const m of modelsToTry) {
+    // 2 Strategi:
+    // Strategi 1: Prompt murni tanpa response_format strict (menghindari bug empty content DeepSeek)
+    // Strategi 2: Dengan response_format: { type: 'json_object' } jika Strategi 1 gagal
+    const strategies = [
+      { name: 'Standard Prompt', jsonMode: false },
+      { name: 'JSON Mode Strict', jsonMode: true }
+    ];
 
-    if (!response.ok) {
-      const errText = await response.text();
-      let errMsg = `DeepSeek API HTTP ${response.status}`;
+    for (const strat of strategies) {
+      console.log(`[Quiztify AI] Menghubungi DeepSeek API (${m}, strategi: ${strat.name})...`);
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 45000);
+
       try {
-        const parsedErr = JSON.parse(errText);
-        if (parsedErr.error?.message) errMsg = parsedErr.error.message;
-      } catch (_) {}
-      return { ok: false, status: response.status, error: errMsg };
-    }
+        const payload = {
+          model: m,
+          messages: [
+            { role: 'system', content: systemPrompt },
+            { role: 'user', content: userPrompt }
+          ],
+          max_tokens: 4000
+        };
 
-    const data = await response.json();
-    const content = data.choices?.[0]?.message?.content;
-    if (!content) return { ok: false, error: 'Respons kosong dari DeepSeek API' };
+        if (strat.jsonMode) {
+          payload.response_format = { type: 'json_object' };
+        }
 
-    const cleaned = content.replace(/^```(?:json)?\s*/i, '').replace(/\s*```$/, '').trim();
-    const parsed = JSON.parse(cleaned);
+        const response = await fetch('https://api.deepseek.com/chat/completions', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${apiKey.trim()}`
+          },
+          body: JSON.stringify(payload),
+          signal: controller.signal
+        });
 
-    if (!parsed.questions || !Array.isArray(parsed.questions) || parsed.questions.length === 0) {
-      return { ok: false, error: 'Format respons DeepSeek tidak memuat array questions yang valid' };
-    }
+        clearTimeout(timeoutId);
 
-    const sanitizedQuestions = parsed.questions.map((q, idx) => {
-      let correctIdx = 0;
-      if (typeof q.correct === 'number') {
-        correctIdx = Math.max(0, Math.min(3, Math.round(q.correct)));
-      } else if (typeof q.correct === 'string') {
-        const char = q.correct.trim().toLowerCase();
-        const map = { 'a': 0, 'b': 1, 'c': 2, 'd': 3, '0': 0, '1': 1, '2': 2, '3': 3 };
-        correctIdx = map[char] ?? 0;
+        if (!response.ok) {
+          const errText = await response.text();
+          let errMsg = `HTTP ${response.status}`;
+          try {
+            const parsedErr = JSON.parse(errText);
+            if (parsedErr.error?.message) errMsg = parsedErr.error.message;
+          } catch (_) {}
+          console.warn(`[Quiztify AI] DeepSeek error (${m}, ${strat.name}):`, errMsg);
+          lastError = errMsg;
+          if (response.status === 404 || errMsg.toLowerCase().includes('model')) break;
+          continue;
+        }
+
+        const data = await response.json();
+        const choice = data.choices?.[0] || {};
+        const msg = choice.message || {};
+
+        let text = (msg.content || '').trim();
+        // Fallback: Jika content kosong, periksa reasoning_content
+        if (!text && msg.reasoning_content) {
+          console.log(`[Quiztify AI] (${m}) content kosong, mengambil dari reasoning_content...`);
+          text = msg.reasoning_content.trim();
+        }
+
+        if (!text) {
+          console.warn(`[Quiztify AI] (${m}, ${strat.name}) Respons kosong dari DeepSeek. Detail choice:`, JSON.stringify(choice));
+          lastError = 'Respons kosong dari DeepSeek API';
+          continue;
+        }
+
+        const parsed = extractJsonFromText(text);
+        if (!parsed || !parsed.questions || !Array.isArray(parsed.questions) || parsed.questions.length === 0) {
+          console.warn(`[Quiztify AI] (${m}) Gagal membaca pertanyaan dari respons DeepSeek:`, text.slice(0, 250));
+          lastError = 'Format respons DeepSeek tidak memuat array questions yang valid';
+          continue;
+        }
+
+        const sanitizedQuestions = parsed.questions.map((q, idx) => {
+          let correctIdx = 0;
+          if (typeof q.correct === 'number') {
+            correctIdx = Math.max(0, Math.min(3, Math.round(q.correct)));
+          } else if (typeof q.correct === 'string') {
+            const char = q.correct.trim().toLowerCase();
+            const map = { 'a': 0, 'b': 1, 'c': 2, 'd': 3, '0': 0, '1': 1, '2': 2, '3': 3 };
+            correctIdx = map[char] ?? 0;
+          }
+
+          let opts = Array.isArray(q.options)
+            ? q.options.filter(o => o !== null && o !== undefined).map(o => String(o).trim())
+            : [];
+          if (opts.length < 4) {
+            while (opts.length < 4) opts.push(`Pilihan ${String.fromCharCode(65 + opts.length)}`);
+          } else if (opts.length > 4) {
+            opts = opts.slice(0, 4);
+          }
+
+          return {
+            text: String(q.text || `Pertanyaan #${idx + 1} tentang ${topic}`).trim(),
+            options: opts,
+            correct: correctIdx,
+            time_limit: Math.min(60, Math.max(10, Number(q.time_limit) || 20)),
+            points: Number(q.points) || 1000,
+            explanation: String(q.explanation || 'Jawaban benar berdasarkan konsep materi.').trim()
+          };
+        });
+
+        console.log(`[Quiztify AI] Sukses membuat ${sanitizedQuestions.length} butir soal dari DeepSeek (${m})!`);
+        return {
+          ok: true,
+          model: m,
+          topic: parsed.topic || topic,
+          category: parsed.category || 'Materi Umum',
+          questions: sanitizedQuestions
+        };
+
+      } catch (err) {
+        clearTimeout(timeoutId);
+        const errMsg = err.name === 'AbortError' ? 'Koneksi ke DeepSeek API timeout (45 detik)' : err.message;
+        console.warn(`[Quiztify AI] Exception (${m}, ${strat.name}):`, errMsg);
+        lastError = errMsg;
       }
-
-      let opts = Array.isArray(q.options)
-        ? q.options.filter(o => o !== null && o !== undefined).map(o => String(o).trim())
-        : [];
-      if (opts.length < 4) {
-        while (opts.length < 4) opts.push(`Pilihan ${String.fromCharCode(65 + opts.length)}`);
-      } else if (opts.length > 4) {
-        opts = opts.slice(0, 4);
-      }
-
-      return {
-        text: String(q.text || `Pertanyaan #${idx + 1} tentang ${topic}`).trim(),
-        options: opts,
-        correct: correctIdx,
-        time_limit: Math.min(60, Math.max(10, Number(q.time_limit) || 20)),
-        points: Number(q.points) || 1000,
-        explanation: String(q.explanation || 'Jawaban benar berdasarkan konsep materi.').trim()
-      };
-    });
-
-    return {
-      ok: true,
-      topic: parsed.topic || topic,
-      category: parsed.category || 'Materi Umum',
-      questions: sanitizedQuestions
-    };
-  } catch (err) {
-    clearTimeout(timeoutId);
-    return { ok: false, error: err.name === 'AbortError' ? 'Koneksi ke DeepSeek API timeout (melebihi 45 detik)' : err.message };
+    }
   }
+
+  return { ok: false, error: lastError || 'Gagal berkomunikasi dengan DeepSeek AI' };
 }
 
 app.post('/api/quizzes/generate-ai', requireRole('creator', 'dosen'), async (req, res) => {
@@ -727,27 +810,20 @@ app.post('/api/quizzes/generate-ai', requireRole('creator', 'dosen'), async (req
 
   // Model resmi DeepSeek V4.1 Flash adalah 'deepseek-flash'
   const primaryModel = process.env.DEEPSEEK_MODEL || 'deepseek-flash';
-  const fallbackModel = 'deepseek-chat';
 
   if (apiKey) {
-    console.log(`[Quiztify AI] Mencoba generate kuis via DeepSeek API (Model: ${primaryModel}, Topik: "${t}", Jumlah: ${n})...`);
+    console.log(`[Quiztify AI] Memulai generate kuis via DeepSeek API (Model Primer: ${primaryModel}, Topik: "${t}", Jumlah: ${n})...`);
     
-    // 1. Coba model utama (deepseek-flash)
-    let aiRes = await callDeepSeekApi({ apiKey, model: primaryModel, topic: t, count: n, difficulty: diff });
-
-    // 2. Jika model utama tidak ditemukan (misal gateway legacy), fallback ke deepseek-chat
-    if (!aiRes.ok && primaryModel !== fallbackModel && (aiRes.status === 404 || String(aiRes.error).toLowerCase().includes('model'))) {
-      console.warn(`[Quiztify AI] Model ${primaryModel} gagal/tidak ditemukan (${aiRes.error}). Mencoba fallback model: ${fallbackModel}...`);
-      aiRes = await callDeepSeekApi({ apiKey, model: fallbackModel, topic: t, count: n, difficulty: diff });
-    }
+    const aiRes = await callDeepSeekApi({ apiKey, model: primaryModel, topic: t, count: n, difficulty: diff });
 
     if (aiRes.ok) {
-      console.log(`[Quiztify AI] Sukses membuat ${aiRes.questions.length} soal kuis menggunakan DeepSeek AI!`);
+      const modelLabel = aiRes.model === 'deepseek-flash' ? 'DeepSeek V4.1 Flash' : `DeepSeek AI (${aiRes.model})`;
+      console.log(`[Quiztify AI] Sukses membuat ${aiRes.questions.length} butir soal kuis menggunakan ${modelLabel}!`);
       return res.json({
         success: true,
         source: 'deepseek-api',
-        model: primaryModel,
-        model_display: 'DeepSeek V4.1 Flash',
+        model: aiRes.model,
+        model_display: modelLabel,
         topic: aiRes.topic,
         category: aiRes.category,
         generated_count: aiRes.questions.length,
