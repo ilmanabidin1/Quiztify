@@ -57,10 +57,14 @@ function ngain(pre, post) {
   return Math.max(0, Math.round(((post - pre) / (100 - pre)) * 100) / 100);
 }
 
-// seed akun dosen default kalau belum ada
-if (!db.prepare('SELECT id FROM dosen LIMIT 1').get()) {
+// seed akun dosen default; jika DOSEN_PASSWORD env berubah, hash di DB ikut diperbarui (env = sumber kebenaran)
+const DOSEN_ENV_PASS = process.env.DOSEN_PASSWORD;
+const dosenRow = db.prepare('SELECT id, password_hash FROM dosen LIMIT 1').get();
+if (!dosenRow) {
   db.prepare('INSERT INTO dosen (nama, email, password_hash) VALUES (?, ?, ?)').run(
-    'Dosen', 'dosen@unisba.ac.id', hashPassword(process.env.DOSEN_PASSWORD || 'unisba2026'));
+    'Dosen', 'dosen@unisba.ac.id', hashPassword(DOSEN_ENV_PASS || 'unisba2026'));
+} else if (DOSEN_ENV_PASS && !verifyPassword(DOSEN_ENV_PASS, dosenRow.password_hash)) {
+  db.prepare('UPDATE dosen SET password_hash = ? WHERE id = ?').run(hashPassword(DOSEN_ENV_PASS), dosenRow.id);
 }
 
 // ---------- auth umum ----------
