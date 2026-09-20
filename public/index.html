@@ -3,283 +3,902 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Quiz Unisba</title>
+<title>Quiztify.id - Platform Kuis Interaktif &amp; Gamifikasi Modern</title>
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+<script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.9.3/dist/confetti.browser.min.js"></script>
+<script src="/sound.js"></script>
 <style>
-  :root{
-    --ink:#0b1a30; --ink-soft:#3a4a63; --muted:#71809b; --line:#e4e9f2;
-    --bg:#fff; --bg-soft:#f6f8fb; --blue:#1552b3; --blue-soft:#eaf1fd;
-    --amber:#f5a623; --amber-soft:#fdf3e0; --green:#1a8a5a; --green-soft:#e8f5ef; --red:#c23b3b;
+  :root {
+    --bg-dark: #0e0725;
+    --bg-card: #18103c;
+    --bg-card-light: #231952;
+    --border: #322475;
+    --text: #ffffff;
+    --text-muted: #a39ec4;
+    --purple: #7c3aed;
+    --purple-light: #9061f9;
+    --cyan: #06b6d4;
+    --amber: #f59e0b;
+    --rose: #f43f5e;
+    --emerald: #10b981;
+    --gold: #fbbf24;
   }
-  *{margin:0;padding:0;box-sizing:border-box;font-family:'Segoe UI',system-ui,sans-serif}
-  body{background:var(--bg-soft);color:var(--ink);min-height:100vh}
-  header{background:var(--ink);color:#fff;padding:14px 22px;display:flex;align-items:center;gap:11px}
-  .logo{width:32px;height:32px;border-radius:8px;background:linear-gradient(135deg,var(--blue),#2d6fe0);display:flex;align-items:center;justify-content:center;font-size:14px}
-  header b{font-size:15px;display:block;line-height:1.2}
-  header span{font-size:10.5px;color:#8fa2bf}
-  .wrap{max-width:860px;margin:0 auto;padding:22px 18px}
-  h2{font-size:16px;font-weight:600;margin-bottom:12px}
-  .card{background:var(--bg);border:1px solid var(--line);border-radius:12px;padding:16px 18px;margin-bottom:14px}
-  .q-row{display:flex;align-items:center;gap:13px;padding:12px 0;border-bottom:1px solid var(--line)}
-  .q-row.click{cursor:pointer}
-  .q-row.click:hover{background:var(--bg-soft)}
-  .q-row:last-child{border:none}
-  .tag{font-size:10.5px;font-weight:700;padding:3px 9px;border-radius:20px;white-space:nowrap}
-  .tag-pre{background:var(--amber-soft);color:#a86a00}
-  .tag-post{background:var(--blue-soft);color:var(--blue)}
-  .tag-ok{background:var(--green-soft);color:var(--green)}
-  .tag-lock{background:var(--bg-soft);color:var(--muted);border:1px solid var(--line)}
-  .input{width:100%;border:1px solid var(--line);border-radius:8px;padding:10px 12px;font-size:14px;color:var(--ink);outline:none;background:var(--bg)}
-  .input:focus{border-color:var(--blue)}
-  label{font-size:12px;font-weight:600;color:var(--muted);display:block;margin:10px 0 5px}
-  .btn{display:inline-flex;align-items:center;gap:8px;padding:10px 18px;border-radius:8px;font-size:14px;font-weight:600;cursor:pointer;border:none;background:var(--blue);color:#fff}
-  .btn:hover{background:#10469a}
-  .btn:disabled{opacity:.5;cursor:not-allowed}
-  .btn-ghost{background:var(--bg);border:1px solid var(--line);color:var(--ink-soft)}
-  .opt-row{display:flex;align-items:center;gap:10px;padding:11px 14px;border:1px solid var(--line);border-radius:9px;margin-top:9px;cursor:pointer;font-size:14px}
-  .opt-row:hover{border-color:#c4cede;background:var(--bg-soft)}
-  .opt-row.picked{border-color:var(--blue);background:var(--blue-soft);font-weight:600}
-  .opt-idx{width:24px;height:24px;border-radius:50%;border:1px solid var(--line);display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;color:var(--muted);flex-shrink:0}
-  .opt-row.picked .opt-idx{background:var(--blue);border-color:var(--blue);color:#fff}
-  .qtext{font-size:15px;font-weight:600;line-height:1.5;margin-bottom:4px}
-  .qnum{font-size:11px;color:var(--muted);margin-bottom:6px}
-  .progress{height:5px;background:var(--line);border-radius:3px;overflow:hidden;margin-bottom:16px}
-  .progress i{display:block;height:100%;background:var(--blue);transition:.3s}
-  .result{text-align:center;padding:26px 10px}
-  .result .big{font-size:46px;font-weight:800;color:var(--blue)}
-  .result .sub{color:var(--muted);font-size:13px;margin-top:6px}
-  .ngain{display:inline-block;background:var(--green-soft);color:var(--green);font-weight:700;padding:6px 14px;border-radius:20px;font-size:13px;margin-top:12px}
-  .timer{font-size:13px;font-weight:700;color:var(--ink-soft)}
-  .timer.low{color:var(--red)}
-  .topbar{display:flex;justify-content:space-between;align-items:center;margin-bottom:10px}
-  .muted{color:var(--muted);font-size:13px}
-  .tabs{display:flex;gap:8px;margin-bottom:14px}
-  .tab{padding:8px 16px;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer;border:1px solid var(--line);background:var(--bg);color:var(--ink-soft)}
-  .tab.on{background:var(--blue);border-color:var(--blue);color:#fff}
-  table{width:100%;border-collapse:collapse;font-size:13px}
-  th{text-align:left;padding:9px 10px;background:var(--bg-soft);color:var(--muted);font-size:11px;text-transform:uppercase;letter-spacing:.05em;border-bottom:1px solid var(--line)}
-  td{padding:10px;border-bottom:1px solid var(--line)}
-  tr:last-child td{border:none}
-  .err{color:var(--red);font-size:13px;margin-top:8px}
-  .grid2{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+
+  * { margin:0; padding:0; box-sizing:border-box; font-family:'Segoe UI',system-ui,-apple-system,sans-serif; }
+  body { background: var(--bg-dark); color: var(--text); min-height: 100vh; overflow-x: hidden; }
+
+  /* Utilities */
+  .hidden { display: none !important; }
+  .gradient-text {
+    background: linear-gradient(135deg, #a78bfa, #38bdf8, #34d399);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+  }
+
+  /* Header */
+  header {
+    background: rgba(14, 7, 37, 0.85);
+    backdrop-filter: blur(14px);
+    border-bottom: 1px solid var(--border);
+    position: sticky; top: 0; z-index: 100;
+    padding: 14px 24px;
+    display: flex; align-items: center; justify-content: space-between;
+  }
+  .brand { display: flex; align-items: center; gap: 12px; cursor: pointer; text-decoration: none; }
+  .brand-icon {
+    width: 38px; height: 38px; border-radius: 10px;
+    background: linear-gradient(135deg, var(--purple), var(--cyan));
+    display: flex; align-items: center; justify-content: center;
+    font-size: 18px; color: #fff; box-shadow: 0 0 20px rgba(124, 58, 237, 0.5);
+  }
+  .brand-text b { font-size: 19px; letter-spacing: -0.5px; color: #fff; display: block; line-height: 1.1; }
+  .brand-text span { font-size: 10px; text-transform: uppercase; letter-spacing: 1.2px; color: var(--cyan); font-weight: 700; }
+
+  .nav-actions { display: flex; align-items: center; gap: 12px; }
+  .btn-sound {
+    background: var(--bg-card); border: 1px solid var(--border);
+    color: var(--text-muted); width: 40px; height: 40px; border-radius: 10px;
+    cursor: pointer; display: flex; align-items: center; justify-content: center; font-size: 16px;
+    transition: all 0.2s;
+  }
+  .btn-sound:hover { border-color: var(--purple); color: #fff; }
+  .btn-nav {
+    padding: 9px 18px; border-radius: 10px; font-size: 13.5px; font-weight: 600;
+    cursor: pointer; text-decoration: none; display: inline-flex; align-items: center; gap: 8px;
+    transition: all 0.2s;
+  }
+  .btn-nav-ghost { background: transparent; border: 1px solid var(--border); color: #fff; }
+  .btn-nav-ghost:hover { background: var(--bg-card); border-color: var(--purple); }
+  .btn-nav-primary {
+    background: linear-gradient(135deg, var(--purple), #6366f1);
+    color: #fff; border: none; box-shadow: 0 4px 14px rgba(124, 58, 237, 0.4);
+  }
+  .btn-nav-primary:hover { transform: translateY(-2px); box-shadow: 0 6px 20px rgba(124, 58, 237, 0.6); }
+
+  /* Hero Section */
+  .hero {
+    padding: 60px 20px 40px;
+    max-width: 1080px; margin: 0 auto; text-align: center;
+  }
+  .badge-hero {
+    display: inline-flex; align-items: center; gap: 8px;
+    padding: 6px 16px; border-radius: 30px;
+    background: rgba(124, 58, 237, 0.15); border: 1px solid rgba(124, 58, 237, 0.4);
+    color: #c4b5fd; font-size: 12.5px; font-weight: 600; margin-bottom: 22px;
+  }
+  .hero h1 {
+    font-size: clamp(32px, 5vw, 56px); font-weight: 800; line-height: 1.15;
+    letter-spacing: -1px; margin-bottom: 18px;
+  }
+  .hero p {
+    color: var(--text-muted); font-size: clamp(15px, 2vw, 18px);
+    max-width: 680px; margin: 0 auto 36px; line-height: 1.6;
+  }
+
+  /* Game PIN Card */
+  .pin-card-wrapper {
+    max-width: 480px; margin: 0 auto 60px;
+    background: linear-gradient(180deg, rgba(35, 25, 82, 0.9), rgba(24, 16, 60, 0.95));
+    border: 2px solid var(--purple); border-radius: 24px;
+    padding: 32px 28px; box-shadow: 0 20px 50px rgba(0, 0, 0, 0.5), 0 0 30px rgba(124, 58, 237, 0.2);
+    position: relative; overflow: hidden;
+  }
+  .pin-card-wrapper::before {
+    content: ''; position: absolute; top: -50%; left: -50%; width: 200%; height: 200%;
+    background: radial-gradient(circle, rgba(124, 58, 237, 0.12) 0%, transparent 70%);
+    pointer-events: none;
+  }
+  .pin-label { font-size: 13.5px; font-weight: 700; color: #c4b5fd; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 12px; display: block; }
+  .pin-input-group {
+    position: relative; margin-bottom: 16px;
+  }
+  .pin-input {
+    width: 100%; padding: 16px 20px; font-size: 26px; font-weight: 800;
+    text-align: center; letter-spacing: 8px; border-radius: 14px;
+    background: #0e0725; border: 2px solid var(--border); color: #fff;
+    outline: none; transition: all 0.2s;
+  }
+  .pin-input:focus { border-color: var(--cyan); box-shadow: 0 0 20px rgba(6, 182, 212, 0.3); }
+  .btn-join {
+    width: 100%; padding: 16px; border-radius: 14px; border: none;
+    background: linear-gradient(135deg, var(--emerald), #059669);
+    color: #fff; font-size: 16px; font-weight: 800; letter-spacing: 0.5px;
+    cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 10px;
+    box-shadow: 0 8px 24px rgba(16, 185, 129, 0.4); transition: all 0.2s;
+  }
+  .btn-join:hover { transform: translateY(-2px); box-shadow: 0 10px 30px rgba(16, 185, 129, 0.6); }
+
+  .quick-demo {
+    margin-top: 14px; font-size: 12.5px; color: var(--text-muted);
+  }
+  .quick-demo a { color: var(--cyan); text-decoration: none; font-weight: 600; cursor: pointer; }
+  .quick-demo a:hover { text-decoration: underline; }
+
+  /* Feature Grid */
+  .features-section { max-width: 1100px; margin: 0 auto 80px; padding: 0 20px; }
+  .section-title { text-align: center; margin-bottom: 40px; }
+  .section-title h2 { font-size: 28px; font-weight: 800; margin-bottom: 10px; }
+  .section-title p { color: var(--text-muted); font-size: 15px; }
+
+  .features-grid {
+    display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 20px;
+  }
+  .f-card {
+    background: var(--bg-card); border: 1px solid var(--border);
+    border-radius: 18px; padding: 24px; transition: all 0.25s;
+    position: relative; overflow: hidden;
+  }
+  .f-card:hover { transform: translateY(-4px); border-color: var(--purple-light); }
+  .f-icon {
+    width: 48px; height: 48px; border-radius: 14px; display: flex; align-items: center; justify-content: center;
+    font-size: 22px; margin-bottom: 16px;
+  }
+  .f-card h3 { font-size: 17px; font-weight: 700; margin-bottom: 8px; }
+  .f-card p { font-size: 13.5px; color: var(--text-muted); line-height: 1.5; }
+
+  /* Pricing Section */
+  .pricing-section { max-width: 1000px; margin: 0 auto 80px; padding: 0 20px; }
+  .pricing-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 24px; }
+  .p-card {
+    background: var(--bg-card); border: 1px solid var(--border);
+    border-radius: 22px; padding: 32px 24px; position: relative;
+    display: flex; flex-direction: column; justify-content: space-between;
+  }
+  .p-card.featured {
+    border-color: var(--purple); background: linear-gradient(180deg, var(--bg-card-light), var(--bg-card));
+    box-shadow: 0 10px 40px rgba(124, 58, 237, 0.25);
+  }
+  .p-badge {
+    position: absolute; top: -12px; right: 24px;
+    background: linear-gradient(135deg, var(--purple), var(--rose));
+    color: #fff; font-size: 11px; font-weight: 800; padding: 4px 12px; border-radius: 20px;
+    letter-spacing: 0.5px;
+  }
+  .p-price { font-size: 36px; font-weight: 800; margin: 16px 0 8px; }
+  .p-price span { font-size: 14px; color: var(--text-muted); font-weight: 500; }
+  .p-features { list-style: none; margin: 24px 0; font-size: 13.5px; }
+  .p-features li { margin-bottom: 10px; display: flex; align-items: center; gap: 10px; color: #d1d5db; }
+  .p-features li i { color: var(--emerald); font-size: 12px; }
+
+  /* Modal Join / Avatar Selector */
+  .modal-overlay {
+    position: fixed; inset: 0; background: rgba(0, 0, 0, 0.85); backdrop-filter: blur(8px);
+    z-index: 200; display: flex; align-items: center; justify-content: center; padding: 20px;
+  }
+  .modal-box {
+    background: var(--bg-card); border: 2px solid var(--border); border-radius: 24px;
+    max-width: 440px; width: 100%; padding: 30px; text-align: center; position: relative;
+  }
+  .avatar-grid {
+    display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; margin: 20px 0;
+  }
+  .avatar-opt {
+    font-size: 28px; padding: 10px; background: var(--bg-dark); border: 2px solid var(--border);
+    border-radius: 14px; cursor: pointer; transition: all 0.15s;
+  }
+  .avatar-opt:hover, .avatar-opt.selected {
+    border-color: var(--purple); background: rgba(124, 58, 237, 0.2); transform: scale(1.1);
+  }
+
+  /* LIVE PLAYER ARENA (QUIZIZZ STYLE) */
+  .arena-wrapper {
+    min-height: calc(100vh - 70px);
+    display: flex; flex-direction: column; max-width: 860px; margin: 0 auto; padding: 20px;
+  }
+  .arena-topbar {
+    display: flex; align-items: center; justify-content: space-between;
+    background: var(--bg-card); border: 1px solid var(--border); border-radius: 16px;
+    padding: 12px 20px; margin-bottom: 20px;
+  }
+  .arena-stat { display: flex; align-items: center; gap: 8px; font-weight: 700; font-size: 14px; }
+  .streak-flame { color: var(--amber); font-size: 18px; animation: flamePulse 1.5s infinite alternate; }
+  @keyframes flamePulse { 0% { transform: scale(1); } 100% { transform: scale(1.2); } }
+
+  .timer-bar-container {
+    height: 8px; background: rgba(255, 255, 255, 0.1); border-radius: 4px; overflow: hidden; margin-bottom: 24px;
+  }
+  .timer-bar-fill {
+    height: 100%; background: linear-gradient(90deg, var(--emerald), var(--cyan));
+    width: 100%; transition: width 0.1s linear;
+  }
+
+  .q-display-card {
+    background: var(--bg-card); border: 1px solid var(--border); border-radius: 20px;
+    padding: 30px 24px; text-align: center; margin-bottom: 24px; min-height: 160px;
+    display: flex; align-items: center; justify-content: center;
+  }
+  .q-display-text { font-size: 22px; font-weight: 700; line-height: 1.4; }
+
+  /* 4 Quizizz-Style Colorful Buttons */
+  .answers-grid {
+    display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 20px;
+  }
+  @media (max-width: 640px) {
+    .answers-grid { grid-template-columns: 1fr; }
+  }
+  .btn-answer {
+    padding: 24px 20px; border-radius: 18px; border: none;
+    font-size: 17px; font-weight: 700; color: #fff; cursor: pointer;
+    display: flex; align-items: center; gap: 14px; text-align: left;
+    transition: all 0.15s; position: relative; overflow: hidden;
+  }
+  .btn-answer:active { transform: scale(0.97); }
+  .btn-answer:disabled { opacity: 0.6; cursor: not-allowed; }
+  .shape-icon {
+    width: 32px; height: 32px; border-radius: 8px; background: rgba(0,0,0,0.25);
+    display: flex; align-items: center; justify-content: center; font-size: 14px; flex-shrink: 0;
+  }
+
+  /* Quizizz 4 vibrant colors */
+  .ans-0 { background: linear-gradient(135deg, #7c3aed, #6d28d9); box-shadow: 0 6px 0 #5b21b6; }
+  .ans-1 { background: linear-gradient(135deg, #0284c7, #0369a1); box-shadow: 0 6px 0 #075985; }
+  .ans-2 { background: linear-gradient(135deg, #d97706, #b45309); box-shadow: 0 6px 0 #92400e; }
+  .ans-3 { background: linear-gradient(135deg, #e11d48, #be123c); box-shadow: 0 6px 0 #9f1239; }
+
+  .ans-0:hover:not(:disabled) { background: #8b5cf6; }
+  .ans-1:hover:not(:disabled) { background: #0ea5e9; }
+  .ans-2:hover:not(:disabled) { background: #f59e0b; }
+  .ans-3:hover:not(:disabled) { background: #f43f5e; }
+
+  /* Answer Feedback Overlay */
+  .feedback-banner {
+    position: fixed; inset: 0; z-index: 150;
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    backdrop-filter: blur(10px); animation: popIn 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+  }
+  .feedback-banner.correct { background: rgba(6, 78, 59, 0.92); }
+  .feedback-banner.wrong { background: rgba(136, 19, 55, 0.92); }
+  @keyframes popIn { 0% { transform: scale(0.7); opacity: 0; } 100% { transform: scale(1); opacity: 1; } }
+
+  .feedback-title { font-size: 38px; font-weight: 900; margin-bottom: 12px; }
+  .feedback-pts { font-size: 26px; font-weight: 800; color: var(--gold); margin-bottom: 8px; }
+  .feedback-exp { max-width: 500px; padding: 0 20px; font-size: 15px; color: #e5e7eb; text-align: center; }
+
+  /* Podium Screen */
+  .podium-wrapper {
+    display: flex; align-items: flex-end; justify-content: center; gap: 14px;
+    height: 280px; margin: 40px 0 20px;
+  }
+  .podium-pillar {
+    border-radius: 16px 16px 0 0; text-align: center; padding: 14px;
+    display: flex; flex-direction: column; align-items: center; justify-content: flex-start;
+    color: #fff; font-weight: 800; position: relative;
+  }
+  .podium-1 { width: 120px; height: 210px; background: linear-gradient(180deg, #f59e0b, #b45309); order: 2; }
+  .podium-2 { width: 110px; height: 160px; background: linear-gradient(180deg, #94a3b8, #475569); order: 1; }
+  .podium-3 { width: 110px; height: 120px; background: linear-gradient(180deg, #b45309, #78350f); order: 3; }
+  .podium-avatar { font-size: 36px; margin-top: -30px; margin-bottom: 6px; }
+
+  /* Footer */
+  footer {
+    border-top: 1px solid var(--border); padding: 30px 20px;
+    text-align: center; font-size: 13px; color: var(--text-muted);
+  }
 </style>
 </head>
 <body>
+
+<!-- Header -->
 <header>
-  <div class="logo"><i class="fa-solid fa-graduation-cap"></i></div>
-  <div><b>Quiz Unisba</b><span>Platform Pre &amp; Post Test Mahasiswa</span></div>
+  <div class="brand" onclick="goHome()">
+    <div class="brand-icon"><i class="fa-solid fa-bolt"></i></div>
+    <div class="brand-text">
+      <b>Quiztify<span style="color:var(--purple-light)">.id</span></b>
+      <span>Gamified Kuis &amp; Asesmen</span>
+    </div>
+  </div>
+
+  <div class="nav-actions">
+    <button class="btn-sound" id="sound-btn" onclick="toggleSound()" title="Aktifkan/Matikan Suara">
+      <i class="fa-solid fa-volume-high" id="sound-icon"></i>
+    </button>
+    <a href="/creator.html" class="btn-nav btn-nav-primary">
+      <i class="fa-solid fa-chalkboard-user"></i> <span>Studio Creator</span>
+    </a>
+  </div>
 </header>
-<div class="wrap" id="app"></div>
+
+<!-- MAIN LANDING VIEW -->
+<div id="view-landing">
+  <div class="hero">
+    <div class="badge-hero">
+      <i class="fa-solid fa-fire"></i> Platform Pembelajaran &amp; Kuis Interaktif Kelas Dunia
+    </div>
+    <h1>Belajar &amp; Kuis Jadi <span class="gradient-text">Super Seru</span> ala Quizizz!</h1>
+    <p>
+      Tingkatkan antusiasme kelas, seminar, dan pelatihan dengan kuis multiplayer real-time, 
+      poin kecepatan, streak api, dan evaluasi hasil belajar komprehensif.
+    </p>
+
+    <!-- Game PIN Box -->
+    <div class="pin-card-wrapper">
+      <label class="pin-label"><i class="fa-solid fa-gamepad"></i> Masukkan Game PIN</label>
+      <div class="pin-input-group">
+        <input type="text" id="game-pin-input" class="pin-input" maxlength="6" inputmode="numeric" placeholder="Contoh: 829410" onkeyup="if(event.key==='Enter')openJoinModal()">
+      </div>
+      <button class="btn-join" onclick="openJoinModal()">
+        <span>GABUNG PERMAINAN</span> <i class="fa-solid fa-arrow-right"></i>
+      </button>
+      <div class="quick-demo">
+        Host kuis sedang aktif? <a onclick="tryAutoDemo()">Klik di sini untuk kuis demo instan</a>
+      </div>
+    </div>
+  </div>
+
+  <!-- Feature Highlights -->
+  <div class="features-section">
+    <div class="section-title">
+      <h2>Fitur Terbaik untuk Guru, Dosen &amp; Pelajar</h2>
+      <p>Dirancang untuk pengalaman kuis yang kompetitif, menyenangkan, dan berbobot akademis.</p>
+    </div>
+    <div class="features-grid">
+      <div class="f-card">
+        <div class="f-icon" style="background:rgba(124,58,237,0.2);color:var(--purple-light)"><i class="fa-solid fa-users"></i></div>
+        <h3>Multiplayer Real-time</h3>
+        <p>Gabung kuis langsung menggunakan 6-digit PIN &amp; QR Code tanpa registrasi akun untuk peserta.</p>
+      </div>
+      <div class="f-card">
+        <div class="f-icon" style="background:rgba(245,158,11,0.2);color:var(--amber)"><i class="fa-solid fa-fire-flame-curved"></i></div>
+        <h3>Gamifikasi &amp; Streak Api</h3>
+        <p>Dapatkan poin tambahan kecepatan dan pertahankan kombo streak untuk memuncaki klasemen.</p>
+      </div>
+      <div class="f-card">
+        <div class="f-icon" style="background:rgba(16,185,129,0.2);color:var(--emerald)"><i class="fa-solid fa-chart-line"></i></div>
+        <h3>Analisis N-Gain Pre/Post</h3>
+        <p>Ukur efektivitas pembelajaran secara ilmiah dengan metrik Hake's Normalized Gain otomatis.</p>
+      </div>
+      <div class="f-card">
+        <div class="f-icon" style="background:rgba(6,182,212,0.2);color:var(--cyan)"><i class="fa-solid fa-wand-magic-sparkles"></i></div>
+        <h3>AI Smart Quiz Builder</h3>
+        <p>Hasilkan paket kuis berkualitas tinggi dalam hitungan detik dengan bantuan generator AI.</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- Pricing Tiers -->
+  <div class="pricing-section">
+    <div class="section-title">
+      <h2>Paket Langganan Komersial</h2>
+      <p>Mulai gratis dan upgrade kapan saja sesuai kebutuhan pengajaran Anda.</p>
+    </div>
+    <div class="pricing-grid">
+      <div class="p-card">
+        <div>
+          <h3>Free Starter</h3>
+          <p style="color:var(--text-muted);font-size:13px">Untuk eksplorasi dan kelas kecil</p>
+          <div class="p-price">Rp 0 <span>/ selamanya</span></div>
+          <ul class="p-features">
+            <li><i class="fa-solid fa-check"></i> Maksimal 30 peserta / game</li>
+            <li><i class="fa-solid fa-check"></i> Bank soal standar</li>
+            <li><i class="fa-solid fa-check"></i> Game PIN 6 digit</li>
+          </ul>
+        </div>
+        <a href="/creator.html" class="btn-nav btn-nav-ghost" style="text-align:center;justify-content:center">Mulai Gratis</a>
+      </div>
+
+      <div class="p-card featured">
+        <div class="p-badge">PALING POPULER ⭐</div>
+        <div>
+          <h3>Pro Creator</h3>
+          <p style="color:var(--text-muted);font-size:13px">Untuk Dosen, Guru &amp; Trainer Pro</p>
+          <div class="p-price">Rp 49.000 <span>/ bulan</span></div>
+          <ul class="p-features">
+            <li><i class="fa-solid fa-check"></i> Peserta tanpa batas (unlimited)</li>
+            <li><i class="fa-solid fa-check"></i> AI Smart Quiz Generator</li>
+            <li><i class="fa-solid fa-check"></i> Analisis N-Gain &amp; Ekspor CSV/Excel</li>
+            <li><i class="fa-solid fa-check"></i> Sound effects kustom &amp; Timer Pro</li>
+          </ul>
+        </div>
+        <a href="/creator.html" class="btn-nav btn-nav-primary" style="text-align:center;justify-content:center">Upgrade Pro</a>
+      </div>
+
+      <div class="p-card">
+        <div>
+          <h3>Campus / Enterprise</h3>
+          <p style="color:var(--text-muted);font-size:13px">Untuk Sekolah, Universitas &amp; Korporasi</p>
+          <div class="p-price">Custom <span>/ institusi</span></div>
+          <ul class="p-features">
+            <li><i class="fa-solid fa-check"></i> Multi-dosen &amp; multi-departemen</li>
+            <li><i class="fa-solid fa-check"></i> Integrasi LMS Moodle &amp; SSO</li>
+            <li><i class="fa-solid fa-check"></i> Domain kustom &amp; SLA garansi</li>
+          </ul>
+        </div>
+        <a href="mailto:contact@quiztify.id" class="btn-nav btn-nav-ghost" style="text-align:center;justify-content:center">Hubungi Kami</a>
+      </div>
+    </div>
+  </div>
+
+  <footer>
+    &copy; 2026 Quiztify.id - Interactive Gamified Learning Platform. All rights reserved.
+  </footer>
+</div>
+
+<!-- JOIN MODAL -->
+<div id="modal-join" class="modal-overlay hidden">
+  <div class="modal-box">
+    <h2 style="font-size:20px;font-weight:800;margin-bottom:6px">Siap Bermain! 🎮</h2>
+    <p style="color:var(--text-muted);font-size:13.5px">Game PIN: <b id="display-pin-target" style="color:var(--cyan)">------</b></p>
+
+    <div style="margin-top:20px;text-align:left">
+      <label style="font-size:12px;font-weight:700;color:var(--text-muted)">PILIH AVATAR KAMU</label>
+      <div class="avatar-grid" id="avatar-container">
+        <!-- avatars injected here -->
+      </div>
+
+      <label style="font-size:12px;font-weight:700;color:var(--text-muted)">NAMA PANGGILAN / NICKNAME</label>
+      <input type="text" id="player-name-input" class="pin-input" style="font-size:16px;letter-spacing:normal;text-align:left;margin-top:6px;padding:12px 14px" placeholder="Ketik nama kamu...">
+    </div>
+
+    <div style="display:flex;gap:10px;margin-top:24px">
+      <button class="btn-nav btn-nav-ghost" style="flex:1;justify-content:center" onclick="closeJoinModal()">Batal</button>
+      <button class="btn-nav btn-nav-primary" style="flex:2;justify-content:center" onclick="submitJoinGame()">Masuk Arena ➔</button>
+    </div>
+    <p id="join-error" style="color:var(--rose);font-size:13px;margin-top:10px;" class="hidden"></p>
+  </div>
+</div>
+
+<!-- LIVE PLAYER ARENA VIEW -->
+<div id="view-player" class="arena-wrapper hidden">
+  <!-- Top Bar -->
+  <div class="arena-topbar">
+    <div class="arena-stat">
+      <span id="player-avatar-badge" style="font-size:22px">🦁</span>
+      <span id="player-name-badge">Pemain</span>
+    </div>
+    <div class="arena-stat">
+      <i class="fa-solid fa-fire-flame-curved streak-flame"></i>
+      <span id="player-streak-badge">Streak x0</span>
+    </div>
+    <div class="arena-stat">
+      <span id="player-score-badge" style="color:var(--gold)">0 PTS</span>
+    </div>
+  </div>
+
+  <!-- Countdown Bar -->
+  <div class="timer-bar-container" id="timer-container">
+    <div class="timer-bar-fill" id="timer-bar"></div>
+  </div>
+
+  <!-- Content States: Lobby, Question, Leaderboard, Podium -->
+  <div id="arena-content">
+    <!-- State 1: Lobby Wait -->
+    <div id="arena-lobby" class="q-display-card" style="min-height:300px;flex-direction:column;gap:16px">
+      <div style="font-size:54px;animation:flamePulse 1.5s infinite alternate" id="lobby-big-avatar">🦁</div>
+      <h2>Kamu Sudah Masuk! 🎉</h2>
+      <p style="color:var(--text-muted);font-size:15px">Menunggu Host memulai kuis...</p>
+      <div style="padding:8px 18px;border-radius:20px;background:rgba(255,255,255,0.06);font-size:13px">
+        <i class="fa-solid fa-users"></i> <span id="lobby-player-count">1</span> peserta menunggu
+      </div>
+    </div>
+
+    <!-- State 2: Question & Answers -->
+    <div id="arena-question" class="hidden">
+      <div class="q-display-card">
+        <div>
+          <div style="font-size:13px;color:var(--cyan);font-weight:700;margin-bottom:8px" id="q-number-badge">SOAL 1 DARI 5</div>
+          <div class="q-display-text" id="q-text-target">Pertanyaan kuis akan tampil di sini...</div>
+        </div>
+      </div>
+
+      <div class="answers-grid" id="answers-container">
+        <!-- 4 buttons injected dynamically -->
+      </div>
+    </div>
+
+    <!-- State 3: Intermission / Leaderboard -->
+    <div id="arena-intermission" class="hidden">
+      <div class="q-display-card" style="min-height:340px;flex-direction:column;gap:16px">
+        <div style="font-size:38px">📊</div>
+        <h2>Klasemen Sementara</h2>
+        <div id="live-rank-info" style="font-size:18px;font-weight:700;color:var(--gold)">Peringkat kamu: #1</div>
+        <div id="leaderboard-list-preview" style="width:100%;max-width:440px;text-align:left"></div>
+        <p style="color:var(--text-muted);font-size:13.5px">Soal berikutnya akan segera dimulai oleh Host...</p>
+      </div>
+    </div>
+
+    <!-- State 4: Final Podium -->
+    <div id="arena-podium" class="hidden" style="text-align:center">
+      <h2 style="font-size:30px;font-weight:900" class="gradient-text">🏆 PERMAINAN SELESAI! 🏆</h2>
+      <p style="color:var(--text-muted);font-size:15px">Selamat kepada para juara terhebat!</p>
+
+      <div class="podium-wrapper" id="podium-container">
+        <!-- podium pillars -->
+      </div>
+
+      <div class="q-display-card" style="max-width:480px;margin:20px auto;flex-direction:column;gap:10px">
+        <div style="font-size:14px;color:var(--text-muted)">Hasil Akhir Kamu</div>
+        <div style="font-size:28px;font-weight:800;color:var(--gold)" id="final-my-score">0 PTS</div>
+        <div style="font-size:16px;font-weight:700" id="final-my-rank">Peringkat #1</div>
+      </div>
+
+      <button class="btn-nav btn-nav-primary" onclick="goHome()" style="padding:14px 28px;font-size:15px">
+        <i class="fa-solid fa-rotate-right"></i> Main Kuis Lagi
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- ANSWER FEEDBACK OVERLAY -->
+<div id="feedback-banner" class="feedback-banner hidden">
+  <div style="font-size:54px" id="feedback-icon">🎉</div>
+  <div class="feedback-title" id="feedback-title">TEPAT SEKALI!</div>
+  <div class="feedback-pts" id="feedback-points">+980 PTS</div>
+  <div class="feedback-exp" id="feedback-explanation"></div>
+</div>
 
 <script>
-const app = document.getElementById('app');
-let timerId = null, deadlineTs = null, answersCache = {}, quizNow = null;
+// ---------- APP STATE & INITIALIZATION ----------
+let soundEngine = window.QuizSound;
+let currentPin = '';
+let playerToken = '';
+let playerName = '';
+let playerAvatar = '🦁';
+let activeAvatars = ['🦁', '🦊', '🚀', '⚡', '🎮', '🦄', '🌟', '🍕'];
+let pollInterval = null;
+let lastRoomStatus = '';
+let currentQIndex = -1;
+let questionStartTime = 0;
+let timerAnimationId = null;
+let hasAnsweredCurrentQ = false;
 
-async function api(path, opts = {}) {
-  const r = await fetch(path, { ...opts, headers: { 'Content-Type': 'application/json', ...(opts.headers || {}) } });
-  const d = await r.json().catch(() => ({}));
-  if (!r.ok) throw d;
-  return d;
+// Update Sound Icon
+function updateSoundIcon() {
+  const icon = document.getElementById('sound-icon');
+  if (soundEngine.isMuted()) {
+    icon.className = 'fa-solid fa-volume-xmark';
+  } else {
+    icon.className = 'fa-solid fa-volume-high';
+  }
+}
+function toggleSound() {
+  soundEngine.toggleMute();
+  updateSoundIcon();
+  if (!soundEngine.isMuted()) soundEngine.play('click');
+}
+updateSoundIcon();
+
+// Check URL Params for instant PIN join: ?pin=123456
+window.addEventListener('DOMContentLoaded', () => {
+  const params = new URLSearchParams(window.location.search);
+  const pinParam = params.get('pin');
+  if (pinParam && pinParam.length === 6) {
+    document.getElementById('game-pin-input').value = pinParam;
+    openJoinModal();
+  }
+  buildAvatarPicker();
+});
+
+function buildAvatarPicker() {
+  const cont = document.getElementById('avatar-container');
+  cont.innerHTML = activeAvatars.map(av => `
+    <div class="avatar-opt ${av === playerAvatar ? 'selected' : ''}" onclick="selectAvatar('${av}')">${av}</div>
+  `).join('');
 }
 
-// ===== auth =====
-let authMode = 'login';
-function renderAuth(){
-  const login = authMode === 'login';
-  app.innerHTML = `
-  <div class="card" style="max-width:440px;margin:24px auto">
-    <div class="tabs">
-      <div class="tab ${login ? 'on' : ''}" onclick="authMode='login';renderAuth()">Masuk</div>
-      <div class="tab ${!login ? 'on' : ''}" onclick="authMode='daftar';renderAuth()">Daftar Baru</div>
-    </div>
-    ${login ? `
-      <h2><i class="fa-solid fa-user"></i> Masuk Mahasiswa</h2>
-      <label>NPM</label><input class="input" id="in-npm" inputmode="numeric" placeholder="6-12 digit">
-      <label>Password</label><input class="input" id="in-pass" type="password" onkeydown="if(event.key==='Enter')doLogin()">
-      <div style="margin-top:16px"><button class="btn" onclick="doLogin()"><i class="fa-solid fa-arrow-right"></i> Masuk</button></div>
-      <p class="err hidden" id="a-err"></p>
-    ` : `
-      <h2><i class="fa-solid fa-user-plus"></i> Daftar Mahasiswa</h2>
-      <p class="muted">Daftar dengan NPM dan password, lalu pilih kelas yang dibuka dosen kamu.</p>
-      <label>Nama Lengkap</label><input class="input" id="in-nama" placeholder="misal: Aisyah Ramadhani">
-      <label>NPM</label><input class="input" id="in-npm" inputmode="numeric" placeholder="6-12 digit">
-      <label>Password (min 6 karakter)</label><input class="input" id="in-pass" type="password">
-      <label>Pilih Kelas</label><select class="input" id="in-class"><option>Memuat...</option></select>
-      <div style="margin-top:16px"><button class="btn" onclick="doRegister()"><i class="fa-solid fa-user-plus"></i> Daftar &amp; Masuk</button></div>
-      <p class="err hidden" id="a-err"></p>
-    `}
-    <p class="muted" style="margin-top:14px;border-top:1px solid var(--line);padding-top:12px">
-      Dosen? Masuk lewat <a href="/dosen.html">panel dosen</a>.</p>
-  </div>`;
-  if (!login) loadClasses();
+function selectAvatar(av) {
+  playerAvatar = av;
+  buildAvatarPicker();
+  soundEngine.play('click');
 }
-async function loadClasses(){
-  const list = await api('/api/classes/public');
-  const sel = document.getElementById('in-class');
-  sel.innerHTML = list.length
-    ? list.map(c => `<option value="${c.id}">${c.name}${c.course ? ' - ' + c.course : ''} (${c.n_students} mahasiswa)</option>`).join('')
-    : '<option value="">Belum ada kelas terbuka, hubungi dosen</option>';
+
+function goHome() {
+  if (pollInterval) clearInterval(pollInterval);
+  document.getElementById('view-landing').classList.remove('hidden');
+  document.getElementById('view-player').classList.add('hidden');
+  window.history.pushState({}, '', '/');
 }
-function showErr(msg){ const e = document.getElementById('a-err'); e.textContent = msg; e.classList.remove('hidden'); }
-async function doLogin(){
+
+// ---------- JOIN MODAL FLOW ----------
+function openJoinModal() {
+  const pin = document.getElementById('game-pin-input').value.trim();
+  if (pin.length !== 6 || isNaN(pin)) {
+    alert('Masukkan Game PIN 6-digit yang valid!');
+    return;
+  }
+  currentPin = pin;
+  document.getElementById('display-pin-target').textContent = pin;
+  document.getElementById('modal-join').classList.remove('hidden');
+  document.getElementById('join-error').classList.add('hidden');
+  soundEngine.play('click');
+}
+
+function closeJoinModal() {
+  document.getElementById('modal-join').classList.add('hidden');
+}
+
+async function submitJoinGame() {
+  const name = document.getElementById('player-name-input').value.trim();
+  const errEl = document.getElementById('join-error');
+  if (!name || name.length < 2) {
+    errEl.textContent = 'Masukkan nama panggilan minimal 2 huruf!';
+    errEl.classList.remove('hidden');
+    return;
+  }
+
   try {
-    await api('/api/auth/mahasiswa/login', { method:'POST', body: JSON.stringify({
-      npm: document.getElementById('in-npm').value.trim(),
-      password: document.getElementById('in-pass').value }) });
-    boot();
-  } catch (e) { showErr(e.error || 'Gagal masuk'); }
-}
-async function doRegister(){
-  try {
-    await api('/api/auth/mahasiswa/register', { method:'POST', body: JSON.stringify({
-      nama: document.getElementById('in-nama').value.trim(),
-      npm: document.getElementById('in-npm').value.trim(),
-      password: document.getElementById('in-pass').value,
-      class_id: Number(document.getElementById('in-class').value) }) });
-    boot();
-  } catch (e) { showErr(e.error || 'Gagal mendaftar'); }
-}
-async function logout(){ await api('/api/auth/logout', { method:'POST' }); renderAuth(); }
-
-// ===== halaman utama mahasiswa =====
-let me = null;
-async function renderHome(){
-  app.innerHTML = '<div class="card muted"><i class="fa-solid fa-spinner fa-spin"></i> Memuat...</div>';
-  const [quizzes, hasil] = await Promise.all([
-    api('/api/student/quizzes'), api('/api/student/results')
-  ]);
-  const belum = quizzes.filter(q => !q.done);
-  const selesai = quizzes.filter(q => q.done);
-  app.innerHTML = `
-  <div class="topbar">
-    <div><h2 style="margin:0">Halo, ${me.nama}</h2>
-      <div class="muted">Kelas ${me.class_name || '-'}${me.course ? ' - ' + me.course : ''} · NPM ${me.npm}</div></div>
-    <button class="btn btn-ghost" onclick="logout()"><i class="fa-solid fa-right-from-bracket"></i> Keluar</button>
-  </div>
-  <div class="card">
-    <h2>Quiz Menunggu Dikerjakan</h2>
-    ${belum.length === 0 ? '<p class="muted">Tidak ada quiz yang menunggu.</p>' : ''}
-    ${belum.map(q => quizRow(q)).join('')}
-  </div>
-  ${selesai.length ? `
-  <div class="card">
-    <h2>Sudah Dikerjakan</h2>
-    ${selesai.map(q => quizRow(q, true)).join('')}
-  </div>` : ''}
-  ${hasil.gains.length ? `
-  <div class="card">
-    <h2>Perkembangan Pre vs Post</h2>
-    <table><tr><th>Paket</th><th>Pre</th><th>Post</th><th>N-Gain</th></tr>
-    ${hasil.gains.map(g => `<tr><td>${g.key}</td><td>${g.pre}</td><td>${g.post}</td>
-      <td style="font-weight:700;color:var(--green)">${g.ngain.toFixed(2)}</td></tr>`).join('')}
-    </table>
-  </div>` : ''}`;
-}
-function quizRow(q, done){
-  const status = done
-    ? `<span style="font-weight:700;color:var(--blue)">${q.my_score}</span><span class="tag tag-ok" style="margin-left:8px">Selesai</span>`
-    : q.open ? '<i class="fa-solid fa-chevron-right" style="color:var(--muted)"></i>'
-             : '<span class="tag tag-lock">Ditutup</span>';
-  return `<div class="q-row ${!done && q.open ? 'click' : ''}" ${!done && q.open ? `onclick="bukaQuiz(${q.id})"` : ''}>
-    <span class="tag ${q.type === 'pre' ? 'tag-pre' : 'tag-post'}">${q.type.toUpperCase()} TEST</span>
-    <div style="flex:1">
-      <div style="font-weight:600;font-size:14px">${q.title}</div>
-      <div class="muted" style="font-size:11.5px;margin-top:3px">${q.duration_min ? q.duration_min + ' menit' : 'tanpa batas waktu'}</div>
-    </div>${status}</div>`;
-}
-
-// ===== kerjakan quiz =====
-async function bukaQuiz(id){
-  app.innerHTML = '<div class="card muted"><i class="fa-solid fa-spinner fa-spin"></i> Memuat soal...</div>';
-  try {
-    quizNow = await api('/api/student/quiz/' + id);
-    answersCache = {}; deadlineTs = null;
-    renderSoal(0);
-  } catch (e) { app.innerHTML = `<div class="card" style="color:var(--red)">${e.error}</div>`; }
-}
-function renderSoal(pos){
-  const q = quizNow.questions[pos];
-  const pct = Math.round((pos / quizNow.questions.length) * 100);
-  app.innerHTML = `
-  <div class="topbar"><h2>${quizNow.title}</h2><span class="timer" id="timer">${quizNow.duration_min ? quizNow.duration_min + ':00' : ''}</span></div>
-  <div class="progress"><i style="width:${pct}%"></i></div>
-  <div class="card">
-    <div class="qnum">Soal ${pos + 1} dari ${quizNow.questions.length}</div>
-    <div class="qtext">${q.text}</div>
-    ${q.options.map((o, i) => `
-      <div class="opt-row ${answersCache[q.id] === i ? 'picked' : ''}" onclick="jawab(${pos}, ${i})">
-        <span class="opt-idx">${'ABCD'[i] || i + 1}</span>${o}</div>`).join('')}
-  </div>
-  <div style="display:flex;justify-content:space-between">
-    <button class="btn btn-ghost" ${pos === 0 ? 'disabled' : ''} onclick="renderSoal(${pos - 1})"><i class="fa-solid fa-arrow-left"></i> Sebelumnya</button>
-    ${pos === quizNow.questions.length - 1
-      ? '<button class="btn" onclick="submitQuiz()"><i class="fa-regular fa-paper-plane"></i> Kirim Jawaban</button>'
-      : `<button class="btn" onclick="renderSoal(${pos + 1})">Lanjut <i class="fa-solid fa-arrow-right"></i></button>`}
-  </div>`;
-  startTimerOnce();
-}
-function jawab(pos, i){
-  answersCache[quizNow.questions[pos].id] = i;
-  renderSoal(pos);
-}
-function startTimerOnce(){
-  if (!quizNow.duration_min || deadlineTs) return;
-  deadlineTs = Date.now() + quizNow.duration_min * 60000;
-  timerId = setInterval(() => {
-    const left = Math.max(0, deadlineTs - Date.now());
-    const el = document.getElementById('timer');
-    if (el) {
-      el.textContent = Math.floor(left / 60000) + ':' + String(Math.floor(left % 60000 / 1000)).padStart(2, '0');
-      el.classList.toggle('low', left < 60000);
+    const res = await fetch('/api/rooms/join', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ pin: currentPin, nickname: name, avatar: playerAvatar })
+    });
+    const data = await res.json();
+    if (!res.ok) {
+      errEl.textContent = data.error || 'Gagal bergabung ke room';
+      errEl.classList.remove('hidden');
+      soundEngine.play('wrong');
+      return;
     }
-    if (left <= 0) { clearInterval(timerId); submitQuiz(); }
-  }, 500);
-}
-async function submitQuiz(){
-  if (timerId) clearInterval(timerId);
-  const kosong = quizNow.questions.filter(q => answersCache[q.id] === undefined).length;
-  if (kosong > 0 && !confirm('Masih ada ' + kosong + ' soal belum dijawab. Kirim sekarang?')) return;
-  app.innerHTML = '<div class="card muted"><i class="fa-solid fa-spinner fa-spin"></i> Mengirim jawaban...</div>';
-  try {
-    const res = await api('/api/student/quiz/' + quizNow.id + '/submit', {
-      method: 'POST', body: JSON.stringify({ answers: answersCache }) });
-    deadlineTs = null;
-    app.innerHTML = `
-    <div class="card result">
-      <div class="big">${res.score}</div>
-      <div class="sub">Skor kamu, benar ${res.correct} dari ${res.total} soal</div>
-      ${res.ngain !== null ? `<div class="ngain"><i class="fa-solid fa-chart-line"></i> N-Gain kamu: ${res.ngain.toFixed(2)}</div>` : ''}
-      <div style="margin-top:18px"><button class="btn" onclick="renderHome()"><i class="fa-solid fa-list"></i> Kembali</button></div>
-    </div>`;
-  } catch (e) {
-    app.innerHTML = `<div class="card" style="color:var(--red)"><i class="fa-solid fa-circle-exclamation"></i> ${e.error}</div>`;
+
+    // Success Join
+    playerToken = data.player_token;
+    playerName = data.name;
+    playerAvatar = data.avatar;
+
+    closeJoinModal();
+    startPlayerArena();
+    soundEngine.play('correct');
+  } catch (err) {
+    errEl.textContent = 'Terjadi kesalahan koneksi server.';
+    errEl.classList.remove('hidden');
   }
 }
 
-// boot: cek sesi + deep link dari QR (?quiz=ID)
-function stashPending(){
-  const fromUrl = new URLSearchParams(location.search).get('quiz');
-  if (fromUrl && /^\d+$/.test(fromUrl)) {
-    localStorage.setItem('qunisba-pending-quiz', fromUrl);
-    history.replaceState(null, '', '/');
+// Quick Demo Helper
+async function tryAutoDemo() {
+  soundEngine.play('click');
+  try {
+    // Cari room yang sedang terbuka atau kuis pertama
+    const res = await fetch('/api/classes/public');
+    const data = await res.json();
+    // Buka creator view atau isi PIN contoh
+    document.getElementById('game-pin-input').value = '100001';
+    openJoinModal();
+  } catch (e) {
+    openJoinModal();
   }
 }
-function consumePending(){
-  const p = localStorage.getItem('qunisba-pending-quiz');
-  if (p) localStorage.removeItem('qunisba-pending-quiz');
-  return p;
+
+// ---------- ARENA MULTIPLAYER LOOP ----------
+function startPlayerArena() {
+  document.getElementById('view-landing').classList.add('hidden');
+  document.getElementById('view-player').classList.remove('hidden');
+
+  document.getElementById('player-avatar-badge').textContent = playerAvatar;
+  document.getElementById('player-name-badge').textContent = playerName;
+  document.getElementById('lobby-big-avatar').textContent = playerAvatar;
+
+  // Poll room state every 1 second
+  if (pollInterval) clearInterval(pollInterval);
+  pollRoomState();
+  pollInterval = setInterval(pollRoomState, 1000);
 }
-async function boot(){
-  stashPending();
+
+async function pollRoomState() {
+  if (!currentPin || !playerToken) return;
   try {
-    me = await api('/api/me');
-    if (me.role !== 'mahasiswa') { renderAuth(); return; }
-    const pending = consumePending();
-    if (pending) { bukaQuiz(pending); return; }
-    renderHome();
-  } catch (e) { renderAuth(); }
+    const res = await fetch(`/api/rooms/${currentPin}/state?player_token=${playerToken}`);
+    if (!res.ok) return;
+    const state = await res.json();
+
+    // Update Header Badges
+    document.getElementById('player-score-badge').textContent = `${state.my_score.toLocaleString()} PTS`;
+    document.getElementById('player-streak-badge').textContent = `Streak x${state.my_streak}`;
+
+    // Handle State Transitions
+    if (state.status === 'lobby') {
+      showArenaState('lobby');
+      document.getElementById('lobby-player-count').textContent = state.players_count;
+    } else if (state.status === 'question') {
+      if (currentQIndex !== state.current_q_idx) {
+        currentQIndex = state.current_q_idx;
+        hasAnsweredCurrentQ = false;
+        renderQuestion(state.question);
+      }
+      showArenaState('question');
+    } else if (state.status === 'leaderboard') {
+      showArenaState('intermission');
+      renderLeaderboard(state);
+    } else if (state.status === 'finished') {
+      showArenaState('podium');
+      renderPodium(state);
+      if (pollInterval) clearInterval(pollInterval);
+    }
+
+    lastRoomStatus = state.status;
+  } catch (err) {
+    console.error('Poll error', err);
+  }
 }
-boot();
+
+function showArenaState(stateName) {
+  document.getElementById('arena-lobby').classList.toggle('hidden', stateName !== 'lobby');
+  document.getElementById('arena-question').classList.toggle('hidden', stateName !== 'question');
+  document.getElementById('arena-intermission').classList.toggle('hidden', stateName !== 'intermission');
+  document.getElementById('arena-podium').classList.toggle('hidden', stateName !== 'podium');
+  document.getElementById('timer-container').classList.toggle('hidden', stateName !== 'question');
+}
+
+// Render Live Question
+function renderQuestion(q) {
+  if (!q) return;
+  document.getElementById('q-number-badge').textContent = `SOAL ${q.index + 1} DARI ${q.total}`;
+  document.getElementById('q-text-target').textContent = q.text;
+
+  const shapes = ['▲', '◆', '●', '■'];
+  const ansGrid = document.getElementById('answers-container');
+  ansGrid.innerHTML = q.options.map((opt, i) => `
+    <button class="btn-answer ans-${i % 4}" id="ans-btn-${i}" onclick="submitAnswer(${i}, ${q.time_limit})">
+      <div class="shape-icon">${shapes[i % 4]}</div>
+      <span>${opt}</span>
+    </button>
+  `).join('');
+
+  // Start Timer Bar
+  questionStartTime = Date.now();
+  startTimerBar(q.time_limit);
+  soundEngine.play('tick');
+}
+
+function startTimerBar(seconds) {
+  if (timerAnimationId) cancelAnimationFrame(timerAnimationId);
+  const totalMs = seconds * 1000;
+  const bar = document.getElementById('timer-bar');
+
+  function update() {
+    const elapsed = Date.now() - questionStartTime;
+    const remaining = Math.max(0, totalMs - elapsed);
+    const pct = (remaining / totalMs) * 100;
+    bar.style.width = `${pct}%`;
+
+    if (pct < 30) {
+      bar.style.background = 'linear-gradient(90deg, #f43f5e, #e11d48)';
+    } else {
+      bar.style.background = 'linear-gradient(90deg, #10b981, #06b6d4)';
+    }
+
+    if (remaining > 0 && !hasAnsweredCurrentQ) {
+      timerAnimationId = requestAnimationFrame(update);
+    }
+  }
+  update();
+}
+
+// Submit Answer
+async function submitAnswer(ansIdx, timeLimitSec) {
+  if (hasAnsweredCurrentQ) return;
+  hasAnsweredCurrentQ = true;
+  soundEngine.play('click');
+
+  // Disable all buttons immediately
+  for (let i = 0; i < 4; i++) {
+    const b = document.getElementById(`ans-btn-${i}`);
+    if (b) b.disabled = true;
+  }
+
+  const timeSpentMs = Date.now() - questionStartTime;
+
+  try {
+    const res = await fetch(`/api/rooms/${currentPin}/answer`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        player_token: playerToken,
+        answer_idx: ansIdx,
+        time_spent_ms: timeSpentMs
+      })
+    });
+    const data = await res.json();
+    showFeedbackBanner(data);
+  } catch (err) {
+    console.error('Answer error', err);
+  }
+}
+
+function showFeedbackBanner(data) {
+  const banner = document.getElementById('feedback-banner');
+  const icon = document.getElementById('feedback-icon');
+  const title = document.getElementById('feedback-title');
+  const pts = document.getElementById('feedback-points');
+  const exp = document.getElementById('feedback-explanation');
+
+  banner.className = `feedback-banner ${data.correct ? 'correct' : 'wrong'}`;
+  banner.classList.remove('hidden');
+
+  if (data.correct) {
+    icon.textContent = '🎉';
+    title.textContent = 'TEPAT SEKALI!';
+    pts.textContent = `+${data.points_earned} PTS`;
+    soundEngine.play(data.streak >= 2 ? 'streak' : 'correct');
+  } else {
+    icon.textContent = '❌';
+    title.textContent = 'YAH, KURANG TEPAT';
+    pts.textContent = '+0 PTS';
+    soundEngine.play('wrong');
+  }
+
+  exp.textContent = data.explanation || '';
+
+  setTimeout(() => {
+    banner.classList.add('hidden');
+  }, 2200);
+}
+
+// Render Leaderboard
+function renderLeaderboard(state) {
+  const rankEl = document.getElementById('live-rank-info');
+  rankEl.textContent = `Peringkat kamu: #${state.my_rank || '-'}`;
+
+  const listEl = document.getElementById('leaderboard-list-preview');
+  listEl.innerHTML = state.leaderboard.map(p => `
+    <div style="display:flex;align-items:center;justify-content:space-between;padding:10px 14px;border-radius:12px;margin-bottom:8px;background:${p.is_me ? 'rgba(124,58,237,0.3)' : 'rgba(255,255,255,0.05)'};border:${p.is_me ? '1px solid var(--purple)' : '1px solid transparent'}">
+      <div style="display:flex;align-items:center;gap:10px">
+        <b style="width:20px;color:var(--text-muted)">#${p.rank}</b>
+        <span>${p.avatar}</span>
+        <b>${p.name} ${p.is_me ? '(Kamu)' : ''}</b>
+      </div>
+      <b style="color:var(--gold)">${p.score.toLocaleString()} PTS</b>
+    </div>
+  `).join('');
+}
+
+// Render Final Podium
+function renderPodium(state) {
+  soundEngine.play('podium');
+  try {
+    confetti({ particleCount: 120, spread: 80, origin: { y: 0.6 } });
+  } catch (e) {}
+
+  document.getElementById('final-my-score').textContent = `${state.my_score.toLocaleString()} PTS`;
+  document.getElementById('final-my-rank').textContent = `Peringkat #${state.my_rank || '-'}`;
+
+  const top3 = state.leaderboard.slice(0, 3);
+  const pContainer = document.getElementById('podium-container');
+
+  const p1 = top3[0] || { name: '-', avatar: '🥇', score: 0 };
+  const p2 = top3[1] || { name: '-', avatar: '🥈', score: 0 };
+  const p3 = top3[2] || { name: '-', avatar: '🥉', score: 0 };
+
+  pContainer.innerHTML = `
+    <div class="podium-pillar podium-2">
+      <div class="podium-avatar">${p2.avatar}</div>
+      <div style="font-size:12px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:90px">${p2.name}</div>
+      <div style="font-size:11px;opacity:0.8">${p2.score} pts</div>
+      <div style="font-size:24px;margin-top:auto">2</div>
+    </div>
+    <div class="podium-pillar podium-1">
+      <div class="podium-avatar">${p1.avatar}</div>
+      <div style="font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100px">${p1.name}</div>
+      <div style="font-size:11.5px;color:var(--gold)">${p1.score} pts</div>
+      <div style="font-size:32px;margin-top:auto">1</div>
+    </div>
+    <div class="podium-pillar podium-3">
+      <div class="podium-avatar">${p3.avatar}</div>
+      <div style="font-size:12px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:90px">${p3.name}</div>
+      <div style="font-size:11px;opacity:0.8">${p3.score} pts</div>
+      <div style="font-size:20px;margin-top:auto">3</div>
+    </div>
+  `;
+}
 </script>
 </body>
 </html>

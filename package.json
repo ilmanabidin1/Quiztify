@@ -1,1 +1,15 @@
-{"dependencies":{"express":"^4.21.0","qrcode":"^1.5.4"},"description":"Platform pre & post test untuk dosen Unisba","main":"server.js","name":"quiz-unisba","private":true,"scripts":{"start":"node server.js"},"version":"1.0.0"}
+{
+  "name": "quiztify-id",
+  "version": "2.0.0",
+  "description": "Quiztify.id - Interactive Gamified Quiz & Assessment Platform ala Quizizz",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node --watch server.js"
+  },
+  "dependencies": {
+    "express": "^4.21.0",
+    "qrcode": "^1.5.4"
+  },
+  "private": true
+}
