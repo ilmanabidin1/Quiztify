@@ -4,6 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Quiztify.id - Studio Creator &amp; Dosen</title>
+<link rel="icon" type="image/png" href="/logo.png">
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
 <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.9.3/dist/confetti.browser.min.js"></script>
 <script src="/sound.js"></script>
@@ -36,8 +37,23 @@
     display: flex; flex-direction: column; flex-shrink: 0; min-height: 100vh;
   }
   .brand-area {
-    padding: 20px 22px; border-bottom: 1px solid var(--border);
-    display: flex; align-items: center; gap: 12px; text-decoration: none;
+    padding: 18px 20px; border-bottom: 1px solid var(--border);
+    display: flex; align-items: center; justify-content: space-between; text-decoration: none;
+    transition: opacity 0.2s ease;
+  }
+  .brand-area:hover { opacity: 0.92; }
+  .brand-logo-img {
+    height: 36px; width: auto; max-width: 155px; object-fit: contain;
+    filter: drop-shadow(0 2px 8px rgba(118, 216, 58, 0.25));
+    transition: transform 0.2s ease;
+  }
+  .brand-area:hover .brand-logo-img { transform: scale(1.02); }
+  .brand-studio-badge {
+    font-size: 10px; font-weight: 800; color: #76d83a;
+    background: rgba(118, 216, 58, 0.12);
+    border: 1px solid rgba(118, 216, 58, 0.35);
+    padding: 3px 7px; border-radius: 6px; letter-spacing: 0.5px;
+    text-transform: uppercase;
   }
   .brand-icon {
     width: 38px; height: 38px; border-radius: 10px;
@@ -177,12 +193,9 @@
 
 <!-- SIDEBAR -->
 <aside class="sidebar">
-  <a href="/" class="brand-area">
-    <div class="brand-icon"><i class="fa-solid fa-bolt"></i></div>
-    <div class="brand-name">
-      <b>Quiztify<span style="color:var(--purple-light)">.id</span></b>
-      <span>Creator Studio</span>
-    </div>
+  <a href="/" class="brand-area" title="Kembali ke Beranda Quiztify">
+    <img src="/logo.png" alt="Quiztify" class="brand-logo-img">
+    <span class="brand-studio-badge">STUDIO</span>
   </a>
 
   <div class="nav-menu">
@@ -569,9 +582,9 @@
 <!-- HOST PROJECTOR FULLSCREEN MODAL (QUIZIZZ LIVE HOST) -->
 <div id="modal-host-screen" class="host-screen-modal hidden">
   <div class="host-topbar">
-    <div style="display:flex;align-items:center;gap:12px">
-      <div class="brand-icon"><i class="fa-solid fa-bolt"></i></div>
-      <div>
+    <div style="display:flex;align-items:center;gap:16px">
+      <img src="/logo.png" alt="Quiztify" style="height:34px;width:auto;object-fit:contain;filter:drop-shadow(0 2px 8px rgba(118,216,58,0.25))">
+      <div style="border-left:1px solid var(--border);padding-left:14px">
         <b id="host-quiz-title" style="font-size:18px">Kuis Seru Quiztify</b>
         <span style="font-size:12px;color:var(--emerald);display:block">● LIVE GAME ROOM</span>
       </div>
@@ -585,9 +598,12 @@
   <div id="host-lobby-state" style="max-width:1000px;margin:0 auto;width:100%;text-align:center">
     <div class="pin-display-banner">
       <div style="text-align:left">
-        <div style="font-size:14px;color:var(--cyan);font-weight:800;letter-spacing:1px;text-transform:uppercase">Buka di Browser / HP Anda:</div>
-        <div style="font-size:32px;font-weight:900">quiztify.id</div>
-        <div style="font-size:14px;color:var(--text-muted);margin-top:4px">atau scan QR Code di samping</div>
+        <div style="font-size:13px;color:var(--cyan);font-weight:800;letter-spacing:1px;text-transform:uppercase">Buka di Browser / HP Anda:</div>
+        <div style="display:flex;align-items:center;gap:8px;margin:6px 0">
+          <img src="/logo.png" alt="Quiztify" style="height:36px;width:auto;object-fit:contain;filter:drop-shadow(0 2px 8px rgba(118,216,58,0.25))">
+          <span style="font-size:24px;font-weight:900;color:var(--cyan);line-height:1">.id</span>
+        </div>
+        <div style="font-size:13px;color:var(--text-muted)">atau scan QR Code di samping</div>
       </div>
 
       <div>
@@ -640,6 +656,9 @@
 
   <!-- State 4: Host Final Podium -->
   <div id="host-podium-state" class="hidden" style="text-align:center;max-width:800px;margin:0 auto">
+    <div style="margin-bottom:12px">
+      <img src="/logo.png" alt="Quiztify.id" style="height:40px;width:auto;object-fit:contain;filter:drop-shadow(0 2px 10px rgba(118,216,58,0.3))">
+    </div>
     <h1 style="font-size:36px;font-weight:900" class="gradient-text">🎉 PODIUM JUARA QUIZTIFY 🎉</h1>
     <p style="color:var(--text-muted);font-size:16px;margin-bottom:30px">Permainan kuis telah selesai dengan hasil luar biasa!</p>
     <div class="podium-wrapper" id="host-podium-container"></div>

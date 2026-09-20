@@ -4,6 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Quiztify.id - Platform Kuis Interaktif &amp; Gamifikasi Modern</title>
+<link rel="icon" type="image/png" href="/logo.png">
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
 <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.9.3/dist/confetti.browser.min.js"></script>
 <script src="/sound.js"></script>
@@ -44,15 +45,18 @@
     padding: 14px 24px;
     display: flex; align-items: center; justify-content: space-between;
   }
-  .brand { display: flex; align-items: center; gap: 12px; cursor: pointer; text-decoration: none; }
-  .brand-icon {
-    width: 38px; height: 38px; border-radius: 10px;
-    background: linear-gradient(135deg, var(--purple), var(--cyan));
-    display: flex; align-items: center; justify-content: center;
-    font-size: 18px; color: #fff; box-shadow: 0 0 20px rgba(124, 58, 237, 0.5);
+  .brand { display: flex; align-items: center; gap: 8px; cursor: pointer; text-decoration: none; }
+  .brand-logo-img {
+    height: 38px; width: auto; max-width: 170px; object-fit: contain;
+    filter: drop-shadow(0 2px 10px rgba(118, 216, 58, 0.25));
+    transition: transform 0.2s ease;
   }
-  .brand-text b { font-size: 19px; letter-spacing: -0.5px; color: #fff; display: block; line-height: 1.1; }
-  .brand-text span { font-size: 10px; text-transform: uppercase; letter-spacing: 1.2px; color: var(--cyan); font-weight: 700; }
+  .brand:hover .brand-logo-img { transform: scale(1.03); }
+  .brand-badge-id {
+    font-size: 11px; font-weight: 800; color: #76d83a;
+    background: rgba(118, 216, 58, 0.15); border: 1px solid rgba(118, 216, 58, 0.4);
+    padding: 2px 7px; border-radius: 6px; letter-spacing: 0.5px;
+  }
 
   .nav-actions { display: flex; align-items: center; gap: 12px; }
   .btn-sound {
@@ -300,12 +304,9 @@
 
 <!-- Header -->
 <header>
-  <div class="brand" onclick="goHome()">
-    <div class="brand-icon"><i class="fa-solid fa-bolt"></i></div>
-    <div class="brand-text">
-      <b>Quiztify<span style="color:var(--purple-light)">.id</span></b>
-      <span>Gamified Kuis &amp; Asesmen</span>
-    </div>
+  <div class="brand" onclick="goHome()" title="Kembali ke Beranda Quiztify">
+    <img src="/logo.png" alt="Quiztify" class="brand-logo-img">
+    <span class="brand-badge-id">.id</span>
   </div>
 
   <div class="nav-actions">
@@ -429,6 +430,9 @@
   </div>
 
   <footer>
+    <div style="display:flex;align-items:center;justify-content:center;margin-bottom:12px">
+      <img src="/logo.png" alt="Quiztify.id" style="height:32px;width:auto;opacity:0.9;object-fit:contain">
+    </div>
     &copy; 2026 Quiztify.id - Interactive Gamified Learning Platform. All rights reserved.
   </footer>
 </div>
