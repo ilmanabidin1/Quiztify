@@ -1,0 +1,238 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Quiz Unisba, Panel Dosen</title>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+<style>
+  :root{
+    --ink:#0b1a30; --ink-soft:#3a4a63; --muted:#71809b; --line:#e4e9f2;
+    --bg:#fff; --bg-soft:#f6f8fb; --blue:#1552b3; --blue-soft:#eaf1fd;
+    --amber:#f5a623; --amber-soft:#fdf3e0; --green:#1a8a5a; --green-soft:#e8f5ef; --red:#c23b3b;
+  }
+  *{margin:0;padding:0;box-sizing:border-box;font-family:'Segoe UI',system-ui,sans-serif}
+  body{background:var(--bg-soft);color:var(--ink);min-height:100vh}
+  header{background:var(--ink);color:#fff;padding:14px 22px;display:flex;align-items:center;gap:11px}
+  .logo{width:32px;height:32px;border-radius:8px;background:linear-gradient(135deg,var(--blue),#2d6fe0);display:flex;align-items:center;justify-content:center;font-size:14px}
+  header b{font-size:15px;display:block;line-height:1.2}
+  header span{font-size:10.5px;color:#8fa2bf}
+  .wrap{max-width:960px;margin:0 auto;padding:22px 18px}
+  .card{background:var(--bg);border:1px solid var(--line);border-radius:12px;padding:16px 18px;margin-bottom:14px}
+  h2{font-size:16px;font-weight:600;margin-bottom:12px}
+  .input,.ta,select{width:100%;border:1px solid var(--line);border-radius:8px;padding:9px 12px;font-size:13.5px;color:var(--ink);outline:none;background:var(--bg)}
+  .input:focus,.ta:focus,select:focus{border-color:var(--blue)}
+  .ta{resize:vertical;min-height:48px}
+  label{font-size:12px;font-weight:600;color:var(--muted);display:block;margin:10px 0 5px}
+  .btn{display:inline-flex;align-items:center;gap:8px;padding:9px 16px;border-radius:8px;font-size:13.5px;font-weight:600;cursor:pointer;border:none;background:var(--blue);color:#fff}
+  .btn:hover{background:#10469a}
+  .btn:disabled{opacity:.5;cursor:not-allowed}
+  .btn-ghost{background:var(--bg);border:1px solid var(--line);color:var(--ink-soft)}
+  .grid2{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+  .grid3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px}
+  .q-card{border:1px solid var(--line);border-radius:11px;padding:14px 16px;margin-bottom:12px}
+  .q-card:focus-within{border-color:var(--blue)}
+  .q-head{display:flex;align-items:center;gap:10px;margin-bottom:8px}
+  .q-num{width:26px;height:26px;border-radius:7px;background:var(--ink);color:#fff;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;flex-shrink:0}
+  .q-head .grow{flex:1;font-size:12px;color:var(--muted)}
+  .opt-row{display:flex;align-items:center;gap:9px;margin-top:8px}
+  .radio{width:18px;height:18px;border-radius:50%;border:2px solid #c4cede;flex-shrink:0;cursor:pointer;display:flex;align-items:center;justify-content:center}
+  .radio.correct{border-color:var(--green)}
+  .radio.correct::after{content:'';width:9px;height:9px;border-radius:50%;background:var(--green)}
+  .opt-row .input{flex:1}
+  .key-hint{font-size:11px;color:var(--green);font-weight:700;white-space:nowrap}
+  .tag{font-size:10.5px;font-weight:700;padding:3px 9px;border-radius:20px;white-space:nowrap;cursor:pointer}
+  .tag-pre{background:var(--amber-soft);color:#a86a00}
+  .tag-post{background:var(--blue-soft);color:var(--blue)}
+  table{width:100%;border-collapse:collapse;font-size:13px}
+  th{text-align:left;padding:9px 12px;background:var(--bg-soft);color:var(--muted);font-size:11px;text-transform:uppercase;letter-spacing:.05em;border-bottom:1px solid var(--line)}
+  td{padding:10px 12px;border-bottom:1px solid var(--line)}
+  tr:last-child td{border:none}
+  .muted{color:var(--muted);font-size:13px}
+  .row{display:flex;align-items:center;gap:13px;padding:11px 0;border-bottom:1px solid var(--line)}
+  .row:last-child{border:none}
+  .hidden{display:none}
+  .err{color:var(--red);font-size:13px;margin-top:8px}
+</style>
+</head>
+<body>
+<header>
+  <div class="logo"><i class="fa-solid fa-graduation-cap"></i></div>
+  <div><b>Quiz Unisba</b><span>Panel Dosen</span></div>
+</header>
+<div class="wrap" id="app"></div>
+
+<script>
+const app = document.getElementById('app');
+let pass = sessionStorage.getItem('qunisba-pass') || '';
+
+function req(path, opts = {}) {
+  return fetch(path, { ...opts, headers: { 'Content-Type': 'application/json', 'x-dosen-pass': pass, ...(opts.headers || {}) } })
+    .then(async r => {
+      if (r.status === 401) { sessionStorage.removeItem('qunisba-pass'); renderLogin(); throw new Error('auth'); }
+      return r.json();
+    });
+}
+
+// ---- login ----
+function renderLogin(){
+  app.innerHTML = `
+  <div class="card" style="max-width:420px;margin:40px auto">
+    <h2><i class="fa-solid fa-lock"></i> Masuk Panel Dosen</h2>
+    <label>Password Dosen</label>
+    <input class="input" type="password" id="in-pass" onkeydown="if(event.key==='Enter')login()">
+    <div style="margin-top:14px"><button class="btn" onclick="login()"><i class="fa-solid fa-unlock"></i> Masuk</button></div>
+    <p class="err hidden" id="l-err">Password salah, coba lagi.</p>
+  </div>`;
+}
+async function login(){
+  pass = document.getElementById('in-pass').value;
+  try { await req('/api/quizzes', {}); } catch(e) { return; }
+  sessionStorage.setItem('qunisba-pass', pass);
+  renderDashboard();
+}
+
+// ---- dashboard ----
+async function renderDashboard(){
+  let list;
+  try { list = await req('/api/quizzes', { method: 'GET' }); } catch(e){ return; }
+  app.innerHTML = `
+  <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px">
+    <h2 style="margin:0">Dashboard Dosen</h2>
+    <button class="btn" onclick="renderEditor()"><i class="fa-solid fa-plus"></i> Buat Quiz Baru</button>
+  </div>
+  <div class="card">
+    <h2>Quiz Aktif</h2>
+    ${list.length === 0 ? '<p class="muted">Belum ada quiz. Klik Buat Quiz Baru.</p>' : ''}
+    ${list.map(q => `
+      <div class="row">
+        <span class="tag ${q.type === 'pre' ? 'tag-pre' : 'tag-post'}">${q.type.toUpperCase()} TEST</span>
+        <div style="flex:1">
+          <div style="font-weight:600;font-size:14px">${q.title}</div>
+          <div class="muted" style="font-size:11.5px;margin-top:2px">${q.course || ''}${q.class_name ? ' · Kelas ' + q.class_name : ''}</div>
+        </div>
+        <button class="btn btn-ghost" onclick="lihatHasil(${q.id})"><i class="fa-solid fa-chart-simple"></i> Hasil</button>
+      </div>`).join('')}
+  </div>`;
+}
+
+// ---- editor ----
+let draft = null;
+function renderEditor(){
+  draft = { title:'', course:'', type:'pre', class_name:'', duration_min:20, deadline:'', pair_key:'', questions: [newQ()] };
+  drawEditor();
+}
+function newQ(){ return { text:'', options:['',''], correct:0 }; }
+function toggleType(){
+  draft.type = draft.type === 'pre' ? 'post' : 'pre';
+  drawEditor();
+}
+function drawEditor(){
+  const typeTag = draft.type === 'pre'
+    ? '<span class="tag tag-pre" onclick="toggleType()">PRE TEST</span>'
+    : '<span class="tag tag-post" onclick="toggleType()">POST TEST</span>';
+  app.innerHTML = `
+  <div style="display:flex;align-items:center;gap:12px;margin-bottom:14px">
+    <button class="btn btn-ghost" onclick="renderDashboard()"><i class="fa-solid fa-arrow-left"></i></button>
+    ${typeTag}
+    <span class="muted">klik tag untuk ganti pre/post</span>
+  </div>
+  <div class="card">
+    <div class="grid2">
+      <div><label>Judul Quiz</label><input class="input" id="f-title" value="${draft.title}"></div>
+      <div><label>Mata Kuliah</label><input class="input" id="f-course" value="${draft.course}"></div>
+    </div>
+    <div class="grid3">
+      <div><label>Durasi (menit)</label><input class="input" id="f-dur" type="number" value="${draft.duration_min}"></div>
+      <div><label>Kelas</label><input class="input" id="f-class" value="${draft.class_name}"></div>
+      <div><label>Buka sampai</label><input class="input" id="f-deadline" type="date"></div>
+    </div>
+    <div class="grid2" style="margin-top:10px">
+      <div><label>Kunci Pasangan (pair key)</label><input class="input" id="f-pair" placeholder="misal: mnf-2026-3A, harus sama utk pre & post" value="${draft.pair_key}"></div>
+      <div class="muted" style="align-self:end;padding-bottom:6px">Isi pair key yang sama di quiz Pre dan Post agar N-Gain dihitung otomatis. Kosongkan jika quiz berdiri sendiri.</div>
+    </div>
+  </div>
+  <div id="q-list"></div>
+  <button class="btn btn-ghost" style="width:100%;justify-content:center;border-style:dashed;margin-bottom:14px" onclick="tambahSoal()"><i class="fa-solid fa-plus"></i> Tambah Soal</button>
+  <div style="display:flex;gap:10px">
+    <button class="btn" onclick="simpanQuiz()"><i class="fa-regular fa-paper-plane"></i> Simpan & Aktifkan Quiz</button>
+  </div>
+  <p class="err hidden" id="e-err"></p>`;
+  drawQuestions();
+}
+function drawQuestions(){
+  const el = document.getElementById('q-list');
+  el.innerHTML = draft.questions.map((q, qi) => `
+    <div class="q-card">
+      <div class="q-head"><div class="q-num">${qi + 1}</div>
+        <div class="grow">Pilihan ganda</div>
+        <button class="btn btn-ghost" style="padding:4px 9px" onclick="hapusSoal(${qi})"><i class="fa-regular fa-trash-can"></i></button></div>
+      <textarea class="ta" oninput="draft.questions[${qi}].text=this.value" placeholder="Tulis pertanyaan...">${q.text}</textarea>
+      ${q.options.map((o, oi) => `
+        <div class="opt-row">
+          <div class="radio ${q.correct === oi ? 'correct' : ''}" onclick="draft.questions[${qi}].correct=${oi};drawQuestions()"></div>
+          <input class="input" value="${o}" oninput="draft.questions[${qi}].options[${oi}]=this.value" placeholder="Opsi ${'ABCD'[oi] || oi + 1}">
+          ${q.correct === oi ? '<span class="key-hint">KUNCI</span>' : ''}
+        </div>`).join('')}
+      ${q.options.length < 4 ? `<div style="margin-top:8px"><button class="btn btn-ghost" style="padding:5px 11px;font-size:11.5px" onclick="draft.questions[${qi}].options.push('');drawQuestions()"><i class="fa-solid fa-plus"></i> Opsi</button></div>` : ''}
+    </div>`).join('');
+}
+function tambahSoal(){ draft.questions.push(newQ()); drawQuestions(); }
+function hapusSoal(i){ draft.questions.splice(i, 1); if (!draft.questions.length) draft.questions.push(newQ()); drawQuestions(); }
+
+async function simpanQuiz(){
+  draft.title = document.getElementById('f-title').value.trim();
+  draft.course = document.getElementById('f-course').value.trim();
+  draft.duration_min = Number(document.getElementById('f-dur').value) || null;
+  draft.class_name = document.getElementById('f-class').value.trim();
+  draft.deadline = document.getElementById('f-deadline').value;
+  draft.pair_key = document.getElementById('f-pair').value.trim();
+  const res = await req('/api/quizzes', { method: 'POST', body: JSON.stringify(draft) });
+  if (res.error) {
+    const el = document.getElementById('e-err');
+    el.textContent = res.error;
+    el.classList.remove('hidden');
+    return;
+  }
+  renderDashboard();
+}
+
+// ---- hasil ----
+async function lihatHasil(id){
+  const d = await req('/api/dosen/results/' + id);
+  const q = d.quiz;
+  const statRow = d.stats ? `
+    <div class="card" style="border-color:#cddcf7;background:var(--blue-soft)">
+      <b style="font-size:14px"><i class="fa-solid fa-chart-line" style="color:var(--blue)"></i> N-Gain Rerata Kelas: ${d.stats.avg_ngain.toFixed(2)}</b>
+      <p class="muted" style="margin-top:4px">${d.stats.avg_ngain >= 0.7 ? 'Kategori tinggi' : d.stats.avg_ngain >= 0.3 ? 'Kategori sedang' : 'Kategori rendah'}</p>
+    </div>` : '';
+  app.innerHTML = `
+  <div style="display:flex;align-items:center;gap:12px;margin-bottom:14px">
+    <button class="btn btn-ghost" onclick="renderDashboard()"><i class="fa-solid fa-arrow-left"></i></button>
+    <h2 style="margin:0">${q.title}</h2>
+    <span class="tag ${q.type === 'pre' ? 'tag-pre' : 'tag-post'}">${q.type.toUpperCase()}</span>
+  </div>
+  ${statRow}
+  <div class="card">
+    <h2>Hasil Mahasiswa (${d.attempts.length} pengerjaan)</h2>
+    ${d.attempts.length === 0 ? '<p class="muted">Belum ada yang mengerjakan.</p>' : `
+    <table><tr><th>Nama</th><th>NPM</th><th>Skor</th><th>Waktu</th></tr>
+    ${d.attempts.map(a => `<tr><td>${a.nama}</td><td>${a.npm}</td><td style="font-weight:700">${a.score}</td><td class="muted">${a.created_at}</td></tr>`).join('')}
+    </table>`}
+  </div>`;
+  if (d.stats) {
+    app.innerHTML += `
+    <div class="card"><h2>Perbandingan Pre vs Post</h2>
+      <table><tr><th>NPM</th><th>Pre</th><th>Post</th><th>N-Gain</th></tr>
+      ${d.stats.pairs.map(p => p.pre !== null && p.post !== null
+        ? `<tr><td>${p.npm}</td><td>${p.pre}</td><td>${p.post}</td><td style="font-weight:700;color:var(--green)">${p.ngain.toFixed(2)}</td></tr>`
+        : `<tr><td>${p.npm}</td><td>${p.pre ?? '-'}</td><td>${p.post ?? '-'}</td><td class="muted">-</td></tr>`).join('')}
+      </table></div>`;
+  }
+}
+
+// boot
+if (pass) renderDashboard(); else renderLogin();
+</script>
+</body>
+</html>

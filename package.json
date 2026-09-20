@@ -1,0 +1,1 @@
+{"dependencies": {"express": "^4.21.0"}, "description": "Platform pre & post test untuk dosen Unisba", "main": "server.js", "name": "quiz-unisba", "private": true, "scripts": {"start": "node server.js"}, "version": "1.0.0"}

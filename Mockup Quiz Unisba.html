@@ -1,0 +1,325 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Quiz Unisba, Mockup Interaktif</title>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+<style>
+  :root{
+    --ink:#0b1a30;
+    --ink-soft:#3a4a63;
+    --muted:#71809b;
+    --line:#e4e9f2;
+    --bg:#ffffff;
+    --bg-soft:#f6f8fb;
+    --blue:#1552b3;
+    --blue-soft:#eaf1fd;
+    --amber:#f5a623;
+    --amber-soft:#fdf3e0;
+    --green:#1a8a5a;
+    --green-soft:#e8f5ef;
+    --red:#c23b3b;
+    --red-soft:#fbecec;
+  }
+  *{margin:0;padding:0;box-sizing:border-box;font-family:'Segoe UI',system-ui,sans-serif}
+  body{background:var(--bg-soft);color:var(--ink);min-height:100vh;display:flex}
+
+  /* Sidebar */
+  .side{width:236px;background:var(--ink);color:#c6d2e4;display:flex;flex-direction:column;flex-shrink:0}
+  .brand{padding:20px 18px;display:flex;align-items:center;gap:10px;border-bottom:1px solid rgba(255,255,255,.08)}
+  .logo{width:34px;height:34px;border-radius:8px;background:linear-gradient(135deg,var(--blue),#2d6fe0);display:flex;align-items:center;justify-content:center;color:#fff;font-size:15px}
+  .brand b{color:#fff;font-size:15px;display:block;line-height:1.2}
+  .brand span{font-size:10.5px;color:#8fa2bf}
+  nav{flex:1;padding:12px 10px}
+  .nav-label{font-size:10px;letter-spacing:.1em;color:#6d80a0;text-transform:uppercase;padding:10px 10px 6px}
+  .nav-item{display:flex;align-items:center;gap:11px;padding:10px;border-radius:8px;font-size:13.5px;cursor:pointer;margin-bottom:2px;border:none;background:none;color:#c6d2e4;width:100%;text-align:left}
+  .nav-item i{width:17px;text-align:center;font-size:14px}
+  .nav-item:hover{background:rgba(255,255,255,.06);color:#fff}
+  .nav-item.on{background:var(--blue);color:#fff}
+  .side-foot{padding:14px 16px;border-top:1px solid rgba(255,255,255,.08);display:flex;align-items:center;gap:10px}
+  .avatar{width:32px;height:32px;border-radius:50%;background:var(--amber);color:var(--ink);display:flex;align-items:center;justify-content:center;font-weight:700;font-size:13px}
+  .side-foot b{color:#fff;font-size:12.5px;display:block}
+  .side-foot span{font-size:10.5px;color:#8fa2bf}
+
+  /* Main */
+  .main{flex:1;display:flex;flex-direction:column;min-width:0}
+  .topbar{background:var(--bg);border-bottom:1px solid var(--line);padding:13px 26px;display:flex;align-items:center;justify-content:space-between;gap:14px}
+  .topbar h1{font-size:17px;font-weight:600}
+  .topbar .sub{font-size:12px;color:var(--muted);margin-top:2px}
+  .btn{display:inline-flex;align-items:center;gap:8px;padding:9px 16px;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer;border:none}
+  .btn-blue{background:var(--blue);color:#fff}
+  .btn-blue:hover{background:#10469a}
+  .btn-ghost{background:var(--bg);border:1px solid var(--line);color:var(--ink-soft)}
+  .btn-ghost:hover{border-color:#c4cede}
+  .content{padding:24px 26px;overflow:auto}
+
+  /* Stat ring */
+  .stats{display:flex;gap:14px;margin-bottom:22px;flex-wrap:wrap}
+  .stat{background:var(--bg);border:1px solid var(--line);border-radius:12px;padding:15px 18px;min-width:158px;flex:1}
+  .stat .k{display:flex;align-items:center;justify-content:space-between;font-size:11.5px;color:var(--muted);font-weight:600}
+  .stat .v{font-size:24px;font-weight:700;margin-top:6px}
+  .stat .d{font-size:11px;margin-top:4px;color:var(--muted)}
+  .dot{width:8px;height:8px;border-radius:50%}
+
+  /* Card / list */
+  .card{background:var(--bg);border:1px solid var(--line);border-radius:12px;overflow:hidden}
+  .card-h{padding:14px 18px;border-bottom:1px solid var(--line);display:flex;align-items:center;justify-content:space-between}
+  .card-h h2{font-size:14px;font-weight:600}
+  .quiz-row{display:flex;align-items:center;gap:14px;padding:13px 18px;border-bottom:1px solid var(--line);cursor:pointer}
+  .quiz-row:last-child{border-bottom:none}
+  .quiz-row:hover{background:var(--bg-soft)}
+  .tag{font-size:10.5px;font-weight:700;padding:3px 9px;border-radius:20px;white-space:nowrap}
+  .tag-pre{background:var(--amber-soft);color:#a86a00}
+  .tag-post{background:var(--blue-soft);color:var(--blue)}
+  .tag-draft{background:var(--bg-soft);color:var(--muted);border:1px solid var(--line)}
+  .tag-live{background:var(--green-soft);color:var(--green)}
+  .q-title{font-size:13.5px;font-weight:600}
+  .q-meta{font-size:11.5px;color:var(--muted);margin-top:3px;display:flex;gap:14px}
+  .q-meta i{font-size:10px;margin-right:4px}
+  .gain{font-size:12px;font-weight:700;color:var(--green);white-space:nowrap}
+  .gain small{color:var(--muted);font-weight:500;font-size:10.5px;display:block}
+
+  /* Views */
+  .view{display:none}
+  .view.on{display:block}
+
+  /* Editor soal */
+  .editor-grid{display:grid;grid-template-columns:1fr 300px;gap:18px;align-items:start}
+  .q-card{background:var(--bg);border:1px solid var(--line);border-radius:12px;padding:16px 18px;margin-bottom:12px}
+  .q-card:focus-within{border-color:var(--blue);box-shadow:0 0 0 3px rgba(21,82,179,.1)}
+  .q-head{display:flex;align-items:center;gap:10px;margin-bottom:10px}
+  .q-num{width:26px;height:26px;border-radius:7px;background:var(--ink);color:#fff;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;flex-shrink:0}
+  .q-head .grow{flex:1;font-size:12px;color:var(--muted)}
+  .input,.ta,select{width:100%;border:1px solid var(--line);border-radius:8px;padding:9px 12px;font-size:13.5px;color:var(--ink);background:var(--bg);outline:none}
+  .input:focus,.ta:focus,select:focus{border-color:var(--blue)}
+  .ta{resize:vertical;min-height:52px}
+  .opt-row{display:flex;align-items:center;gap:9px;margin-top:8px}
+  .radio{width:18px;height:18px;border-radius:50%;border:2px solid #c4cede;flex-shrink:0;cursor:pointer;display:flex;align-items:center;justify-content:center}
+  .radio.correct{border-color:var(--green)}
+  .radio.correct::after{content:'';width:9px;height:9px;border-radius:50%;background:var(--green)}
+  .opt-row .input{flex:1}
+  .badge-key{font-size:10px;font-weight:700;color:var(--green);white-space:nowrap}
+  .del-btn{background:none;border:none;color:var(--muted);cursor:pointer;font-size:13px;padding:6px}
+  .del-btn:hover{color:var(--red)}
+  .hintbox{background:var(--blue-soft);border:1px solid #cddcf7;border-radius:10px;padding:14px 16px;font-size:12.5px;color:#2a4a86;line-height:1.6}
+  .hintbox b{color:var(--ink)}
+  .hintbox i{margin-right:7px}
+
+  /* Sesi / mahasiswa */
+  .table{width:100%;border-collapse:collapse;font-size:13px}
+  .table th{text-align:left;padding:10px 18px;background:var(--bg-soft);color:var(--muted);font-size:11px;text-transform:uppercase;letter-spacing:.05em;border-bottom:1px solid var(--line)}
+  .table td{padding:12px 18px;border-bottom:1px solid var(--line)}
+  .table tr:last-child td{border-bottom:none}
+  .pill{display:inline-flex;align-items:center;gap:6px;font-size:11.5px;font-weight:600;padding:3px 10px;border-radius:20px}
+  .pill-ok{background:var(--green-soft);color:var(--green)}
+  .pill-warn{background:var(--amber-soft);color:#a86a00}
+  .pill-off{background:var(--bg-soft);color:var(--muted)}
+  .score-chip{font-weight:700;font-size:13px}
+
+  /* Toast */
+  .toast{position:fixed;bottom:22px;right:22px;background:var(--ink);color:#fff;padding:12px 18px;border-radius:10px;font-size:13px;display:flex;align-items:center;gap:10px;opacity:0;transform:translateY(10px);transition:.25s;pointer-events:none;z-index:99}
+  .toast.show{opacity:1;transform:none}
+  .toast i{color:var(--amber)}
+
+  .mock-note{background:var(--amber-soft);border:1px solid #f2dcae;border-radius:10px;padding:11px 16px;font-size:12.5px;color:#8a5d00;margin-bottom:18px;display:flex;align-items:center;gap:10px}
+</style>
+</head>
+<body>
+
+<aside class="side">
+  <div class="brand">
+    <div class="logo"><i class="fa-solid fa-graduation-cap"></i></div>
+    <div><b>Quiz Unisba</b><span>Pre & Post Test Platform</span></div>
+  </div>
+  <nav>
+    <div class="nav-label">Menu Dosen</div>
+    <button class="nav-item on" data-view="dashboard"><i class="fa-solid fa-chart-simple"></i>Dashboard</button>
+    <button class="nav-item" data-view="editor"><i class="fa-solid fa-circle-plus"></i>Buat Quiz Baru</button>
+    <button class="nav-item" data-view="sesi"><i class="fa-solid fa-users"></i>Kelas & Mahasiswa</button>
+    <button class="nav-item" data-view="bank"><i class="fa-solid fa-database"></i>Bank Soal</button>
+    <div class="nav-label">Lainnya</div>
+    <button class="nav-item" onclick="toast('Ini area mockup, belum berfungsi')"><i class="fa-solid fa-gear"></i>Pengaturan</button>
+  </nav>
+  <div class="side-foot">
+    <div class="avatar">IA</div>
+    <div><b>Dr. Ilman Abidin</b><span>Dosen Fakultas Ekonomi</span></div>
+  </div>
+</aside>
+
+<main class="main">
+  <div class="topbar">
+    <div>
+      <h1 id="page-title">Dashboard</h1>
+      <div class="sub" id="page-sub">Ringkasan aktivitas quiz kamu semester ini</div>
+    </div>
+    <button class="btn btn-blue" onclick="go('editor')"><i class="fa-solid fa-plus"></i>Buat Quiz</button>
+  </div>
+
+  <div class="content">
+
+    <!-- DASHBOARD -->
+    <section class="view on" id="v-dashboard">
+      <div class="mock-note"><i class="fa-solid fa-circle-info"></i>Ini mockup interaktif. Semua tombol bisa diklik untuk melihat alurnya, datanya contoh saja.</div>
+      <div class="stats">
+        <div class="stat"><div class="k"><span>Quiz Aktif</span><i class="dot" style="background:var(--green)"></i></div><div class="v">3</div><div class="d">1 pre test, 2 post test berjalan</div></div>
+        <div class="stat"><div class="k"><span>Partisipasi</span><i class="dot" style="background:var(--blue)"></i></div><div class="v">87%</div><div class="d">dari 96 mahasiswa kelas kamu</div></div>
+        <div class="stat"><div class="k"><span>Rerata N-Gain</span><i class="dot" style="background:var(--amber)"></i></div><div class="v">0.62</div><div class="d">kategori sedang</div></div>
+      </div>
+
+      <div class="card">
+        <div class="card-h"><h2>Quiz Terbaru</h2><button class="btn btn-ghost" onclick="go('editor')"><i class="fa-solid fa-plus"></i>Baru</button></div>
+        <div class="quiz-row" onclick="go('editor')">
+          <span class="tag tag-pre">PRE TEST</span>
+          <div style="flex:1"><div class="q-title">Pengantar Manajemen Keuangan</div>
+          <div class="q-meta"><span><i class="fa-solid fa-book"></i>Manajemen Keuangan I</span><span><i class="fa-regular fa-clock"></i>20 menit</span><span><i class="fa-solid fa-list-check"></i>15 soal</span></div></div>
+          <span class="tag tag-live">Berjalan</span>
+        </div>
+        <div class="quiz-row" onclick="go('editor')">
+          <span class="tag tag-post">POST TEST</span>
+          <div style="flex:1"><div class="q-title">Analisis Laporan Keuangan, Akhir Bab</div>
+          <div class="q-meta"><span><i class="fa-solid fa-book"></i>Akuntansi Keuangan</span><span><i class="fa-regular fa-clock"></i>30 menit</span><span><i class="fa-solid fa-list-check"></i>20 soal</span></div></div>
+          <div class="gain" style="text-align:right">+23<small style="display:block;font-weight:500">gain skor rata-rata</small></div>
+        </div>
+        <div class="quiz-row" onclick="go('editor')">
+          <span class="tag tag-draft">DRAFT</span>
+          <div style="flex:1"><div class="q-title">Kuis Pengantar Kewirausahaan, Pertemuan 3</div>
+          <div class="q-meta"><span><i class="fa-solid fa-book"></i>Kewirausahaan</span><span><i class="fa-solid fa-list-check"></i>10 soal terisi</span></div></div>
+          <button class="btn btn-ghost" onclick="event.stopPropagation();go('editor')">Lanjutkan</button>
+        </div>
+      </div>
+    </section>
+
+    <!-- EDITOR -->
+    <section class="view" id="v-editor">
+      <div style="display:flex;align-items:center;gap:12px;margin-bottom:16px">
+        <button class="btn btn-ghost" onclick="go('dashboard')"><i class="fa-solid fa-arrow-left"></i>Kembali</button>
+        <span class="tag tag-pre" id="type-tag" style="cursor:pointer" onclick="toggleType()">PRE TEST</span>
+        <span style="font-size:12px;color:var(--muted)">klik tag untuk ganti jadi Post Test</span>
+      </div>
+      <div class="editor-grid">
+        <div>
+          <div class="q-card">
+            <div style="display:grid;grid-template-columns:2fr 1fr;gap:12px;margin-bottom:10px">
+              <div><label style="font-size:11.5px;font-weight:600;color:var(--muted);display:block;margin-bottom:5px">Judul Quiz</label><input class="input" value="Pengantar Manajemen Keuangan"></div>
+              <div><label style="font-size:11.5px;font-weight:600;color:var(--muted);display:block;margin-bottom:5px">Mata Kuliah</label><select><option>Manajemen Keuangan I</option><option>Akuntansi Keuangan</option></select></div>
+            </div>
+            <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px">
+              <div><label style="font-size:11.5px;font-weight:600;color:var(--muted);display:block;margin-bottom:5px">Durasi (menit)</label><input class="input" value="20"></div>
+              <div><label style="font-size:11.5px;font-weight:600;color:var(--muted);display:block;margin-bottom:5px">Kelas</label><select><option>3A</option><option>3B</option><option>4C</option></select></div>
+              <div><label style="font-size:11.5px;font-weight:600;color:var(--muted);display:block;margin-bottom:5px">Buka sampai</label><input class="input" type="date" value="2026-09-26"></div>
+            </div>
+          </div>
+
+          <div class="q-card">
+            <div class="q-head"><div class="q-num">1</div><div class="grow">Pilihan ganda</div><button class="del-btn" onclick="toast('Soal dihapus (mockup)')"><i class="fa-regular fa-trash-can"></i></button></div>
+            <textarea class="ta">Modal kerja perusahaan terdiri dari...</textarea>
+            <div class="opt-row"><div class="radio correct" onclick="pickKey(this)"></div><input class="input" value="Kas, piutang, dan persediaan"></div>
+            <div class="opt-row"><div class="radio" onclick="pickKey(this)"></div><input class="input" value="Gedung dan mesin produksi"></div>
+            <div class="opt-row"><div class="radio" onclick="pickKey(this)"></div><input class="input" value="Hutang jangka panjang"></div>
+            <div class="opt-row"><div class="radio" onclick="pickKey(this)"></div><input class="input" value="Saham yang diterbitkan"></div>
+          </div>
+
+          <div class="q-card">
+            <div class="q-head"><div class="q-num">2</div><div class="grow">Pilihan ganda, dari Bank Soal</div><button class="del-btn" onclick="toast('Soal dihapus (mockup)')"><i class="fa-regular fa-trash-can"></i></button></div>
+            <textarea class="ta">Tujuan utama manajemen keuangan adalah...</textarea>
+            <div class="opt-row"><div class="radio correct" onclick="pickKey(this)"></div><input class="input" value="Memaksimalkan nilai perusahaan"></div>
+            <div class="opt-row"><div class="radio" onclick="pickKey(this)"></div><input class="input" value="Memaksimalkan laba akuntansi"></div>
+            <div class="opt-row"><div class="radio" onclick="pickKey(this)"></div><input class="input" value="Mengurangi seluruh hutang"></div>
+            <div class="opt-row" style="margin-top:10px"><button class="btn btn-ghost" style="font-size:11.5px;padding:6px 12px"><i class="fa-solid fa-database"></i>Tarik soal dari Bank Soal</button></div>
+          </div>
+
+          <button class="btn btn-ghost" style="width:100%;justify-content:center;border-style:dashed" onclick="toast('Soal baru ditambahkan (mockup)')"><i class="fa-solid fa-plus"></i>Tambah Soal</button>
+        </div>
+
+        <div>
+          <div class="hintbox">
+            <b><i class="fa-solid fa-lightbulb" style="color:var(--amber)"></i>Cara kerja Pre vs Post Test</b><br>
+            Klik tag <span class="tag tag-pre" style="cursor:pointer" onclick="toggleType()">PRE TEST</span> di atas untuk menjadikannya Post Test.<br><br>
+            Mahasiswa kerjakan keduanya dengan soal yang setara, lalu sistem menghitung <b>N-Gain</b> tiap mahasiswa dan rerata kelas secara otomatis.
+          </div>
+          <div class="card" style="margin-top:14px">
+            <div class="card-h"><h2>Ringkasan</h2></div>
+            <table class="table">
+              <tr><td>Soal terisi</td><td class="score-chip">2 / 15</td></tr>
+              <tr><td>Durasi</td><td class="score-chip">20 mnt</td></tr>
+              <tr><td>Kunci diatur</td><td class="score-chip" style="color:var(--amber)">50%</td></tr>
+            </table>
+          </div>
+          <button class="btn btn-blue" style="width:100%;justify-content:center;margin-top:14px" onclick="toast('Draft quiz disimpan. Saat produksi: lanjut aktifkan sesi.')"><i class="fa-regular fa-paper-plane"></i>Simpan & Lihat Pratinjau</button>
+        </div>
+      </div>
+    </section>
+
+    <!-- SESI -->
+    <section class="view" id="v-sesi">
+      <div class="card">
+        <div class="card-h"><h2>Manajemen Keuangan I, Kelas 3A</h2><span class="tag tag-pre">PRE TEST: Pengantar Manajemen Keuangan</span></div>
+        <table class="table">
+          <tr><th>Nama</th><th>NPM</th><th>Status</th><th>Pre</th><th>Post</th><th>N-Gain</th></tr>
+          <tr><td>Aisyah Ramadhani</td><td>2310450001</td><td><span class="pill pill-ok">Selesai keduanya</span></td><td class="score-chip">62</td><td class="score-chip">88</td><td class="score-chip" style="color:var(--green)">0.68</td></tr>
+          <tr><td>Bimo Prasetyo</td><td>2310450002</td><td><span class="pill pill-warn">Baru pre test</span></td><td class="score-chip">55</td><td class="score-chip" style="color:var(--muted)">-</td><td class="score-chip" style="color:var(--muted)">-</td></tr>
+          <tr><td>Citra Lestari</td><td>2310450003</td><td><span class="pill pill-off">Belum mulai</span></td><td class="score-chip" style="color:var(--muted)">-</td><td class="score-chip" style="color:var(--muted)">-</td><td class="score-chip" style="color:var(--muted)">-</td></tr>
+          <tr><td>Daffa Hidayat</td><td>2310450004</td><td><span class="pill pill-ok">Selesai keduanya</span></td><td class="score-chip">70</td><td class="score-chip">90</td><td class="score-chip" style="color:var(--green)">0.67</td></tr>
+        </table>
+        <div style="padding:14px 18px;border-top:1px solid var(--line);display:flex;gap:10px">
+          <button class="btn btn-ghost" onclick="toast('Daftar mengikuti sesi dibuka (mockup)')"><i class="fa-solid fa-link"></i>Buka Sesi</button>
+          <button class="btn btn-blue" onclick="toast('Rekap kelas akan terunduh saat produksi')"><i class="fa-solid fa-file-export"></i>Ekspor Rekap</button>
+        </div>
+      </div>
+    </section>
+
+    <!-- BANK SOAL -->
+    <section class="view" id="v-bank">
+      <div class="card">
+        <div class="card-h"><h2>Bank Soal</h2><button class="btn btn-blue" onclick="toast('Tambah soal ke bank (mockup)')"><i class="fa-solid fa-plus"></i>Tambah Soal</button></div>
+        <table class="table">
+          <tr><th>Pertanyaan</th><th>Mata Kuliah</th><th>Tingkat</th><th>Dipakai</th></tr>
+          <tr><td style="max-width:340px">Tujuan utama manajemen keuangan adalah...</td><td>Manajemen Keuangan I</td><td><span class="pill pill-ok">Sedang</span></td><td>4 quiz</td></tr>
+          <tr><td style="max-width:340px">Komponen struktur modal meliputi...</td><td>Manajemen Keuangan I</td><td><span class="pill pill-warn">Sulit</span></td><td>2 quiz</td></tr>
+          <tr><td style="max-width:340px">Fungsi laporan arus kas bagi investor...</td><td>Akuntansi Keuangan</td><td><span class="pill pill-ok">Sedang</span></td><td>1 quiz</td></tr>
+        </table>
+      </div>
+    </section>
+
+  </div>
+</main>
+
+<div class="toast" id="toast"><i class="fa-solid fa-circle-check"></i><span id="toast-msg"></span></div>
+
+<script>
+let typeIsPre = true;
+function go(v){
+  document.querySelectorAll('.view').forEach(e=>e.classList.remove('on'));
+  document.getElementById('v-'+v).classList.add('on');
+  document.querySelectorAll('.nav-item[data-view]').forEach(b=>b.classList.toggle('on', b.dataset.view===v));
+  const t={dashboard:['Dashboard','Ringkasan aktivitas quiz kamu semester ini'],editor:['Buat Quiz Baru','Susun soal, durasi, dan jadwal. Bisa pre test atau post test'],sesi:['Kelas & Mahasiswa','Pantau status pengerjaan dan hasil pre vs post'],bank:['Bank Soal','Simpan dan pakai ulang soal antar quiz']}[v];
+  document.getElementById('page-title').textContent=t[0];
+  document.getElementById('page-sub').textContent=t[1];
+}
+function toggleType(){
+  typeIsPre=!typeIsPre;
+  const el=document.getElementById('type-tag');
+  el.textContent=typeIsPre?'PRE TEST':'POST TEST';
+  el.className='tag '+(typeIsPre?'tag-pre':'tag-post');
+  el.style='cursor:pointer';
+  toast(typeIsPre?'Ditandai sebagai Pre Test':'Ditandai sebagai Post Test');
+}
+function pickKey(r){
+  const card=r.closest('.q-card');
+  card.querySelectorAll('.radio').forEach(x=>x.classList.remove('correct'));
+  r.classList.add('correct');
+  toast('Kunci jawaban dipilih');
+}
+let toastTimer;
+function toast(msg){
+  const t=document.getElementById('toast');
+  document.getElementById('toast-msg').textContent=msg;
+  t.classList.add('show');
+  clearTimeout(toastTimer);
+  toastTimer=setTimeout(()=>t.classList.remove('show'),2200);
+}
+document.querySelectorAll('.nav-item[data-view]').forEach(b=>b.onclick=()=>go(b.dataset.view));
+</script>
+</body>
+</html>
