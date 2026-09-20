@@ -108,6 +108,14 @@ function getLetterGrade(score) {
 
 // ---------- SEED DATA ----------
 function seedInitialData() {
+  // Guard: only seed on first startup. If the students table already has
+  // records (e.g. from a previous deploy with a persistent volume), skip
+  // seeding entirely to avoid UNIQUE constraint violations (students.npm).
+  const existingStudents = db.prepare('SELECT COUNT(*) as c FROM students').get().c;
+  if (existingStudents > 0) {
+    return;
+  }
+
   // 1. Akun Creator Default
   const admin = db.prepare('SELECT * FROM dosen WHERE email = ?').get('admin@quiztify.id');
   if (!admin) {
