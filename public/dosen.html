@@ -28,6 +28,7 @@
   .btn:hover{background:#10469a}
   .btn:disabled{opacity:.5;cursor:not-allowed}
   .btn-ghost{background:var(--bg);border:1px solid var(--line);color:var(--ink-soft)}
+  .btn-danger{background:var(--bg);border:1px solid var(--line);color:var(--red)}
   .grid2{display:grid;grid-template-columns:1fr 1fr;gap:12px}
   .grid3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px}
   .q-card{border:1px solid var(--line);border-radius:11px;padding:14px 16px;margin-bottom:12px}
@@ -41,9 +42,10 @@
   .radio.correct::after{content:'';width:9px;height:9px;border-radius:50%;background:var(--green)}
   .opt-row .input{flex:1}
   .key-hint{font-size:11px;color:var(--green);font-weight:700;white-space:nowrap}
-  .tag{font-size:10.5px;font-weight:700;padding:3px 9px;border-radius:20px;white-space:nowrap;cursor:pointer}
+  .tag{font-size:10.5px;font-weight:700;padding:3px 9px;border-radius:20px;white-space:nowrap}
   .tag-pre{background:var(--amber-soft);color:#a86a00}
   .tag-post{background:var(--blue-soft);color:var(--blue)}
+  .tag-click{cursor:pointer}
   table{width:100%;border-collapse:collapse;font-size:13px}
   th{text-align:left;padding:9px 12px;background:var(--bg-soft);color:var(--muted);font-size:11px;text-transform:uppercase;letter-spacing:.05em;border-bottom:1px solid var(--line)}
   td{padding:10px 12px;border-bottom:1px solid var(--line)}
@@ -51,8 +53,15 @@
   .muted{color:var(--muted);font-size:13px}
   .row{display:flex;align-items:center;gap:13px;padding:11px 0;border-bottom:1px solid var(--line)}
   .row:last-child{border:none}
+  .row.click{cursor:pointer}
+  .row.click:hover{background:var(--bg-soft)}
+  .tabs{display:flex;gap:8px;margin-bottom:14px}
+  .tab{padding:8px 16px;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer;border:1px solid var(--line);background:var(--bg);color:var(--ink-soft)}
+  .tab.on{background:var(--blue);border-color:var(--blue);color:#fff}
+  .topline{display:flex;align-items:center;gap:12px;margin-bottom:14px}
   .hidden{display:none}
   .err{color:var(--red);font-size:13px;margin-top:8px}
+  .statbox{border:1px solid #cddcf7;background:var(--blue-soft);border-radius:12px;padding:14px 18px;margin-bottom:14px;display:flex;align-items:center;gap:16px;flex-wrap:wrap}
 </style>
 </head>
 <body>
@@ -64,62 +73,174 @@
 
 <script>
 const app = document.getElementById('app');
-let pass = sessionStorage.getItem('qunisba-pass') || '';
+let me = null, kelasNow = null, draft = null, tabNow = 'hasil';
 
-function req(path, opts = {}) {
-  return fetch(path, { ...opts, headers: { 'Content-Type': 'application/json', 'x-dosen-pass': pass, ...(opts.headers || {}) } })
-    .then(async r => {
-      if (r.status === 401) { sessionStorage.removeItem('qunisba-pass'); renderLogin(); throw new Error('auth'); }
-      return r.json();
-    });
+async function api(path, opts = {}) {
+  const r = await fetch(path, { ...opts, headers: { 'Content-Type': 'application/json', ...(opts.headers || {}) } });
+  if (r.status === 401) { me = null; renderLogin(); throw { error: 'unauth' }; }
+  const d = await r.json().catch(() => ({}));
+  if (!r.ok) throw d;
+  return d;
 }
 
-// ---- login ----
+// ===== login =====
 function renderLogin(){
   app.innerHTML = `
   <div class="card" style="max-width:420px;margin:40px auto">
     <h2><i class="fa-solid fa-lock"></i> Masuk Panel Dosen</h2>
-    <label>Password Dosen</label>
-    <input class="input" type="password" id="in-pass" onkeydown="if(event.key==='Enter')login()">
-    <div style="margin-top:14px"><button class="btn" onclick="login()"><i class="fa-solid fa-unlock"></i> Masuk</button></div>
-    <p class="err hidden" id="l-err">Password salah, coba lagi.</p>
+    <label>Email</label><input class="input" id="in-email" autocomplete="username">
+    <label>Password</label><input class="input" type="password" id="in-pass" autocomplete="current-password" onkeydown="if(event.key==='Enter')doLogin()">
+    <div style="margin-top:14px"><button class="btn" onclick="doLogin()"><i class="fa-solid fa-unlock"></i> Masuk</button></div>
+    <p class="err hidden" id="l-err"></p>
   </div>`;
 }
-async function login(){
-  pass = document.getElementById('in-pass').value;
-  try { await req('/api/quizzes', {}); } catch(e) { return; }
-  sessionStorage.setItem('qunisba-pass', pass);
-  renderDashboard();
+async function doLogin(){
+  try {
+    me = await api('/api/auth/dosen/login', { method:'POST', body: JSON.stringify({
+      email: document.getElementById('in-email').value.trim(),
+      password: document.getElementById('in-pass').value }) });
+    renderDashboard();
+  } catch (e) {
+    const el = document.getElementById('l-err');
+    el.textContent = e.error || 'Gagal masuk';
+    el.classList.remove('hidden');
+  }
 }
+async function logout(){ await api('/api/auth/logout', { method:'POST' }); me = null; renderLogin(); }
 
-// ---- dashboard ----
+// ===== dashboard kelas =====
 async function renderDashboard(){
-  let list;
-  try { list = await req('/api/quizzes', { method: 'GET' }); } catch(e){ return; }
+  const list = await api('/api/dosen/classes');
   app.innerHTML = `
-  <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px">
-    <h2 style="margin:0">Dashboard Dosen</h2>
-    <button class="btn" onclick="renderEditor()"><i class="fa-solid fa-plus"></i> Buat Quiz Baru</button>
+  <div class="topline">
+    <div style="flex:1"><h2 style="margin:0">Dashboard Dosen</h2><div class="muted">${me.nama} · ${me.email}</div></div>
+    <button class="btn" onclick="renderFormKelas()"><i class="fa-solid fa-plus"></i> Buat Kelas</button>
+    <button class="btn btn-ghost" onclick="logout()"><i class="fa-solid fa-right-from-bracket"></i></button>
   </div>
   <div class="card">
-    <h2>Quiz Aktif</h2>
-    ${list.length === 0 ? '<p class="muted">Belum ada quiz. Klik Buat Quiz Baru.</p>' : ''}
-    ${list.map(q => `
-      <div class="row">
-        <span class="tag ${q.type === 'pre' ? 'tag-pre' : 'tag-post'}">${q.type.toUpperCase()} TEST</span>
+    <h2>Kelas Kamu</h2>
+    ${list.length === 0 ? '<p class="muted">Belum ada kelas. Buat kelas dulu, lalu mahasiswa bisa daftar dengan memilih kelas itu.</p>' : ''}
+    ${list.map(c => `
+      <div class="row click" onclick="bukaKelas(${c.id})">
+        <i class="fa-solid fa-users" style="color:var(--blue)"></i>
         <div style="flex:1">
-          <div style="font-weight:600;font-size:14px">${q.title}</div>
-          <div class="muted" style="font-size:11.5px;margin-top:2px">${q.course || ''}${q.class_name ? ' · Kelas ' + q.class_name : ''}</div>
+          <div style="font-weight:600;font-size:14px">${c.name}</div>
+          <div class="muted" style="font-size:11.5px;margin-top:2px">${c.course || 'tanpa mata kuliah'} · ${c.n_students} mahasiswa · ${c.n_quizzes} quiz</div>
         </div>
-        <button class="btn btn-ghost" onclick="lihatHasil(${q.id})"><i class="fa-solid fa-chart-simple"></i> Hasil</button>
+        <i class="fa-solid fa-chevron-right" style="color:var(--muted)"></i>
       </div>`).join('')}
   </div>`;
 }
+function renderFormKelas(){
+  app.innerHTML = `
+  <div class="topline"><button class="btn btn-ghost" onclick="renderDashboard()"><i class="fa-solid fa-arrow-left"></i></button>
+    <h2 style="margin:0">Buat Kelas Baru</h2></div>
+  <div class="card" style="max-width:520px">
+    <label>Nama Kelas</label><input class="input" id="f-name" placeholder="misal: 3A - Manajemen Keuangan I">
+    <label>Mata Kuliah</label><input class="input" id="f-course" placeholder="misal: Manajemen Keuangan I">
+    <div style="margin-top:14px"><button class="btn" onclick="buatKelas()"><i class="fa-solid fa-plus"></i> Buat</button></div>
+    <p class="err hidden" id="c-err"></p>
+  </div>`;
+}
+async function buatKelas(){
+  try {
+    await api('/api/dosen/classes', { method:'POST', body: JSON.stringify({
+      name: document.getElementById('f-name').value.trim(),
+      course: document.getElementById('f-course').value.trim() }) });
+    renderDashboard();
+  } catch (e) {
+    const el = document.getElementById('c-err'); el.textContent = e.error; el.classList.remove('hidden');
+  }
+}
 
-// ---- editor ----
-let draft = null;
+// ===== detail kelas =====
+async function bukaKelas(id){
+  const list = await api('/api/dosen/classes');
+  kelasNow = list.find(c => c.id === id);
+  tabNow = 'hasil';
+  drawKelas();
+}
+function drawKelas(){
+  app.innerHTML = `
+  <div class="topline">
+    <button class="btn btn-ghost" onclick="renderDashboard()"><i class="fa-solid fa-arrow-left"></i></button>
+    <div style="flex:1"><h2 style="margin:0">${kelasNow.name}</h2><div class="muted">${kelasNow.course || ''} · ${kelasNow.n_students} mahasiswa</div></div>
+    <button class="btn" onclick="renderEditor()"><i class="fa-solid fa-plus"></i> Buat Quiz</button>
+  </div>
+  <div class="tabs">
+    <div class="tab ${tabNow === 'hasil' ? 'on' : ''}" onclick="tabNow='hasil';drawKelas()">Hasil</div>
+    <div class="tab ${tabNow === 'quiz' ? 'on' : ''}" onclick="tabNow='quiz';drawKelas()">Quiz</div>
+    <div class="tab ${tabNow === 'mhs' ? 'on' : ''}" onclick="tabNow='mhs';drawKelas()">Mahasiswa</div>
+  </div>
+  <div id="tab-body"><div class="card muted"><i class="fa-solid fa-spinner fa-spin"></i> Memuat...</div></div>`;
+  if (tabNow === 'hasil') drawTabHasil();
+  else if (tabNow === 'quiz') drawTabQuiz();
+  else drawTabMhs();
+}
+async function drawTabMhs(){
+  const el = document.getElementById('tab-body');
+  const students = await api('/api/dosen/classes/' + kelasNow.id + '/students');
+  el.innerHTML = `<div class="card">
+    <h2>Mahasiswa Terdaftar (${students.length})</h2>
+    ${students.length === 0 ? `<p class="muted">Belum ada mahasiswa. Mahasiswa mendaftar dari halaman utama dengan memilih kelas ini.</p>` : `
+    <table><tr><th>Nama</th><th>NPM</th><th>Terdaftar</th></tr>
+    ${students.map(s => `<tr><td>${s.nama}</td><td>${s.npm}</td><td class="muted">${s.created_at}</td></tr>`).join('')}
+    </table>`}
+  </div>`;
+}
+async function drawTabQuiz(){
+  const el = document.getElementById('tab-body');
+  const d = await api('/api/dosen/classes/' + kelasNow.id + '/results');
+  el.innerHTML = `<div class="card">
+    <h2>Quiz di Kelas Ini (${d.quizzes.length})</h2>
+    ${d.quizzes.length === 0 ? '<p class="muted">Belum ada quiz di kelas ini.</p>' : ''}
+    ${d.quizzes.map(q => `
+      <div class="row">
+        <span class="tag ${q.type === 'pre' ? 'tag-pre' : 'tag-post'}">${q.type.toUpperCase()}</span>
+        <div style="flex:1">
+          <div style="font-weight:600;font-size:14px">${q.title}</div>
+          <div class="muted" style="font-size:11.5px;margin-top:2px">
+            ${q.duration_min ? q.duration_min + ' menit' : 'tanpa timer'}${q.pair_key ? ' · pasangan: ' + q.pair_key : ''}${q.deadline ? ' · tutup: ' + q.deadline.slice(0, 10) : ''}
+          </div>
+        </div>
+        <span class="muted">${q.n_attempts} dikerjakan</span>
+        <button class="btn btn-danger" onclick="hapusQuiz(${q.id})"><i class="fa-regular fa-trash-can"></i></button>
+      </div>`).join('')}
+  </div>`;
+}
+async function hapusQuiz(id){
+  if (!confirm('Hapus quiz ini beserta semua hasilnya?')) return;
+  await api('/api/dosen/quizzes/' + id, { method:'DELETE' });
+  drawTabQuiz();
+}
+async function drawTabHasil(){
+  const el = document.getElementById('tab-body');
+  const d = await api('/api/dosen/classes/' + kelasNow.id + '/results');
+  const avg = d.class_avg_ngain;
+  el.innerHTML = `
+  ${avg !== null ? `
+  <div class="statbox">
+    <b style="font-size:15px"><i class="fa-solid fa-chart-line" style="color:var(--blue)"></i> N-Gain Rerata Kelas: ${avg.toFixed(2)}</b>
+    <span class="muted">${avg >= 0.7 ? 'Kategori tinggi' : avg >= 0.3 ? 'Kategori sedang' : 'Kategori rendah'} · dari ${d.students.filter(s => s.avg_ngain !== null).length} mahasiswa yang menyelesaikan pasangan pre-post</span>
+  </div>` : ''}
+  <div class="card">
+    <h2>Hasil Per Mahasiswa</h2>
+    ${d.students.length === 0 ? '<p class="muted">Belum ada mahasiswa di kelas ini.</p>' : `
+    <table><tr><th>Nama</th><th>NPM</th><th>Paket Pre-Post (Pre / Post / N-Gain)</th><th>Rerata N-Gain</th></tr>
+    ${d.students.map(s => `<tr>
+      <td>${s.nama}</td><td>${s.npm}</td>
+      <td>${s.pairs.length ? s.pairs.map(p => p.ngain !== null
+        ? `<span style="white-space:nowrap">${p.key}: ${p.pre} / ${p.post} / <b style="color:var(--green)">${p.ngain.toFixed(2)}</b></span>`
+        : `<span class="muted" style="white-space:nowrap">${p.key}: ${p.pre ?? '-'} / ${p.post ?? '-'} / -</span>`).join('<br>') : '<span class="muted">belum ada data</span>'}</td>
+      <td style="font-weight:700;color:${s.avg_ngain !== null ? 'var(--green)' : 'var(--muted)'}">${s.avg_ngain !== null ? s.avg_ngain.toFixed(2) : '-'}</td>
+    </tr>`).join('')}
+    </table>`}
+  </div>`;
+}
+
+// ===== editor quiz =====
 function renderEditor(){
-  draft = { title:'', course:'', type:'pre', class_name:'', duration_min:20, deadline:'', pair_key:'', questions: [newQ()] };
+  draft = { class_id: kelasNow.id, title:'', type:'pre', duration_min:20, deadline:'', pair_key:'', questions:[newQ()] };
   drawEditor();
 }
 function newQ(){ return { text:'', options:['',''], correct:0 }; }
@@ -129,33 +250,29 @@ function toggleType(){
 }
 function drawEditor(){
   const typeTag = draft.type === 'pre'
-    ? '<span class="tag tag-pre" onclick="toggleType()">PRE TEST</span>'
-    : '<span class="tag tag-post" onclick="toggleType()">POST TEST</span>';
+    ? '<span class="tag tag-pre tag-click" onclick="toggleType()">PRE TEST</span>'
+    : '<span class="tag tag-post tag-click" onclick="toggleType()">POST TEST</span>';
   app.innerHTML = `
-  <div style="display:flex;align-items:center;gap:12px;margin-bottom:14px">
-    <button class="btn btn-ghost" onclick="renderDashboard()"><i class="fa-solid fa-arrow-left"></i></button>
+  <div class="topline">
+    <button class="btn btn-ghost" onclick="bukaKelas(${kelasNow.id})"><i class="fa-solid fa-arrow-left"></i></button>
     ${typeTag}
-    <span class="muted">klik tag untuk ganti pre/post</span>
+    <span class="muted">klik tag untuk ganti pre/post · kelas ${kelasNow.name}</span>
   </div>
   <div class="card">
     <div class="grid2">
       <div><label>Judul Quiz</label><input class="input" id="f-title" value="${draft.title}"></div>
-      <div><label>Mata Kuliah</label><input class="input" id="f-course" value="${draft.course}"></div>
+      <div><label>Kunci Pasangan (pair key)</label><input class="input" id="f-pair" placeholder="sama utk pre & post-nya, misal: mnf-2026-bab1" value="${draft.pair_key}"></div>
     </div>
     <div class="grid3">
       <div><label>Durasi (menit)</label><input class="input" id="f-dur" type="number" value="${draft.duration_min}"></div>
-      <div><label>Kelas</label><input class="input" id="f-class" value="${draft.class_name}"></div>
       <div><label>Buka sampai</label><input class="input" id="f-deadline" type="date"></div>
-    </div>
-    <div class="grid2" style="margin-top:10px">
-      <div><label>Kunci Pasangan (pair key)</label><input class="input" id="f-pair" placeholder="misal: mnf-2026-3A, harus sama utk pre & post" value="${draft.pair_key}"></div>
-      <div class="muted" style="align-self:end;padding-bottom:6px">Isi pair key yang sama di quiz Pre dan Post agar N-Gain dihitung otomatis. Kosongkan jika quiz berdiri sendiri.</div>
+      <div class="muted" style="align-self:end;padding-bottom:6px">Pasangan pre-post dengan pair key sama menghasilkan N-Gain otomatis.</div>
     </div>
   </div>
   <div id="q-list"></div>
   <button class="btn btn-ghost" style="width:100%;justify-content:center;border-style:dashed;margin-bottom:14px" onclick="tambahSoal()"><i class="fa-solid fa-plus"></i> Tambah Soal</button>
   <div style="display:flex;gap:10px">
-    <button class="btn" onclick="simpanQuiz()"><i class="fa-regular fa-paper-plane"></i> Simpan & Aktifkan Quiz</button>
+    <button class="btn" onclick="simpanQuiz()"><i class="fa-regular fa-paper-plane"></i> Simpan &amp; Aktifkan Quiz</button>
   </div>
   <p class="err hidden" id="e-err"></p>`;
   drawQuestions();
@@ -179,60 +296,29 @@ function drawQuestions(){
 }
 function tambahSoal(){ draft.questions.push(newQ()); drawQuestions(); }
 function hapusSoal(i){ draft.questions.splice(i, 1); if (!draft.questions.length) draft.questions.push(newQ()); drawQuestions(); }
-
 async function simpanQuiz(){
   draft.title = document.getElementById('f-title').value.trim();
-  draft.course = document.getElementById('f-course').value.trim();
   draft.duration_min = Number(document.getElementById('f-dur').value) || null;
-  draft.class_name = document.getElementById('f-class').value.trim();
   draft.deadline = document.getElementById('f-deadline').value;
   draft.pair_key = document.getElementById('f-pair').value.trim();
-  const res = await req('/api/quizzes', { method: 'POST', body: JSON.stringify(draft) });
-  if (res.error) {
+  try {
+    await api('/api/dosen/quizzes', { method:'POST', body: JSON.stringify(draft) });
+    bukaKelas(kelasNow.id);
+  } catch (e) {
     const el = document.getElementById('e-err');
-    el.textContent = res.error;
+    el.textContent = e.error || 'Gagal menyimpan';
     el.classList.remove('hidden');
-    return;
-  }
-  renderDashboard();
-}
-
-// ---- hasil ----
-async function lihatHasil(id){
-  const d = await req('/api/dosen/results/' + id);
-  const q = d.quiz;
-  const statRow = d.stats ? `
-    <div class="card" style="border-color:#cddcf7;background:var(--blue-soft)">
-      <b style="font-size:14px"><i class="fa-solid fa-chart-line" style="color:var(--blue)"></i> N-Gain Rerata Kelas: ${d.stats.avg_ngain.toFixed(2)}</b>
-      <p class="muted" style="margin-top:4px">${d.stats.avg_ngain >= 0.7 ? 'Kategori tinggi' : d.stats.avg_ngain >= 0.3 ? 'Kategori sedang' : 'Kategori rendah'}</p>
-    </div>` : '';
-  app.innerHTML = `
-  <div style="display:flex;align-items:center;gap:12px;margin-bottom:14px">
-    <button class="btn btn-ghost" onclick="renderDashboard()"><i class="fa-solid fa-arrow-left"></i></button>
-    <h2 style="margin:0">${q.title}</h2>
-    <span class="tag ${q.type === 'pre' ? 'tag-pre' : 'tag-post'}">${q.type.toUpperCase()}</span>
-  </div>
-  ${statRow}
-  <div class="card">
-    <h2>Hasil Mahasiswa (${d.attempts.length} pengerjaan)</h2>
-    ${d.attempts.length === 0 ? '<p class="muted">Belum ada yang mengerjakan.</p>' : `
-    <table><tr><th>Nama</th><th>NPM</th><th>Skor</th><th>Waktu</th></tr>
-    ${d.attempts.map(a => `<tr><td>${a.nama}</td><td>${a.npm}</td><td style="font-weight:700">${a.score}</td><td class="muted">${a.created_at}</td></tr>`).join('')}
-    </table>`}
-  </div>`;
-  if (d.stats) {
-    app.innerHTML += `
-    <div class="card"><h2>Perbandingan Pre vs Post</h2>
-      <table><tr><th>NPM</th><th>Pre</th><th>Post</th><th>N-Gain</th></tr>
-      ${d.stats.pairs.map(p => p.pre !== null && p.post !== null
-        ? `<tr><td>${p.npm}</td><td>${p.pre}</td><td>${p.post}</td><td style="font-weight:700;color:var(--green)">${p.ngain.toFixed(2)}</td></tr>`
-        : `<tr><td>${p.npm}</td><td>${p.pre ?? '-'}</td><td>${p.post ?? '-'}</td><td class="muted">-</td></tr>`).join('')}
-      </table></div>`;
   }
 }
 
 // boot
-if (pass) renderDashboard(); else renderLogin();
+(async () => {
+  try {
+    me = await api('/api/me');
+    if (me.role !== 'dosen') { renderLogin(); return; }
+    renderDashboard();
+  } catch (e) { renderLogin(); }
+})();
 </script>
 </body>
 </html>

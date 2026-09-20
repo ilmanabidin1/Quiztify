@@ -20,12 +20,15 @@
   .wrap{max-width:860px;margin:0 auto;padding:22px 18px}
   h2{font-size:16px;font-weight:600;margin-bottom:12px}
   .card{background:var(--bg);border:1px solid var(--line);border-radius:12px;padding:16px 18px;margin-bottom:14px}
-  .q-row{display:flex;align-items:center;gap:13px;padding:12px 0;border-bottom:1px solid var(--line);cursor:pointer}
+  .q-row{display:flex;align-items:center;gap:13px;padding:12px 0;border-bottom:1px solid var(--line)}
+  .q-row.click{cursor:pointer}
+  .q-row.click:hover{background:var(--bg-soft)}
   .q-row:last-child{border:none}
-  .q-row:hover{background:var(--bg-soft)}
   .tag{font-size:10.5px;font-weight:700;padding:3px 9px;border-radius:20px;white-space:nowrap}
   .tag-pre{background:var(--amber-soft);color:#a86a00}
   .tag-post{background:var(--blue-soft);color:var(--blue)}
+  .tag-ok{background:var(--green-soft);color:var(--green)}
+  .tag-lock{background:var(--bg-soft);color:var(--muted);border:1px solid var(--line)}
   .input{width:100%;border:1px solid var(--line);border-radius:8px;padding:10px 12px;font-size:14px;color:var(--ink);outline:none;background:var(--bg)}
   .input:focus{border-color:var(--blue)}
   label{font-size:12px;font-weight:600;color:var(--muted);display:block;margin:10px 0 5px}
@@ -46,96 +49,155 @@
   .result .big{font-size:46px;font-weight:800;color:var(--blue)}
   .result .sub{color:var(--muted);font-size:13px;margin-top:6px}
   .ngain{display:inline-block;background:var(--green-soft);color:var(--green);font-weight:700;padding:6px 14px;border-radius:20px;font-size:13px;margin-top:12px}
-  .hidden{display:none}
   .timer{font-size:13px;font-weight:700;color:var(--ink-soft)}
   .timer.low{color:var(--red)}
   .topbar{display:flex;justify-content:space-between;align-items:center;margin-bottom:10px}
   .muted{color:var(--muted);font-size:13px}
+  .tabs{display:flex;gap:8px;margin-bottom:14px}
+  .tab{padding:8px 16px;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer;border:1px solid var(--line);background:var(--bg);color:var(--ink-soft)}
+  .tab.on{background:var(--blue);border-color:var(--blue);color:#fff}
+  table{width:100%;border-collapse:collapse;font-size:13px}
+  th{text-align:left;padding:9px 10px;background:var(--bg-soft);color:var(--muted);font-size:11px;text-transform:uppercase;letter-spacing:.05em;border-bottom:1px solid var(--line)}
+  td{padding:10px;border-bottom:1px solid var(--line)}
+  tr:last-child td{border:none}
+  .err{color:var(--red);font-size:13px;margin-top:8px}
+  .grid2{display:grid;grid-template-columns:1fr 1fr;gap:12px}
 </style>
 </head>
 <body>
 <header>
   <div class="logo"><i class="fa-solid fa-graduation-cap"></i></div>
-  <div><b>Quiz Unisba</b><span>Platform Pre & Post Test Mahasiswa</span></div>
+  <div><b>Quiz Unisba</b><span>Platform Pre &amp; Post Test Mahasiswa</span></div>
 </header>
 <div class="wrap" id="app"></div>
 
 <script>
 const app = document.getElementById('app');
-let me = { nama:'', npm:'' };
-let timerId = null;
+let timerId = null, deadlineTs = null, answersCache = {}, quizNow = null;
 
-// ---- STEP 1: identitas mahasiswa ----
-function renderIdentitas(){
+async function api(path, opts = {}) {
+  const r = await fetch(path, { ...opts, headers: { 'Content-Type': 'application/json', ...(opts.headers || {}) } });
+  const d = await r.json().catch(() => ({}));
+  if (!r.ok) throw d;
+  return d;
+}
+
+// ===== auth =====
+let authMode = 'login';
+function renderAuth(){
+  const login = authMode === 'login';
   app.innerHTML = `
-  <div class="card">
-    <h2><i class="fa-solid fa-user"></i> Masuk sebagai Mahasiswa</h2>
-    <p class="muted">Isi nama lengkap dan NPM untuk melihat daftar quiz yang terbuka.</p>
-    <label>Nama Lengkap</label>
-    <input class="input" id="in-nama" placeholder="misal: Aisyah Ramadhani" autocomplete="name">
-    <label>NPM</label>
-    <input class="input" id="in-npm" placeholder="6-12 digit" inputmode="numeric" autocomplete="off">
-    <div style="margin-top:16px"><button class="btn" onclick="masuk()"><i class="fa-solid fa-arrow-right"></i> Masuk</button></div>
-    <p id="id-err" style="color:var(--red);font-size:13px;margin-top:10px"></p>
+  <div class="card" style="max-width:440px;margin:24px auto">
+    <div class="tabs">
+      <div class="tab ${login ? 'on' : ''}" onclick="authMode='login';renderAuth()">Masuk</div>
+      <div class="tab ${!login ? 'on' : ''}" onclick="authMode='daftar';renderAuth()">Daftar Baru</div>
+    </div>
+    ${login ? `
+      <h2><i class="fa-solid fa-user"></i> Masuk Mahasiswa</h2>
+      <label>NPM</label><input class="input" id="in-npm" inputmode="numeric" placeholder="6-12 digit">
+      <label>Password</label><input class="input" id="in-pass" type="password" onkeydown="if(event.key==='Enter')doLogin()">
+      <div style="margin-top:16px"><button class="btn" onclick="doLogin()"><i class="fa-solid fa-arrow-right"></i> Masuk</button></div>
+      <p class="err hidden" id="a-err"></p>
+    ` : `
+      <h2><i class="fa-solid fa-user-plus"></i> Daftar Mahasiswa</h2>
+      <p class="muted">Daftar dengan NPM dan password, lalu pilih kelas yang dibuka dosen kamu.</p>
+      <label>Nama Lengkap</label><input class="input" id="in-nama" placeholder="misal: Aisyah Ramadhani">
+      <label>NPM</label><input class="input" id="in-npm" inputmode="numeric" placeholder="6-12 digit">
+      <label>Password (min 6 karakter)</label><input class="input" id="in-pass" type="password">
+      <label>Pilih Kelas</label><select class="input" id="in-class"><option>Memuat...</option></select>
+      <div style="margin-top:16px"><button class="btn" onclick="doRegister()"><i class="fa-solid fa-user-plus"></i> Daftar &amp; Masuk</button></div>
+      <p class="err hidden" id="a-err"></p>
+    `}
+    <p class="muted" style="margin-top:14px;border-top:1px solid var(--line);padding-top:12px">
+      Dosen? Masuk lewat <a href="/dosen.html">panel dosen</a>.</p>
   </div>`;
+  if (!login) loadClasses();
 }
-async function masuk(){
-  const nama = document.getElementById('in-nama').value.trim();
-  const npm = document.getElementById('in-npm').value.trim();
-  if (!nama || !/^\d{6,12}$/.test(npm)) {
-    document.getElementById('id-err').textContent = 'Nama wajib diisi dan NPM harus 6-12 digit angka.';
-    return;
-  }
-  me = { nama, npm };
-  localStorage.setItem('qunisba-me', JSON.stringify(me));
-  renderDaftar();
+async function loadClasses(){
+  const list = await api('/api/classes/public');
+  const sel = document.getElementById('in-class');
+  sel.innerHTML = list.length
+    ? list.map(c => `<option value="${c.id}">${c.name}${c.course ? ' - ' + c.course : ''} (${c.n_students} mahasiswa)</option>`).join('')
+    : '<option value="">Belum ada kelas terbuka, hubungi dosen</option>';
 }
+function showErr(msg){ const e = document.getElementById('a-err'); e.textContent = msg; e.classList.remove('hidden'); }
+async function doLogin(){
+  try {
+    await api('/api/auth/mahasiswa/login', { method:'POST', body: JSON.stringify({
+      npm: document.getElementById('in-npm').value.trim(),
+      password: document.getElementById('in-pass').value }) });
+    boot();
+  } catch (e) { showErr(e.error || 'Gagal masuk'); }
+}
+async function doRegister(){
+  try {
+    await api('/api/auth/mahasiswa/register', { method:'POST', body: JSON.stringify({
+      nama: document.getElementById('in-nama').value.trim(),
+      npm: document.getElementById('in-npm').value.trim(),
+      password: document.getElementById('in-pass').value,
+      class_id: Number(document.getElementById('in-class').value) }) });
+    boot();
+  } catch (e) { showErr(e.error || 'Gagal mendaftar'); }
+}
+async function logout(){ await api('/api/auth/logout', { method:'POST' }); renderAuth(); }
 
-// ---- STEP 2: daftar quiz terbuka ----
-async function renderDaftar(){
-  app.innerHTML = '<div class="card muted"><i class="fa-solid fa-spinner fa-spin"></i> Memuat daftar quiz...</div>';
-  const [res, st] = await Promise.all([
-    fetch('/api/quizzes').then(r => r.json()),
-    fetch('/api/my-status?npm=' + encodeURIComponent(me.npm)).then(r => r.json())
+// ===== halaman utama mahasiswa =====
+let me = null;
+async function renderHome(){
+  app.innerHTML = '<div class="card muted"><i class="fa-solid fa-spinner fa-spin"></i> Memuat...</div>';
+  const [quizzes, hasil] = await Promise.all([
+    api('/api/student/quizzes'), api('/api/student/results')
   ]);
-  const done = new Set(st.done || []);
-  const now = Date.now();
-  const list = res.filter(q => !q.deadline || new Date(q.deadline).getTime() > now);
+  const belum = quizzes.filter(q => !q.done);
+  const selesai = quizzes.filter(q => q.done);
   app.innerHTML = `
-  <div class="topbar"><h2>Daftar Quiz, ${me.nama}</h2>
-    <button class="btn btn-ghost" onclick="keluar()"><i class="fa-solid fa-right-from-bracket"></i></button></div>
+  <div class="topbar">
+    <div><h2 style="margin:0">Halo, ${me.nama}</h2>
+      <div class="muted">Kelas ${me.class_name || '-'}${me.course ? ' - ' + me.course : ''} · NPM ${me.npm}</div></div>
+    <button class="btn btn-ghost" onclick="logout()"><i class="fa-solid fa-right-from-bracket"></i> Keluar</button>
+  </div>
   <div class="card">
-    ${list.length === 0 ? '<p class="muted">Belum ada quiz yang terbuka saat ini.</p>' : ''}
-    ${list.map(q => {
-      const sudah = done.has(q.id);
-      return `<div class="q-row" ${sudah ? '' : `onclick="bukaQuiz(${q.id})"`}>
-        <span class="tag ${q.type === 'pre' ? 'tag-pre' : 'tag-post'}">${q.type.toUpperCase()} TEST</span>
-        <div style="flex:1">
-          <div style="font-weight:600;font-size:14px">${q.title}</div>
-          <div class="muted" style="font-size:11.5px;margin-top:3px">${q.course || ''}${q.class_name ? ' · Kelas ' + q.class_name : ''}${q.duration_min ? ' · ' + q.duration_min + ' menit' : ''}</div>
-        </div>
-        ${sudah ? '<span class="tag" style="background:var(--green-soft);color:var(--green)">Sudah dikerjakan</span>' : '<i class="fa-solid fa-chevron-right" style="color:var(--muted)"></i>'}
-      </div>`;
-    }).join('')}
-  </div>`;
+    <h2>Quiz Menunggu Dikerjakan</h2>
+    ${belum.length === 0 ? '<p class="muted">Tidak ada quiz yang menunggu.</p>' : ''}
+    ${belum.map(q => quizRow(q)).join('')}
+  </div>
+  ${selesai.length ? `
+  <div class="card">
+    <h2>Sudah Dikerjakan</h2>
+    ${selesai.map(q => quizRow(q, true)).join('')}
+  </div>` : ''}
+  ${hasil.gains.length ? `
+  <div class="card">
+    <h2>Perkembangan Pre vs Post</h2>
+    <table><tr><th>Paket</th><th>Pre</th><th>Post</th><th>N-Gain</th></tr>
+    ${hasil.gains.map(g => `<tr><td>${g.key}</td><td>${g.pre}</td><td>${g.post}</td>
+      <td style="font-weight:700;color:var(--green)">${g.ngain.toFixed(2)}</td></tr>`).join('')}
+    </table>
+  </div>` : ''}`;
 }
-function keluar(){
-  localStorage.removeItem('qunisba-me');
-  me = { nama:'', npm:'' };
-  renderIdentitas();
+function quizRow(q, done){
+  const status = done
+    ? `<span style="font-weight:700;color:var(--blue)">${q.my_score}</span><span class="tag tag-ok" style="margin-left:8px">Selesai</span>`
+    : q.open ? '<i class="fa-solid fa-chevron-right" style="color:var(--muted)"></i>'
+             : '<span class="tag tag-lock">Ditutup</span>';
+  return `<div class="q-row ${!done && q.open ? 'click' : ''}" ${!done && q.open ? `onclick="bukaQuiz(${q.id})"` : ''}>
+    <span class="tag ${q.type === 'pre' ? 'tag-pre' : 'tag-post'}">${q.type.toUpperCase()} TEST</span>
+    <div style="flex:1">
+      <div style="font-weight:600;font-size:14px">${q.title}</div>
+      <div class="muted" style="font-size:11.5px;margin-top:3px">${q.duration_min ? q.duration_min + ' menit' : 'tanpa batas waktu'}</div>
+    </div>${status}</div>`;
 }
 
-// ---- STEP 3: kerjakan quiz ----
-let quizNow = null;
+// ===== kerjakan quiz =====
 async function bukaQuiz(id){
   app.innerHTML = '<div class="card muted"><i class="fa-solid fa-spinner fa-spin"></i> Memuat soal...</div>';
-  const q = await fetch('/api/quizzes/' + id).then(r => r.json());
-  if (q.error) { app.innerHTML = `<div class="card muted">${q.error}</div>`; return; }
-  quizNow = q;
-  renderSoal(0, {});
+  try {
+    quizNow = await api('/api/student/quiz/' + id);
+    answersCache = {}; deadlineTs = null;
+    renderSoal(0);
+  } catch (e) { app.innerHTML = `<div class="card" style="color:var(--red)">${e.error}</div>`; }
 }
-
-function renderSoal(pos, answers){
+function renderSoal(pos){
   const q = quizNow.questions[pos];
   const pct = Math.round((pos / quizNow.questions.length) * 100);
   app.innerHTML = `
@@ -145,27 +207,21 @@ function renderSoal(pos, answers){
     <div class="qnum">Soal ${pos + 1} dari ${quizNow.questions.length}</div>
     <div class="qtext">${q.text}</div>
     ${q.options.map((o, i) => `
-      <div class="opt-row ${answers[q.id] === i ? 'picked' : ''}" onclick="jawab(${pos}, ${i})">
-        <span class="opt-idx">${'ABCD'[i] || i + 1}</span>${o}
-      </div>`).join('')}
+      <div class="opt-row ${answersCache[q.id] === i ? 'picked' : ''}" onclick="jawab(${pos}, ${i})">
+        <span class="opt-idx">${'ABCD'[i] || i + 1}</span>${o}</div>`).join('')}
   </div>
   <div style="display:flex;justify-content:space-between">
-    <button class="btn btn-ghost" ${pos === 0 ? 'disabled' : ''} onclick="renderSoal(${pos - 1}, answersCache)"><i class="fa-solid fa-arrow-left"></i> Sebelumnya</button>
+    <button class="btn btn-ghost" ${pos === 0 ? 'disabled' : ''} onclick="renderSoal(${pos - 1})"><i class="fa-solid fa-arrow-left"></i> Sebelumnya</button>
     ${pos === quizNow.questions.length - 1
       ? '<button class="btn" onclick="submitQuiz()"><i class="fa-regular fa-paper-plane"></i> Kirim Jawaban</button>'
-      : '<button class="btn" onclick="renderSoal(' + (pos + 1) + ', answersCache)">Lanjut <i class="fa-solid fa-arrow-right"></i></button>'}
+      : `<button class="btn" onclick="renderSoal(${pos + 1})">Lanjut <i class="fa-solid fa-arrow-right"></i></button>`}
   </div>`;
   startTimerOnce();
 }
-
-let answersCache = {};
 function jawab(pos, i){
-  const q = quizNow.questions[pos];
-  answersCache[q.id] = i;
-  renderSoal(pos, answersCache);
+  answersCache[quizNow.questions[pos].id] = i;
+  renderSoal(pos);
 }
-
-let deadlineTs = null;
 function startTimerOnce(){
   if (!quizNow.duration_min || deadlineTs) return;
   deadlineTs = Date.now() + quizNow.duration_min * 60000;
@@ -173,41 +229,42 @@ function startTimerOnce(){
     const left = Math.max(0, deadlineTs - Date.now());
     const el = document.getElementById('timer');
     if (el) {
-      const m = Math.floor(left / 60000), s = Math.floor((left % 60000) / 1000);
-      el.textContent = m + ':' + String(s).padStart(2, '0');
+      el.textContent = Math.floor(left / 60000) + ':' + String(Math.floor(left % 60000 / 1000)).padStart(2, '0');
       el.classList.toggle('low', left < 60000);
     }
     if (left <= 0) { clearInterval(timerId); submitQuiz(); }
   }, 500);
 }
-
 async function submitQuiz(){
   if (timerId) clearInterval(timerId);
-  const unanswered = quizNow.questions.filter(q => answersCache[q.id] === undefined).length;
-  if (unanswered > 0 && !confirm('Masih ada ' + unanswered + ' soal belum dijawab. Kirim sekarang?')) return;
+  const kosong = quizNow.questions.filter(q => answersCache[q.id] === undefined).length;
+  if (kosong > 0 && !confirm('Masih ada ' + kosong + ' soal belum dijawab. Kirim sekarang?')) return;
   app.innerHTML = '<div class="card muted"><i class="fa-solid fa-spinner fa-spin"></i> Mengirim jawaban...</div>';
-  const res = await fetch('/api/quizzes/' + quizNow.id + '/submit', {
-    method: 'POST', headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ nama: me.nama, npm: me.npm, answers: answersCache })
-  }).then(r => r.json());
-  if (res.error) { app.innerHTML = `<div class="card" style="color:var(--red)"><i class="fa-solid fa-circle-exclamation"></i> ${res.error}</div>`; return; }
-  deadlineTs = null;
-  renderHasil(res);
+  try {
+    const res = await api('/api/student/quiz/' + quizNow.id + '/submit', {
+      method: 'POST', body: JSON.stringify({ answers: answersCache }) });
+    deadlineTs = null;
+    app.innerHTML = `
+    <div class="card result">
+      <div class="big">${res.score}</div>
+      <div class="sub">Skor kamu, benar ${res.correct} dari ${res.total} soal</div>
+      ${res.ngain !== null ? `<div class="ngain"><i class="fa-solid fa-chart-line"></i> N-Gain kamu: ${res.ngain.toFixed(2)}</div>` : ''}
+      <div style="margin-top:18px"><button class="btn" onclick="renderHome()"><i class="fa-solid fa-list"></i> Kembali</button></div>
+    </div>`;
+  } catch (e) {
+    app.innerHTML = `<div class="card" style="color:var(--red)"><i class="fa-solid fa-circle-exclamation"></i> ${e.error}</div>`;
+  }
 }
 
-function renderHasil(res){
-  app.innerHTML = `
-  <div class="card result">
-    <div class="big">${res.score}</div>
-    <div class="sub">Skor kamu, benar ${res.correct} dari ${res.total} soal</div>
-    ${res.ngain !== null ? `<div class="ngain"><i class="fa-solid fa-chart-line"></i> N-Gain kamu: ${res.ngain.toFixed(2)}</div>` : ''}
-    <div style="margin-top:18px"><button class="btn" onclick="renderDaftar()"><i class="fa-solid fa-list"></i> Kembali ke Daftar Quiz</button></div>
-  </div>`;
+// boot: cek sesi
+async function boot(){
+  try {
+    me = await api('/api/me');
+    if (me.role !== 'mahasiswa') { renderAuth(); return; }
+    renderHome();
+  } catch (e) { renderAuth(); }
 }
-
-// boot
-const saved = localStorage.getItem('qunisba-me');
-if (saved) { me = JSON.parse(saved); renderDaftar(); } else renderIdentitas();
+boot();
 </script>
 </body>
 </html>
