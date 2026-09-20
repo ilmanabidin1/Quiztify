@@ -94,4 +94,7 @@ CREATE INDEX IF NOT EXISTS idx_attempts_quiz ON attempts(quiz_id);
 
 db.exec(`PRAGMA user_version = ${SCHEMA_VERSION}`);
 
+// kolom manual_pw: ditandai saat dosen ganti password dari UI, agar env tidak menimpanya
+try { db.exec('ALTER TABLE dosen ADD COLUMN manual_pw INTEGER DEFAULT 0'); } catch (e) { /* kolom sudah ada */ }
+
 module.exports = db;

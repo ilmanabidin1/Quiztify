@@ -109,6 +109,39 @@ async function doLogin(){
     el.classList.remove('hidden');
   }
 }
+function renderGantiPass(){
+  const m = document.createElement('div');
+  m.className = 'modal';
+  m.id = 'm-pass';
+  m.innerHTML = `
+    <div class="box" style="max-width:420px">
+      <h2><i class="fa-solid fa-key"></i> Ganti Password</h2>
+      <label>Password Sekarang</label><input class="input" type="password" id="p-cur" autocomplete="current-password">
+      <label>Password Baru (min 6 karakter)</label><input class="input" type="password" id="p-new" autocomplete="new-password">
+      <label>Ulangi Password Baru</label><input class="input" type="password" id="p-new2" autocomplete="new-password">
+      <p class="err hidden" id="p-err"></p>
+      <div style="display:flex;gap:10px;margin-top:14px">
+        <button class="btn" onclick="doGantiPass()"><i class="fa-solid fa-check"></i> Simpan</button>
+        <button class="btn btn-ghost" onclick="document.getElementById('m-pass').remove()">Batal</button>
+      </div>
+    </div>`;
+  document.body.appendChild(m);
+}
+async function doGantiPass(){
+  const cur = document.getElementById('p-cur').value;
+  const next = document.getElementById('p-new').value;
+  const next2 = document.getElementById('p-new2').value;
+  const err = document.getElementById('p-err');
+  if (next !== next2) { err.textContent = 'Password baru dan pengulangannya tidak sama'; err.classList.remove('hidden'); return; }
+  try {
+    await api('/api/dosen/change-password', { method:'POST', body: JSON.stringify({ current: cur, next }) });
+    document.getElementById('m-pass').remove();
+    toast('Password berhasil diganti');
+  } catch (e) {
+    err.textContent = e.error || 'Gagal mengganti password';
+    err.classList.remove('hidden');
+  }
+}
 async function logout(){ await api('/api/auth/logout', { method:'POST' }); me = null; renderLogin(); }
 
 // ===== dashboard kelas =====
@@ -118,6 +151,7 @@ async function renderDashboard(){
   <div class="topline">
     <div style="flex:1"><h2 style="margin:0">Dashboard Dosen</h2><div class="muted">${me.nama} · ${me.email}</div></div>
     <button class="btn" onclick="renderFormKelas()"><i class="fa-solid fa-plus"></i> Buat Kelas</button>
+    <button class="btn btn-ghost" onclick="renderGantiPass()"><i class="fa-solid fa-key"></i> Ganti Password</button>
     <button class="btn btn-ghost" onclick="logout()"><i class="fa-solid fa-right-from-bracket"></i></button>
   </div>
   <div class="card">

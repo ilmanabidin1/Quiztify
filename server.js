@@ -59,11 +59,11 @@ function ngain(pre, post) {
 
 // seed akun dosen default; jika DOSEN_PASSWORD env berubah, hash di DB ikut diperbarui (env = sumber kebenaran)
 const DOSEN_ENV_PASS = process.env.DOSEN_PASSWORD;
-const dosenRow = db.prepare('SELECT id, password_hash FROM dosen LIMIT 1').get();
+const dosenRow = db.prepare('SELECT id, password_hash, manual_pw FROM dosen LIMIT 1').get();
 if (!dosenRow) {
   db.prepare('INSERT INTO dosen (nama, email, password_hash) VALUES (?, ?, ?)').run(
     'Dosen', 'dosen@unisba.ac.id', hashPassword(DOSEN_ENV_PASS || 'unisba2026'));
-} else if (DOSEN_ENV_PASS && !verifyPassword(DOSEN_ENV_PASS, dosenRow.password_hash)) {
+} else if (DOSEN_ENV_PASS && !dosenRow.manual_pw && !verifyPassword(DOSEN_ENV_PASS, dosenRow.password_hash)) {
   db.prepare('UPDATE dosen SET password_hash = ? WHERE id = ?').run(hashPassword(DOSEN_ENV_PASS), dosenRow.id);
 }
 
@@ -198,6 +198,15 @@ app.get('/api/student/results', requireStudent, (req, res) => {
 });
 
 // ---------- dosen ----------
+app.post('/api/dosen/change-password', requireRole('dosen'), (req, res) => {
+  const { current, next } = req.body || {};
+  if (!next || String(next).length < 6) return res.status(400).json({ error: 'Password baru minimal 6 karakter' });
+  const d = db.prepare('SELECT * FROM dosen WHERE id = ?').get(req.auth.user_id);
+  if (!verifyPassword(current, d.password_hash)) return res.status(401).json({ error: 'Password sekarang salah' });
+  db.prepare('UPDATE dosen SET password_hash = ?, manual_pw = 1 WHERE id = ?').run(hashPassword(String(next)), d.id);
+  res.json({ ok: true });
+});
+
 app.get('/api/dosen/classes', requireRole('dosen'), (req, res) => {
   res.json(db.prepare(`SELECT c.id, c.name, c.course, c.created_at,
       (SELECT COUNT(*) FROM students s WHERE s.class_id = c.id) AS n_students,
