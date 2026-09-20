@@ -2,6 +2,7 @@
 const express = require('express');
 const crypto = require('crypto');
 const path = require('path');
+const QRCode = require('qrcode');
 const db = require('./db');
 
 const app = express();
@@ -243,6 +244,18 @@ app.post('/api/dosen/quizzes', requireRole('dosen'), (req, res) => {
     ins.run(info.lastInsertRowid, i + 1, norm(questions[i].text), JSON.stringify(questions[i].options), questions[i].correct);
   }
   res.json({ id: info.lastInsertRowid });
+});
+
+app.get('/api/dosen/quizzes/:id/qr', requireRole('dosen'), (req, res) => {
+  const q = db.prepare(`SELECT q.id FROM quizzes q JOIN classes c ON c.id = q.class_id
+    WHERE q.id = ? AND c.dosen_id = ?`).get(req.params.id, req.auth.user_id);
+  if (!q) return res.status(404).json({ error: 'Quiz tidak ditemukan' });
+  const base = process.env.PUBLIC_BASE_URL || req.headers.origin || `http://localhost:${process.env.PORT || 3000}`;
+  const url = `${base.replace(/\/$/, '')}/?quiz=${q.id}`;
+  QRCode.toDataURL(url, { margin: 1, width: 320, color: { dark: '#0b1a30', light: '#ffffff' } }, (err, dataUrl) => {
+    if (err) return res.status(500).json({ error: 'Gagal membuat QR' });
+    res.json({ url, qr: dataUrl });
+  });
 });
 
 app.delete('/api/dosen/quizzes/:id', requireRole('dosen'), (req, res) => {

@@ -256,11 +256,26 @@ async function submitQuiz(){
   }
 }
 
-// boot: cek sesi
+// boot: cek sesi + deep link dari QR (?quiz=ID)
+function stashPending(){
+  const fromUrl = new URLSearchParams(location.search).get('quiz');
+  if (fromUrl && /^\d+$/.test(fromUrl)) {
+    localStorage.setItem('qunisba-pending-quiz', fromUrl);
+    history.replaceState(null, '', '/');
+  }
+}
+function consumePending(){
+  const p = localStorage.getItem('qunisba-pending-quiz');
+  if (p) localStorage.removeItem('qunisba-pending-quiz');
+  return p;
+}
 async function boot(){
+  stashPending();
   try {
     me = await api('/api/me');
     if (me.role !== 'mahasiswa') { renderAuth(); return; }
+    const pending = consumePending();
+    if (pending) { bukaQuiz(pending); return; }
     renderHome();
   } catch (e) { renderAuth(); }
 }
