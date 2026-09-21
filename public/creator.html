@@ -76,12 +76,60 @@
   .nav-btn i { width: 18px; text-align: center; font-size: 15px; }
 
   .user-footer {
-    padding: 16px; border-top: 1px solid var(--border); display: flex; align-items: center; justify-content: space-between;
+    padding: 12px 14px; border-top: 1px solid var(--border); position: relative;
   }
-  .user-chip { display: flex; align-items: center; gap: 10px; overflow: hidden; }
-  .user-avatar { width: 36px; height: 36px; border-radius: 10px; background: var(--purple); display: flex; align-items: center; justify-content: center; font-size: 18px; }
-  .user-meta b { font-size: 13px; color: #fff; display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 120px; }
+  .user-chip {
+    display: flex; align-items: center; gap: 10px; overflow: hidden;
+    padding: 10px 12px; border-radius: 12px; cursor: pointer;
+    transition: background 0.15s; border: 1px solid transparent; width: 100%;
+    background: none;
+  }
+  .user-chip:hover { background: var(--bg-card); border-color: var(--border); }
+  .user-chip.open { background: var(--bg-card); border-color: rgba(118,216,58,0.25); }
+  .user-avatar { width: 36px; height: 36px; border-radius: 10px; background: var(--purple); display: flex; align-items: center; justify-content: center; font-size: 18px; flex-shrink: 0; }
+  .user-meta { flex: 1; min-width: 0; text-align: left; }
+  .user-meta b { font-size: 13px; color: #fff; display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 130px; }
   .user-meta span { font-size: 11px; color: var(--emerald); font-weight: 700; display: flex; align-items: center; gap: 4px; }
+  .user-chip-caret { color: var(--text-muted); font-size: 11px; transition: transform 0.2s; flex-shrink: 0; }
+  .user-chip.open .user-chip-caret { transform: rotate(180deg); }
+
+  /* Profile Popup Dropdown */
+  .profile-dropdown {
+    position: absolute; bottom: calc(100% + 8px); left: 14px; right: 14px;
+    background: #1a1040; border: 1px solid rgba(118,216,58,0.25);
+    border-radius: 16px; box-shadow: 0 -8px 40px rgba(0,0,0,0.6);
+    z-index: 9999; overflow: hidden;
+    animation: popUp 0.18s ease;
+  }
+  @keyframes popUp { from { opacity:0; transform: translateY(8px); } to { opacity:1; transform: translateY(0); } }
+
+  .profile-dropdown-header {
+    padding: 16px 16px 12px;
+    border-bottom: 1px solid var(--border);
+    display: flex; align-items: center; gap: 12px;
+  }
+  .profile-dropdown-avatar {
+    width: 44px; height: 44px; border-radius: 12px; background: linear-gradient(135deg, var(--purple), var(--cyan));
+    display: flex; align-items: center; justify-content: center; font-size: 22px; flex-shrink: 0;
+  }
+  .profile-dropdown-info { min-width: 0; }
+  .profile-dropdown-name { font-size: 14px; font-weight: 800; color: #fff; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .profile-dropdown-email { font-size: 11px; color: var(--text-muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin-top: 2px; }
+  .profile-dropdown-inst { font-size: 11px; color: var(--cyan); font-weight: 700; display: flex; align-items: center; gap: 4px; margin-top: 3px; }
+
+  .profile-dropdown-body { padding: 8px; }
+  .profile-menu-item {
+    display: flex; align-items: center; gap: 12px;
+    padding: 11px 12px; border-radius: 10px; cursor: pointer;
+    font-size: 13.5px; font-weight: 600; color: var(--text-muted);
+    border: none; background: none; width: 100%; text-align: left;
+    transition: all 0.15s;
+  }
+  .profile-menu-item:hover { background: rgba(255,255,255,0.06); color: #fff; }
+  .profile-menu-item i { width: 16px; text-align: center; font-size: 14px; }
+  .profile-menu-item.danger { color: #fda4af; }
+  .profile-menu-item.danger:hover { background: rgba(244,63,94,0.1); color: var(--rose); }
+  .profile-menu-divider { height: 1px; background: var(--border); margin: 4px 8px; }
 
   /* Main Container */
   .main-content { flex: 1; display: flex; flex-direction: column; min-width: 0; }
@@ -760,14 +808,39 @@
   </div>
 
   <div class="user-footer">
-    <div class="user-chip">
+    <!-- Profile Dropdown Popup (muncul ke atas saat chip diklik) -->
+    <div class="profile-dropdown hidden" id="profile-popup">
+      <div class="profile-dropdown-header">
+        <div class="profile-dropdown-avatar" id="popup-avatar">👨‍🏫</div>
+        <div class="profile-dropdown-info">
+          <div class="profile-dropdown-name" id="popup-name">Nama Creator</div>
+          <div class="profile-dropdown-email" id="popup-email">—</div>
+          <div class="profile-dropdown-inst"><i class="fa-solid fa-building-columns"></i> <span id="popup-inst">Quiztify Academy</span></div>
+        </div>
+      </div>
+      <div class="profile-dropdown-body">
+        <button class="profile-menu-item" onclick="closeProfilePopup();switchNav('pricing')">
+          <i class="fa-solid fa-crown" style="color:var(--gold)"></i> Paket Langganan
+        </button>
+        <button class="profile-menu-item" onclick="closeProfilePopup();openProfileSettings()">
+          <i class="fa-solid fa-user-pen" style="color:var(--cyan)"></i> Pengaturan Profil
+        </button>
+        <div class="profile-menu-divider"></div>
+        <button class="profile-menu-item danger" onclick="doLogout()">
+          <i class="fa-solid fa-arrow-right-from-bracket"></i> Keluar
+        </button>
+      </div>
+    </div>
+
+    <!-- Chip yang diklik -->
+    <button class="user-chip" id="profile-chip-btn" onclick="toggleProfilePopup()">
       <div class="user-avatar" id="side-avatar">👨‍🏫</div>
       <div class="user-meta">
         <b id="side-name">Nama Creator</b>
         <span id="side-plan"><i class="fa-solid fa-crown"></i> PRO CREATOR</span>
       </div>
-    </div>
-    <button class="btn btn-ghost" style="padding:8px" onclick="doLogout()" title="Keluar"><i class="fa-solid fa-arrow-right-from-bracket"></i></button>
+      <i class="fa-solid fa-chevron-up user-chip-caret"></i>
+    </button>
   </div>
 </aside>
 
@@ -1982,6 +2055,62 @@
   </div>
 </div>
 
+<!-- ===================== MODAL PENGATURAN PROFIL ===================== -->
+<div id="modal-profile-settings" class="modal-overlay hidden" onclick="if(event.target===this)closeProfileSettings()">
+  <div class="modal-box" style="max-width:460px">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:22px">
+      <div>
+        <h2 style="font-size:19px;font-weight:800">Pengaturan Profil</h2>
+        <p style="font-size:12px;color:var(--text-muted);margin-top:3px">Perbarui nama, institusi, atau password</p>
+      </div>
+      <button class="btn btn-ghost" style="padding:8px" onclick="closeProfileSettings()"><i class="fa-solid fa-xmark"></i></button>
+    </div>
+
+    <!-- Alert -->
+    <div class="alert-banner" id="ps-msg" style="margin-bottom:16px">
+      <i class="fa-solid fa-circle-check"></i><span></span>
+    </div>
+
+    <form onsubmit="saveProfileSettings(event)" style="display:flex;flex-direction:column;gap:16px">
+      <div>
+        <label style="font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:.5px;color:var(--text-muted);display:block;margin-bottom:6px">
+          <i class="fa-solid fa-user" style="color:var(--primary-light)"></i> Nama Lengkap
+        </label>
+        <input id="ps-nama" type="text" class="input" placeholder="Nama lengkap kamu" required>
+      </div>
+      <div>
+        <label style="font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:.5px;color:var(--text-muted);display:block;margin-bottom:6px">
+          <i class="fa-solid fa-building-columns" style="color:var(--cyan)"></i> Institusi
+        </label>
+        <input id="ps-institution" type="text" class="input" placeholder="Universitas / Sekolah">
+      </div>
+      <div>
+        <label style="font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:.5px;color:var(--text-muted);display:block;margin-bottom:6px">
+          <i class="fa-solid fa-envelope" style="color:var(--amber)"></i> Email (tidak dapat diubah)
+        </label>
+        <input id="ps-email" type="email" class="input" style="opacity:.55;cursor:not-allowed" readonly>
+      </div>
+
+      <div style="border-top:1px solid var(--border);padding-top:16px">
+        <p style="font-size:12px;color:var(--text-muted);margin-bottom:12px">
+          <i class="fa-solid fa-lock" style="color:var(--primary-light)"></i> Ganti Password (kosongkan jika tidak ingin mengubah)
+        </p>
+        <div style="display:flex;flex-direction:column;gap:10px">
+          <input id="ps-pw" type="password" class="input" placeholder="Password baru (min. 6 karakter)">
+          <input id="ps-pw-confirm" type="password" class="input" placeholder="Konfirmasi password baru">
+        </div>
+      </div>
+
+      <div style="display:flex;gap:10px;margin-top:4px">
+        <button type="button" class="btn btn-ghost" style="flex:1;justify-content:center" onclick="closeProfileSettings()">Batal</button>
+        <button type="submit" class="btn btn-emerald" style="flex:2;justify-content:center;font-weight:800">
+          <i class="fa-solid fa-floppy-disk"></i> Simpan Perubahan
+        </button>
+      </div>
+    </form>
+  </div>
+</div>
+
 <script>
 // ---------- STUDIO STATE & ENGINE ----------
 let me = null;
@@ -2013,6 +2142,7 @@ async function fetchProfile() {
     document.getElementById('side-name').textContent = me.nama || 'Creator Pro';
     const planName = (me.plan || 'pro').toUpperCase();
     document.getElementById('side-plan').innerHTML = `<i class="fa-solid fa-crown"></i> ${planName} CREATOR`;
+    updateProfilePopup();
 
     const planBanner = document.getElementById('pricing-active-plan-name');
     if (planBanner) planBanner.textContent = `${planName} Creator (Aktif)`;
@@ -2032,6 +2162,91 @@ function doLogout() {
   fetch('/api/auth/logout', { method: 'POST' }).then(() => {
     window.location.replace('/login.html');
   });
+}
+
+// ============================================================
+// PROFILE DROPDOWN
+// ============================================================
+function toggleProfilePopup() {
+  const popup = document.getElementById('profile-popup');
+  const chip  = document.getElementById('profile-chip-btn');
+  const isHidden = popup.classList.contains('hidden');
+  popup.classList.toggle('hidden', !isHidden);
+  chip.classList.toggle('open', isHidden);
+}
+
+function closeProfilePopup() {
+  document.getElementById('profile-popup').classList.add('hidden');
+  document.getElementById('profile-chip-btn').classList.remove('open');
+}
+
+// Tutup saat klik di luar sidebar
+document.addEventListener('click', (e) => {
+  if (!e.target.closest('.user-footer')) closeProfilePopup();
+});
+
+function updateProfilePopup() {
+  if (!me) return;
+  const initials = (me.nama || 'C').charAt(0).toUpperCase();
+  document.getElementById('popup-avatar').textContent = initials;
+  document.getElementById('side-avatar').textContent = initials;
+  document.getElementById('popup-name').textContent  = me.nama || 'Creator';
+  document.getElementById('popup-email').textContent = me.email || '—';
+  document.getElementById('popup-inst').textContent  = me.institution || 'Quiztify Academy';
+}
+
+// ============================================================
+// MODAL PENGATURAN PROFIL
+// ============================================================
+function openProfileSettings() {
+  if (!me) return;
+  const modal = document.getElementById('modal-profile-settings');
+  document.getElementById('ps-nama').value = me.nama || '';
+  document.getElementById('ps-institution').value = me.institution || '';
+  document.getElementById('ps-email').value = me.email || '';
+  document.getElementById('ps-pw').value = '';
+  document.getElementById('ps-pw-confirm').value = '';
+  document.getElementById('ps-msg').className = 'alert-banner';
+  modal.classList.remove('hidden');
+}
+function closeProfileSettings() {
+  document.getElementById('modal-profile-settings').classList.add('hidden');
+}
+async function saveProfileSettings(e) {
+  e.preventDefault();
+  const nama = document.getElementById('ps-nama').value.trim();
+  const institution = document.getElementById('ps-institution').value.trim();
+  const pw = document.getElementById('ps-pw').value;
+  const pwc = document.getElementById('ps-pw-confirm').value;
+  const msg = document.getElementById('ps-msg');
+
+  if (!nama || nama.length < 2) { showPsMsg('Nama minimal 2 karakter.', 'error'); return; }
+  if (pw && pw.length < 6) { showPsMsg('Password baru minimal 6 karakter.', 'error'); return; }
+  if (pw && pw !== pwc) { showPsMsg('Konfirmasi password tidak cocok.', 'error'); return; }
+
+  const body = { nama, institution };
+  if (pw) body.password = pw;
+
+  try {
+    const res = await fetch('/api/creator/profile', {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body)
+    });
+    const data = await res.json();
+    if (!res.ok) { showPsMsg(data.error || 'Gagal menyimpan.', 'error'); return; }
+    me = { ...me, nama, institution };
+    document.getElementById('side-name').textContent = nama;
+    updateProfilePopup();
+    showPsMsg('Profil berhasil diperbarui! ✅', 'success');
+  } catch (err) {
+    showPsMsg('Koneksi bermasalah.', 'error');
+  }
+}
+function showPsMsg(text, type) {
+  const el = document.getElementById('ps-msg');
+  el.className = 'alert-banner ' + type;
+  el.querySelector('span').textContent = text;
 }
 
 function switchNav(tab) {

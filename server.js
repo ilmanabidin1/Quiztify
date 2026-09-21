@@ -358,6 +358,24 @@ app.get('/api/me', (req, res) => {
   res.json({ role: 'student', ...s });
 });
 
+// Update Creator Profile
+app.put('/api/creator/profile', requireRole('creator', 'dosen'), (req, res) => {
+  const { nama, institution, password } = req.body || {};
+  const n = norm(nama), inst = norm(institution) || 'Quiztify Academy';
+  if (!n || n.length < 2) return res.status(400).json({ error: 'Nama minimal 2 karakter.' });
+  if (password && password.length < 6) return res.status(400).json({ error: 'Password baru minimal 6 karakter.' });
+
+  if (password) {
+    db.prepare('UPDATE dosen SET nama=?, institution=?, password_hash=? WHERE id=?')
+      .run(n, inst, hashPassword(password), req.auth.user_id);
+  } else {
+    db.prepare('UPDATE dosen SET nama=?, institution=? WHERE id=?')
+      .run(n, inst, req.auth.user_id);
+  }
+  const updated = db.prepare('SELECT id, nama, email, plan, institution FROM dosen WHERE id=?').get(req.auth.user_id);
+  res.json({ ok: true, ...updated });
+});
+
 // Mock Upgrade Subscription
 app.post('/api/subscription/upgrade', requireRole('creator', 'dosen'), (req, res) => {
   const { plan } = req.body || {};
