@@ -650,6 +650,78 @@
   .switch-toggle input:checked + .switch-slider:before {
     transform: translateX(20px);
   }
+
+  /* Quiz Card Pop-up Menu (3 Dots) */
+  .card-more-container {
+    position: relative;
+    display: inline-block;
+  }
+  .btn-more-toggle {
+    transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+  }
+  .btn-more-toggle:hover, .btn-more-toggle.active {
+    background: rgba(124, 58, 237, 0.2) !important;
+    color: var(--primary) !important;
+    border-color: var(--purple-light) !important;
+  }
+  .quiz-card-dropdown {
+    position: absolute;
+    right: 0;
+    bottom: calc(100% + 8px);
+    width: 224px;
+    background: #18103c;
+    border: 1px solid rgba(124, 58, 237, 0.45);
+    border-radius: 16px;
+    box-shadow: 0 16px 40px rgba(0, 0, 0, 0.7), 0 0 0 1px rgba(255, 255, 255, 0.08);
+    padding: 6px;
+    z-index: 150;
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+    backdrop-filter: blur(20px);
+    transform-origin: bottom right;
+    animation: quizDropdownIn 0.18s cubic-bezier(0.16, 1, 0.3, 1);
+  }
+  @keyframes quizDropdownIn {
+    from { opacity: 0; transform: translateY(8px) scale(0.95); }
+    to { opacity: 1; transform: translateY(0) scale(1); }
+  }
+  .quiz-card-dropdown.hidden {
+    display: none !important;
+  }
+  .dropdown-item-btn {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    width: 100%;
+    padding: 9px 12px;
+    background: transparent;
+    border: none;
+    border-radius: 10px;
+    color: var(--text);
+    font-size: 13px;
+    font-weight: 600;
+    text-align: left;
+    cursor: pointer;
+    transition: all 0.15s ease;
+  }
+  .dropdown-item-btn:hover {
+    background: rgba(124, 58, 237, 0.2);
+    color: #fff;
+    transform: translateX(3px);
+  }
+  .dropdown-item-btn.danger {
+    color: var(--rose);
+  }
+  .dropdown-item-btn.danger:hover {
+    background: rgba(244, 63, 94, 0.18);
+    color: #fecdd3;
+  }
+  .dropdown-divider {
+    height: 1px;
+    background: var(--border);
+    margin: 4px 6px;
+  }
 </style>
 </head>
 <body>
@@ -2053,33 +2125,35 @@ function renderQuizCardHtml(q) {
         </div>
       </div>
 
-      <div style="display:flex;flex-direction:column;gap:8px;border-top:1px solid var(--border);padding-top:14px">
-        <!-- Baris 1: Aksi Utama Permainan -->
-        <div style="display:flex;gap:6px">
-          <button class="btn btn-emerald" style="flex:2;justify-content:center;padding:9px 12px;font-weight:800" onclick="hostLiveGame(${q.id})" title="Mulai Sesi Host Live">
-            <i class="fa-solid fa-gamepad"></i> <span>HOST LIVE</span>
+      <div style="display:flex;align-items:center;gap:6px;border-top:1px solid var(--border);padding-top:14px">
+        <button class="btn btn-emerald" style="flex:1;justify-content:center;padding:10px 14px;font-weight:800" onclick="hostLiveGame(${q.id})" title="Mulai Sesi Host Live">
+          <i class="fa-solid fa-gamepad"></i> <span>HOST LIVE</span>
+        </button>
+        <button class="btn btn-ghost" style="padding:10px 14px;justify-content:center" onclick="showQrModal(${q.id})" title="Tampilkan Foto QR Code Kuis">
+          <i class="fa-solid fa-qrcode"></i>
+        </button>
+        <div class="card-more-container">
+          <button class="btn btn-ghost btn-more-toggle" style="padding:10px 13px;justify-content:center" onclick="toggleQuizCardMenu(event, ${q.id})" title="Opsi Lainnya">
+            <i class="fa-solid fa-ellipsis-vertical"></i>
           </button>
-          <button class="btn btn-ghost" style="flex:1;justify-content:center;padding:9px 10px;font-size:12.5px" onclick="showQrModal(${q.id})" title="Tampilkan Foto QR Code Kuis">
-            <i class="fa-solid fa-qrcode"></i> <span>QR</span>
-          </button>
-          <button class="btn btn-ghost" style="flex:1;justify-content:center;padding:9px 10px;font-size:12.5px" onclick="openQuizSettingsModal(${q.id})" title="Setelan Lengkap Kuis (Waktu, Tema & Fitur)">
-            <i class="fa-solid fa-sliders"></i> <span>Setelan</span>
-          </button>
-        </div>
-        <!-- Baris 2: Analisis & Sunting -->
-        <div style="display:flex;gap:6px">
-          <button class="btn btn-primary" style="flex:1.2;justify-content:center;padding:7px 8px;font-size:11.5px" onclick="openDiagnosticModal(${q.id})" title="Analisis Error Rate & Auto-Remedial AI">
-            <i class="fa-solid fa-brain"></i> <span>Diagnostik</span>
-          </button>
-          <button class="btn btn-ghost" style="flex:1.1;justify-content:center;padding:7px 8px;font-size:11.5px" onclick="openBeritaAcaraModal(${q.id})" title="Buka Dokumen Berita Acara Resmi">
-            <i class="fa-solid fa-file-contract"></i> <span>Berita Acara</span>
-          </button>
-          <button class="btn btn-ghost" style="padding:7px 10px;font-size:11.5px" onclick="editQuizInBuilder(${q.id})" title="Sunting Soal di Builder">
-            <i class="fa-solid fa-pen-to-square"></i>
-          </button>
-          <button class="btn btn-danger" style="padding:7px 10px;font-size:11.5px;background:rgba(239,68,68,0.12);color:var(--rose);border:1px solid rgba(239,68,68,0.3)" onclick="confirmDeleteQuiz(${q.id}, '${safeTitle}')" title="Hapus Kuis Ini">
-            <i class="fa-solid fa-trash-can"></i>
-          </button>
+          <div id="quiz-card-menu-${q.id}" class="quiz-card-dropdown hidden">
+            <button class="dropdown-item-btn" onclick="closeAllQuizMenus();openQuizSettingsModal(${q.id})">
+              <i class="fa-solid fa-sliders" style="width:16px;color:var(--cyan)"></i> Setelan Kuis
+            </button>
+            <button class="dropdown-item-btn" onclick="closeAllQuizMenus();openDiagnosticModal(${q.id})">
+              <i class="fa-solid fa-brain" style="width:16px;color:#a78bfa"></i> Diagnostik AI
+            </button>
+            <button class="dropdown-item-btn" onclick="closeAllQuizMenus();openBeritaAcaraModal(${q.id})">
+              <i class="fa-solid fa-file-contract" style="width:16px;color:var(--amber)"></i> Berita Acara
+            </button>
+            <button class="dropdown-item-btn" onclick="closeAllQuizMenus();editQuizInBuilder(${q.id})">
+              <i class="fa-solid fa-pen-to-square" style="width:16px;color:var(--emerald)"></i> Edit Soal
+            </button>
+            <div class="dropdown-divider"></div>
+            <button class="dropdown-item-btn danger" onclick="closeAllQuizMenus();confirmDeleteQuiz(${q.id}, '${safeTitle}')">
+              <i class="fa-solid fa-trash-can" style="width:16px"></i> Hapus Kuis
+            </button>
+          </div>
         </div>
       </div>
     </div>
@@ -2876,19 +2950,36 @@ async function loadClassHubData(classId) {
               </div>
             </div>
 
-            <div style="display:flex;gap:8px;border-top:1px solid var(--border);padding-top:14px">
-              <button class="btn btn-primary" style="flex:1;justify-content:center;padding:9px" onclick="openQuizAttemptsDetail(${q.id})">
-                <i class="fa-solid fa-chart-pie"></i> <span>Hasil & Nilai</span>
+            <div style="display:flex;align-items:center;gap:6px;border-top:1px solid var(--border);padding-top:14px">
+              <button class="btn btn-emerald" style="flex:1;justify-content:center;padding:9px 12px;font-weight:800" onclick="hostLiveGame(${q.id})" title="Host Live Game">
+                <i class="fa-solid fa-gamepad"></i> <span>HOST LIVE</span>
               </button>
-              <button class="btn btn-emerald" style="padding:9px 12px" onclick="hostLiveGame(${q.id})" title="Host Live Game">
-                <i class="fa-solid fa-gamepad"></i>
-              </button>
-              <button class="btn btn-ghost" style="padding:9px 12px" onclick="showQrModal(${q.id})" title="Foto QR / Link Kuis">
+              <button class="btn btn-ghost" style="padding:9px 13px;justify-content:center" onclick="showQrModal(${q.id})" title="Foto QR / Link Kuis">
                 <i class="fa-solid fa-qrcode"></i>
               </button>
-              <button class="btn btn-ghost" style="padding:9px 12px;color:var(--primary)" onclick="openQuizSettingsModal(${q.id})" title="Setelan Lengkap Kuis">
-                <i class="fa-solid fa-gear"></i>
-              </button>
+              <div class="card-more-container">
+                <button class="btn btn-ghost btn-more-toggle" style="padding:9px 12px;justify-content:center" onclick="toggleQuizCardMenu(event, 'cls-${q.id}')" title="Opsi Lainnya">
+                  <i class="fa-solid fa-ellipsis-vertical"></i>
+                </button>
+                <div id="quiz-card-menu-cls-${q.id}" class="quiz-card-dropdown hidden">
+                  <button class="dropdown-item-btn" onclick="closeAllQuizMenus();openQuizAttemptsDetail(${q.id})">
+                    <i class="fa-solid fa-chart-pie" style="width:16px;color:var(--cyan)"></i> Hasil & Nilai
+                  </button>
+                  <button class="dropdown-item-btn" onclick="closeAllQuizMenus();openQuizSettingsModal(${q.id})">
+                    <i class="fa-solid fa-sliders" style="width:16px;color:#a78bfa"></i> Setelan Kuis
+                  </button>
+                  <button class="dropdown-item-btn" onclick="closeAllQuizMenus();openDiagnosticModal(${q.id})">
+                    <i class="fa-solid fa-brain" style="width:16px;color:var(--amber)"></i> Diagnostik AI
+                  </button>
+                  <button class="dropdown-item-btn" onclick="closeAllQuizMenus();editQuizInBuilder(${q.id})">
+                    <i class="fa-solid fa-pen-to-square" style="width:16px;color:var(--emerald)"></i> Edit Soal
+                  </button>
+                  <div class="dropdown-divider"></div>
+                  <button class="dropdown-item-btn danger" onclick="closeAllQuizMenus();confirmDeleteQuiz(${q.id}, '')">
+                    <i class="fa-solid fa-trash-can" style="width:16px"></i> Hapus Kuis
+                  </button>
+                </div>
+              </div>
             </div>
           </div>
         `;
@@ -3320,6 +3411,35 @@ async function showQrModal(quizId) {
 function closeQrModal() {
   document.getElementById('modal-quiz-qr').classList.add('hidden');
 }
+
+// ---------- QUIZ CARD 3-DOTS DROPDOWN MENU ----------
+function closeAllQuizMenus() {
+  document.querySelectorAll('.quiz-card-dropdown').forEach(el => el.classList.add('hidden'));
+  document.querySelectorAll('.btn-more-toggle').forEach(el => el.classList.remove('active'));
+}
+
+function toggleQuizCardMenu(e, menuId) {
+  e.stopPropagation();
+  window.QuizSound?.play('click');
+  const menu = document.getElementById(`quiz-card-menu-${menuId}`);
+  const btn = e.currentTarget;
+  if (!menu) return;
+
+  const isHidden = menu.classList.contains('hidden');
+  closeAllQuizMenus(); // tutup semua yg lain dulu
+
+  if (isHidden) {
+    menu.classList.remove('hidden');
+    btn.classList.add('active');
+  }
+}
+
+// Tutup dropdown saat klik di luar
+document.addEventListener('click', (e) => {
+  if (!e.target.closest('.card-more-container')) {
+    closeAllQuizMenus();
+  }
+});
 
 function copyQrLink() {
   const urlEl = document.getElementById('qr-modal-url');
