@@ -1242,6 +1242,9 @@
         <button class="btn btn-primary" style="padding:6px 12px;font-size:12px;font-weight:700" onclick="openDiagnosticFromDetail()" title="Analisis Kesalahan & Auto-Remedial AI">
           <i class="fa-solid fa-brain"></i> <span>Diagnostik AI</span>
         </button>
+        <button class="btn btn-ghost" style="padding:6px 12px;font-size:12px;font-weight:700;color:var(--purple-light);border-color:rgba(192,132,252,0.4)" onclick="openHostStudyGuideFromDetail()" title="Cetak Rangkuman Materi Kuis (Study Guide)">
+          <i class="fa-solid fa-book-open"></i> <span>Study Guide</span>
+        </button>
         <button class="btn btn-ghost" style="padding:6px 12px;font-size:12px;font-weight:700" onclick="exportCsvFromDetail()" title="Download CSV Format SIAKAD">
           <i class="fa-solid fa-file-csv"></i> <span>CSV SIAKAD</span>
         </button>
@@ -2667,6 +2670,81 @@ function openDiagnosticFromDetail() {
 
 function exportCsvFromDetail() {
   if (currentDetailQuizId) window.open(`/api/quizzes/${currentDetailQuizId}/export-csv`, '_blank');
+}
+
+async function openHostStudyGuide(quizId) {
+  if (!quizId) return;
+  try {
+    const res = await fetch(`/api/quizzes/${quizId}/study-guide`);
+    const data = await res.json();
+    if (!data.ok) return alert('Gagal memuat rangkuman materi kuis');
+
+    const printWin = window.open('', '_blank', 'width=900,height=800');
+    if (!printWin) return alert('Popup diblokir browser. Mohon izinkan popup untuk melihat & mencetak Study Guide.');
+
+    const letters = ['A', 'B', 'C', 'D'];
+    const itemsHtml = data.items.map(item => `
+      <div style="margin-bottom:18px;border-bottom:1px dashed #cbd5e1;padding-bottom:14px;page-break-inside:avoid">
+        <div style="font-weight:800;font-size:14px;color:#0f172a;margin-bottom:6px">
+          ${item.number}. ${item.text}
+        </div>
+        <div style="font-size:12.5px;color:#15803d;font-weight:700;margin-bottom:6px">
+          Kunci Jawaban: ${letters[item.correct_idx]}. ${item.correct_answer}
+        </div>
+        <div style="font-size:12px;color:#475569;background:#f8fafc;padding:8px 12px;border-radius:8px;border:1px solid #e2e8f0;line-height:1.5">
+          <b>Pembahasan &amp; Kunci Konsep:</b> ${item.explanation}
+        </div>
+      </div>
+    `).join('');
+
+    printWin.document.write(`
+      <!DOCTYPE html>
+      <html lang="id">
+      <head>
+        <meta charset="UTF-8">
+        <title>Study Guide - ${data.quiz.title}</title>
+        <style>
+          body { font-family: system-ui, -apple-system, sans-serif; color: #0f172a; padding: 30px; margin: 0; }
+          @media print {
+            .no-print { display: none !important; }
+            body { padding: 0; }
+          }
+        </style>
+      </head>
+      <body>
+        <div class="no-print" style="margin-bottom:20px;display:flex;justify-content:space-between;align-items:center;background:#f1f5f9;padding:12px 18px;border-radius:10px">
+          <span style="font-weight:700;font-size:14px">Dokumen Siap Cetak (A4) / Simpan PDF</span>
+          <button onclick="window.print()" style="background:#7c3aed;color:#fff;border:none;padding:8px 18px;border-radius:8px;font-weight:700;cursor:pointer">🖨️ Cetak / Simpan PDF</button>
+        </div>
+        <div style="display:flex;justify-content:space-between;align-items:flex-start;border-bottom:2px solid #0f172a;padding-bottom:12px;margin-bottom:18px">
+          <div>
+            <h1 style="font-size:22px;font-weight:900;margin:0">${data.quiz.title}</h1>
+            <p style="font-size:13px;color:#475569;margin:4px 0 0">${data.quiz.description || 'Panduan Materi & Evaluasi Pembelajaran'}</p>
+            <div style="font-size:12px;color:#64748b;margin-top:4px">Kelas: <b>${data.quiz.class_name}</b> • Total: <b>${data.quiz.total_questions} Butir Soal</b></div>
+          </div>
+          <div style="text-align:right">
+            <div style="font-size:18px;font-weight:900;color:#7c3aed">Quiztify.id</div>
+            <div style="font-size:11px;color:#64748b">Tanggal: ${new Intl.DateTimeFormat('id-ID', { dateStyle: 'long' }).format(new Date())}</div>
+          </div>
+        </div>
+        <div>
+          ${itemsHtml}
+        </div>
+        <div style="margin-top:24px;border-top:1px solid #e2e8f0;padding-top:12px;font-size:11px;color:#64748b;display:flex;justify-content:space-between">
+          <span>Quiztify.id - Academic Study Guide &amp; Concept Mastery</span>
+          <span>Hak Cipta Dilindungi Undang-Undang</span>
+        </div>
+      </body>
+      </html>
+    `);
+    printWin.document.close();
+  } catch (e) {
+    alert('Gagal membuka rangkuman belajar');
+  }
+}
+
+function openHostStudyGuideFromDetail() {
+  if (currentDetailQuizId) openHostStudyGuide(currentDetailQuizId);
 }
 
 // Assign Quiz from Library

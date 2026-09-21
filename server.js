@@ -935,6 +935,124 @@ app.post('/api/rooms/:pin/reaction', (req, res) => {
   res.json({ ok: true, reaction: item });
 });
 
+// ---------- LEARNING RETENTION: REVIEW & STUDY GUIDE ENDPOINTS ----------
+
+// 5d. Get Post-Quiz Review for a Player
+app.get('/api/rooms/:pin/my-review', (req, res) => {
+  const pin = req.params.pin;
+  const playerToken = req.query.player_token;
+  if (!playerToken) {
+    return res.status(400).json({ error: 'Token pemain diperlukan' });
+  }
+
+  const room = db.prepare('SELECT r.*, q.title as quiz_title FROM game_rooms r JOIN quizzes q ON q.id = r.quiz_id WHERE r.pin = ?').get(pin);
+  if (!room) {
+    return res.status(404).json({ error: 'Room tidak ditemukan' });
+  }
+
+  const player = db.prepare('SELECT * FROM room_players WHERE pin = ? AND player_token = ?').get(pin, playerToken);
+  if (!player) {
+    return res.status(404).json({ error: 'Data pemain tidak ditemukan' });
+  }
+
+  const questions = db.prepare('SELECT * FROM questions WHERE quiz_id = ? ORDER BY position ASC').all(room.quiz_id);
+  const answersMap = JSON.parse(player.answers_json || '{}');
+
+  let correctCount = 0;
+  let mistakesCount = 0;
+
+  const items = questions.map((q, idx) => {
+    const ans = answersMap[idx];
+    const options = JSON.parse(q.options || '[]');
+    const myAnsIdx = ans !== undefined ? ans.answer_idx : -1;
+    const isCorrect = ans !== undefined ? Boolean(ans.is_correct) : false;
+    let status = 'unanswered';
+    if (ans !== undefined) {
+      if (myAnsIdx === -1) {
+        status = 'timed_out';
+        mistakesCount++;
+      } else if (isCorrect) {
+        status = 'correct';
+        correctCount++;
+      } else {
+        status = 'wrong';
+        mistakesCount++;
+      }
+    } else {
+      mistakesCount++;
+    }
+
+    return {
+      question_id: q.id,
+      index: idx,
+      text: q.text,
+      options: options,
+      correct_idx: q.correct_idx,
+      correct_text: options[q.correct_idx] || '',
+      my_answer_idx: myAnsIdx,
+      my_answer_text: myAnsIdx >= 0 ? (options[myAnsIdx] || '') : (status === 'timed_out' ? 'Waktu Habis (Tidak Menjawab)' : 'Belum Dijawab'),
+      is_correct: isCorrect,
+      status: status,
+      points_earned: ans ? (ans.points || 0) : 0,
+      powerup_used: ans ? ans.powerup : null,
+      explanation: q.explanation || 'Konsep materi ini penting dipelajari untuk memperkuat pemahaman fundamental.',
+      study_tip: `Kunci utama: ${options[q.correct_idx]}. Fokus pada hubungan istilah dan aplikasinya.`
+    };
+  });
+
+  const accuracyPct = questions.length > 0 ? Math.round((correctCount / questions.length) * 100) : 0;
+
+  res.json({
+    ok: true,
+    quiz_id: room.quiz_id,
+    quiz_title: room.quiz_title,
+    player_name: player.name,
+    player_avatar: player.avatar,
+    score: player.score,
+    total_questions: questions.length,
+    correct_count: correctCount,
+    mistakes_count: mistakesCount,
+    accuracy_pct: accuracyPct,
+    items: items
+  });
+});
+
+// 5e. Full Quiz Study Guide for printing & revision
+app.get('/api/quizzes/:id/study-guide', (req, res) => {
+  const quizId = Number(req.params.id);
+  const quiz = db.prepare('SELECT q.*, c.name as class_name FROM quizzes q LEFT JOIN classes c ON c.id = q.class_id WHERE q.id = ?').get(quizId);
+  if (!quiz) {
+    return res.status(404).json({ error: 'Kuis tidak ditemukan' });
+  }
+
+  const questions = db.prepare('SELECT * FROM questions WHERE quiz_id = ? ORDER BY position ASC').all(quizId);
+  const items = questions.map((q, idx) => {
+    const options = JSON.parse(q.options || '[]');
+    return {
+      number: idx + 1,
+      text: q.text,
+      options: options,
+      correct_idx: q.correct_idx,
+      correct_answer: options[q.correct_idx] || '',
+      explanation: q.explanation || 'Pembahasan esensial materi kuis.',
+      points: q.points || 1000
+    };
+  });
+
+  res.json({
+    ok: true,
+    quiz: {
+      id: quiz.id,
+      title: quiz.title,
+      description: quiz.description,
+      category: quiz.category,
+      class_name: quiz.class_name || 'Umum',
+      total_questions: questions.length
+    },
+    items
+  });
+});
+
 // ---------- DEEPSEEK AI SMART QUIZ GENERATOR (DeepSeek V4.1 Flash) ----------
 
 function extractJsonFromText(raw) {
@@ -2185,4 +2303,7 @@ app.get('/api/classes/public', (req, res) => {
 
 // Default Fallback
 const PORT = process.env.PORT || 3000;
-app.listen(PORT, () => console.log(`🚀 Quiztify.id jalan di http://localhost:${PORT}`));
+if (require.main === module) {
+  app.listen(PORT, () => console.log(`🚀 Quiztify.id jalan di http://localhost:${PORT}`));
+}
+module.exports = app;

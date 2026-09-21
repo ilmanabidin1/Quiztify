@@ -627,6 +627,258 @@
   .switch-toggle input:checked + .switch-slider:before {
     transform: translateX(20px);
   }
+
+  /* ========== LEARNING RETENTION & MASTERY HUB STYLES ========== */
+  .retention-hub-card {
+    background: linear-gradient(135deg, rgba(30, 16, 56, 0.95), rgba(15, 8, 28, 0.95));
+    border: 1.5px solid rgba(168, 85, 247, 0.35);
+    box-shadow: 0 16px 40px rgba(0, 0, 0, 0.5), inset 0 1px 0 rgba(255, 255, 255, 0.1);
+    border-radius: 20px;
+    padding: 22px;
+    margin: 20px auto 14px;
+    max-width: 540px;
+    width: 100%;
+    text-align: center;
+    position: relative;
+    overflow: hidden;
+  }
+  .retention-hub-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 4px 12px;
+    border-radius: 20px;
+    background: rgba(168, 85, 247, 0.2);
+    color: #c084fc;
+    font-size: 11.5px;
+    font-weight: 800;
+    letter-spacing: 0.8px;
+    text-transform: uppercase;
+    margin-bottom: 8px;
+  }
+  .retention-actions-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+    margin-top: 14px;
+  }
+  @media (max-width: 580px) {
+    .retention-actions-grid {
+      grid-template-columns: 1fr;
+    }
+  }
+  .btn-retention {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 12px 14px;
+    border-radius: 14px;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    background: rgba(255, 255, 255, 0.05);
+    color: #fff;
+    cursor: pointer;
+    text-align: left;
+    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+    outline: none;
+    user-select: none;
+  }
+  .btn-retention:hover {
+    transform: translateY(-2px);
+    background: rgba(255, 255, 255, 0.1);
+    border-color: rgba(255, 255, 255, 0.25);
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
+  }
+  .btn-retention-redemption {
+    border-color: rgba(244, 63, 94, 0.35);
+    background: rgba(244, 63, 94, 0.08);
+  }
+  .btn-retention-redemption:hover {
+    border-color: rgba(244, 63, 94, 0.6);
+    background: rgba(244, 63, 94, 0.16);
+  }
+  .retention-icon {
+    font-size: 26px;
+    flex-shrink: 0;
+  }
+  .retention-btn-title {
+    font-size: 13.5px;
+    font-weight: 800;
+    color: #fff;
+    line-height: 1.2;
+  }
+  .retention-btn-desc {
+    font-size: 11px;
+    color: var(--text-muted);
+    margin-top: 2px;
+  }
+
+  /* 3D Flip Flashcards */
+  .flashcard-scene {
+    width: 100%;
+    max-width: 480px;
+    min-height: 310px;
+    perspective: 1200px;
+    margin: 16px auto;
+    cursor: pointer;
+    user-select: none;
+  }
+  .flashcard-inner {
+    position: relative;
+    width: 100%;
+    min-height: 310px;
+    text-align: center;
+    transition: transform 0.55s cubic-bezier(0.4, 0, 0.2, 1);
+    transform-style: preserve-3d;
+    border-radius: 20px;
+  }
+  .flashcard-inner.is-flipped {
+    transform: rotateY(180deg);
+  }
+  .flashcard-face {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    -webkit-backface-visibility: hidden;
+    backface-visibility: hidden;
+    border-radius: 20px;
+    padding: 24px;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    box-sizing: border-box;
+  }
+  .flashcard-front {
+    background: linear-gradient(135deg, #1f1338, #2e1859);
+    border: 2px solid rgba(168, 85, 247, 0.45);
+    box-shadow: 0 16px 40px rgba(0, 0, 0, 0.6);
+    color: #fff;
+  }
+  .flashcard-back {
+    background: linear-gradient(135deg, #092c23, #115344);
+    border: 2px solid rgba(16, 185, 129, 0.55);
+    box-shadow: 0 16px 40px rgba(0, 0, 0, 0.6);
+    color: #fff;
+    transform: rotateY(180deg);
+  }
+  .flashcard-flip-hint {
+    font-size: 11.5px;
+    color: rgba(255, 255, 255, 0.6);
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    margin-top: 8px;
+  }
+
+  /* Review Filter & Question Cards */
+  .review-filter-bar {
+    display: flex;
+    gap: 8px;
+    overflow-x: auto;
+    padding-bottom: 6px;
+    margin-bottom: 14px;
+  }
+  .review-filter-pill {
+    padding: 6px 14px;
+    border-radius: 20px;
+    border: 1px solid rgba(255, 255, 255, 0.15);
+    background: rgba(255, 255, 255, 0.05);
+    color: var(--text-muted);
+    font-size: 12.5px;
+    font-weight: 700;
+    cursor: pointer;
+    white-space: nowrap;
+    transition: all 0.2s;
+  }
+  .review-filter-pill.active {
+    background: var(--purple-light);
+    color: #fff;
+    border-color: var(--purple-light);
+  }
+  .review-q-card {
+    background: rgba(255, 255, 255, 0.04);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 16px;
+    padding: 16px;
+    margin-bottom: 12px;
+    text-align: left;
+  }
+  .review-q-card.correct { border-left: 4px solid var(--emerald); }
+  .review-q-card.wrong { border-left: 4px solid var(--rose); }
+  .review-q-card.timed_out { border-left: 4px solid var(--gold); }
+  .review-opt-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 8px 12px;
+    border-radius: 10px;
+    margin-top: 6px;
+    font-size: 13px;
+    border: 1px solid transparent;
+  }
+  .review-opt-correct {
+    background: rgba(16, 185, 129, 0.15);
+    border-color: rgba(16, 185, 129, 0.4);
+    color: #34d399;
+    font-weight: 700;
+  }
+  .review-opt-mywrong {
+    background: rgba(244, 63, 94, 0.15);
+    border-color: rgba(244, 63, 94, 0.4);
+    color: #fb7185;
+    text-decoration: line-through;
+  }
+  .concept-explanation-box {
+    margin-top: 10px;
+    padding: 10px 14px;
+    border-radius: 12px;
+    background: rgba(6, 182, 212, 0.08);
+    border: 1px dashed rgba(6, 182, 212, 0.3);
+    font-size: 12.5px;
+    color: #e2e8f0;
+    line-height: 1.5;
+  }
+  .study-tip-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 2px 8px;
+    border-radius: 6px;
+    background: rgba(245, 158, 11, 0.15);
+    color: var(--gold);
+    font-size: 11px;
+    font-weight: 700;
+    margin-top: 6px;
+  }
+
+  /* Printable Study Guide */
+  @media print {
+    body * { visibility: hidden !important; }
+    #modal-study-guide, #modal-study-guide * { visibility: visible !important; }
+    #modal-study-guide {
+      position: absolute !important;
+      left: 0 !important;
+      top: 0 !important;
+      width: 100% !important;
+      height: auto !important;
+      background: #fff !important;
+      color: #000 !important;
+      padding: 0 !important;
+      margin: 0 !important;
+      box-shadow: none !important;
+      display: block !important;
+    }
+    .no-print { display: none !important; }
+    .study-guide-sheet {
+      border: none !important;
+      background: #fff !important;
+      color: #000 !important;
+      box-shadow: none !important;
+      padding: 0 !important;
+      max-width: 100% !important;
+    }
+  }
 </style>
 </head>
 <body>
@@ -918,6 +1170,24 @@
           <i class="fa-solid fa-spinner fa-spin"></i> Menunggu host mengumumkan podium juara...
         </div>
         <div id="waiting-leaderboard-preview" style="width:100%;max-width:440px;margin-top:10px"></div>
+
+        <!-- Waiting State Quick Learning Retention Buttons -->
+        <div style="margin-top:16px;width:100%;max-width:480px;background:rgba(255,255,255,0.04);border-radius:16px;padding:16px;border:1px solid rgba(255,255,255,0.08)">
+          <div style="font-size:12.5px;font-weight:800;color:var(--cyan);text-transform:uppercase;margin-bottom:8px">
+            🧠 Sambil Menunggu Host, Ayo Kuasai Materinya!
+          </div>
+          <div style="display:flex;gap:10px;justify-content:center;flex-wrap:wrap">
+            <button class="btn-nav btn-nav-ghost" onclick="openReviewQuestionsModal()" style="font-size:13px;padding:8px 16px">
+              <i class="fa-solid fa-book-open"></i> Review Pembahasan
+            </button>
+            <button class="btn-nav btn-nav-ghost" onclick="openFlashcardsModal()" style="font-size:13px;padding:8px 16px">
+              <i class="fa-solid fa-layer-group"></i> Flashcard 3D
+            </button>
+            <button class="btn-nav btn-nav-ghost" id="btn-waiting-redemption" onclick="startRedemptionRound()" style="font-size:13px;padding:8px 16px;color:#fb7185;border-color:rgba(251,113,133,0.4)">
+              <i class="fa-solid fa-bullseye"></i> Ulang Soal Salah
+            </button>
+          </div>
+        </div>
       </div>
     </div>
 
@@ -949,7 +1219,47 @@
         </button>
       </div>
 
-      <button class="btn-nav btn-nav-primary" onclick="goHome()" style="padding:14px 28px;font-size:15px">
+      <!-- Learning Retention & Mastery Hub Card -->
+      <div class="retention-hub-card" id="podium-retention-hub">
+        <div class="retention-hub-badge">🧠 PUSAT RETENSI BELAJAR</div>
+        <h3 style="font-size:18px;font-weight:800;margin:0 0 6px">Kuasai Konsep Materi Hingga Tuntas!</h3>
+        <p style="color:var(--text-muted);font-size:12.5px;line-height:1.4;margin:0">
+          Pelajari kunci pembahasan setiap soal, asah memori jangka panjang dengan Flashcard 3D, atau perbaiki kesalahanmu.
+        </p>
+
+        <div class="retention-actions-grid">
+          <button class="btn-retention" onclick="openReviewQuestionsModal()">
+            <div class="retention-icon">📘</div>
+            <div>
+              <div class="retention-btn-title">Review Soal &amp; Pembahasan</div>
+              <div class="retention-btn-desc">Analisis jawaban benar &amp; konsep</div>
+            </div>
+          </button>
+          <button class="btn-retention" onclick="openFlashcardsModal()">
+            <div class="retention-icon">🎴</div>
+            <div>
+              <div class="retention-btn-title">Mode Flashcard 3D</div>
+              <div class="retention-btn-desc">Uji ingatan mandiri tanpa timer</div>
+            </div>
+          </button>
+          <button class="btn-retention btn-retention-redemption" id="btn-redemption-trigger" onclick="startRedemptionRound()">
+            <div class="retention-icon">🎯</div>
+            <div>
+              <div class="retention-btn-title">Coba Ulang Soal Salah</div>
+              <div class="retention-btn-desc" id="redemption-count-desc">Perbaiki 0 soal salah hingga 100%</div>
+            </div>
+          </button>
+          <button class="btn-retention" onclick="openStudyGuideModal()">
+            <div class="retention-icon">📄</div>
+            <div>
+              <div class="retention-btn-title">Rangkuman Belajar PDF</div>
+              <div class="retention-btn-desc">Cetak ringkasan materi A4</div>
+            </div>
+          </button>
+        </div>
+      </div>
+
+      <button class="btn-nav btn-nav-primary" onclick="goHome()" style="padding:14px 28px;font-size:15px;margin-top:12px">
         <i class="fa-solid fa-rotate-right"></i> Main Kuis Lagi
       </button>
     </div>
@@ -1199,6 +1509,241 @@
 
 <!-- ARIA LIVE SCREEN READER ANNOUNCER -->
 <div id="a11y-announcer" class="sr-only" aria-live="polite" aria-atomic="true"></div>
+
+<!-- 1. MODAL REVIEW SOAL & PEMBAHASAN -->
+<div id="modal-review-questions" class="feedback-banner hidden" style="background:rgba(10,5,22,0.92);backdrop-filter:blur(10px);z-index:99999;padding:20px 10px;overflow-y:auto">
+  <div style="max-width:720px;width:100%;background:var(--bg-card);border:1px solid var(--border);border-radius:22px;padding:24px;position:relative;margin:auto;max-height:90vh;display:flex;flex-direction:column">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;border-bottom:1px solid var(--border);padding-bottom:12px;flex-shrink:0">
+      <div style="display:flex;align-items:center;gap:10px">
+        <i class="fa-solid fa-book-open" style="color:var(--cyan);font-size:22px"></i>
+        <div>
+          <h3 style="font-size:18px;font-weight:800;margin:0">Review Soal &amp; Analisis Konsep</h3>
+          <span style="font-size:12px;color:var(--text-muted)" id="review-quiz-subtitle">Pelajari pembahasan detail setiap pertanyaan</span>
+        </div>
+      </div>
+      <button onclick="closeReviewQuestionsModal()" class="btn-nav btn-nav-ghost" style="padding:4px 10px;font-size:16px" title="Tutup (Esc)">
+        <i class="fa-solid fa-xmark"></i>
+      </button>
+    </div>
+
+    <!-- Filter Buttons -->
+    <div class="review-filter-bar" style="flex-shrink:0">
+      <button class="review-filter-pill active" id="filter-all" onclick="filterReviewQuestions('all')">Semua Soal (<span id="count-filter-all">0</span>)</button>
+      <button class="review-filter-pill" id="filter-wrong" onclick="filterReviewQuestions('wrong')">❌ Soal Salah (<span id="count-filter-wrong">0</span>)</button>
+      <button class="review-filter-pill" id="filter-correct" onclick="filterReviewQuestions('correct')">✅ Soal Benar (<span id="count-filter-correct">0</span>)</button>
+    </div>
+
+    <!-- Questions Container -->
+    <div id="review-questions-list" style="overflow-y:auto;flex:1;padding-right:4px">
+      <!-- Injected via JavaScript -->
+    </div>
+
+    <div style="margin-top:14px;border-top:1px solid var(--border);padding-top:12px;display:flex;gap:10px;justify-content:flex-end;flex-shrink:0">
+      <button class="btn-nav btn-nav-ghost" onclick="openFlashcardsModal()">
+        <i class="fa-solid fa-layer-group"></i> <span>Buka Flashcard 3D</span>
+      </button>
+      <button class="btn-nav btn-nav-primary" onclick="closeReviewQuestionsModal()">
+        Selesai Review
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- 2. MODAL FLASHCARD 3D & SPACED REPETITION -->
+<div id="modal-flashcards" class="feedback-banner hidden" style="background:rgba(10,5,22,0.92);backdrop-filter:blur(10px);z-index:99999;padding:20px 10px;overflow-y:auto">
+  <div style="max-width:560px;width:100%;background:var(--bg-card);border:1px solid var(--border);border-radius:22px;padding:24px;position:relative;margin:auto;text-align:center">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;border-bottom:1px solid var(--border);padding-bottom:10px">
+      <div style="display:flex;align-items:center;gap:10px">
+        <i class="fa-solid fa-layer-group" style="color:#c084fc;font-size:22px"></i>
+        <div style="text-align:left">
+          <h3 style="font-size:18px;font-weight:800;margin:0">Flashcard Belajar 3D</h3>
+          <span style="font-size:11.5px;color:var(--text-muted)">Metode Spaced Repetition untuk Ingatan Jangka Panjang</span>
+        </div>
+      </div>
+      <button onclick="closeFlashcardsModal()" class="btn-nav btn-nav-ghost" style="padding:4px 10px;font-size:16px" title="Tutup (Esc)">
+        <i class="fa-solid fa-xmark"></i>
+      </button>
+    </div>
+
+    <!-- Progress & Mastery Bar -->
+    <div style="display:flex;justify-content:space-between;align-items:center;font-size:12px;color:var(--text-muted);font-weight:700;margin-bottom:6px">
+      <span id="flashcard-counter-label">Kartu 1 dari 5</span>
+      <span id="flashcard-mastery-label" style="color:var(--emerald)">0% Dikuasai</span>
+    </div>
+    <div style="width:100%;height:6px;background:rgba(255,255,255,0.1);border-radius:6px;overflow:hidden;margin-bottom:14px">
+      <div id="flashcard-progress-fill" style="width:0%;height:100%;background:linear-gradient(90deg, #c084fc, #10b981);transition:width .3s"></div>
+    </div>
+
+    <!-- 3D Card Scene -->
+    <div class="flashcard-scene" onclick="toggleFlipFlashcard()" title="Klik untuk membalik kartu (atau tekan Spasi)">
+      <div class="flashcard-inner" id="active-flashcard-inner">
+        <!-- Front Side -->
+        <div class="flashcard-face flashcard-front">
+          <div style="display:flex;justify-content:space-between;align-items:center">
+            <span style="font-size:11.5px;font-weight:800;color:var(--cyan);text-transform:uppercase" id="fc-front-number">SOAL 1</span>
+            <span style="font-size:11.5px;padding:3px 8px;border-radius:12px;background:rgba(255,255,255,0.1);color:#fff" id="fc-front-tag">Pertanyaan</span>
+          </div>
+          <div style="font-size:18px;font-weight:800;line-height:1.4;margin:16px 0;text-align:center" id="fc-front-text">
+            Pertanyaan flashcard...
+          </div>
+          <div id="fc-front-options" style="text-align:left;display:flex;flex-direction:column;gap:6px">
+            <!-- options preview -->
+          </div>
+          <div class="flashcard-flip-hint">
+            <i class="fa-solid fa-rotate"></i> Klik untuk melihat jawaban &amp; pembahasan
+          </div>
+        </div>
+
+        <!-- Back Side -->
+        <div class="flashcard-face flashcard-back">
+          <div style="display:flex;justify-content:space-between;align-items:center">
+            <span style="font-size:11.5px;font-weight:800;color:#34d399;text-transform:uppercase">KUNCI JAWABAN &amp; ANALISIS</span>
+            <span style="font-size:12px;color:#34d399"><i class="fa-solid fa-circle-check"></i> Jawaban Benar</span>
+          </div>
+          <div style="margin:12px 0">
+            <div style="font-size:20px;font-weight:900;color:#34d399" id="fc-back-answer">
+              Opsi Benar
+            </div>
+            <div class="concept-explanation-box" style="margin-top:12px;text-align:left;background:rgba(0,0,0,0.25)" id="fc-back-explanation">
+              Penjelasan konsep...
+            </div>
+            <div class="study-tip-badge" style="margin-top:10px;text-align:left;display:inline-block;background:rgba(245,158,11,0.2)" id="fc-back-tip">
+              💡 Tips Hafalan
+            </div>
+          </div>
+          <div class="flashcard-flip-hint" style="color:rgba(255,255,255,0.7)">
+            <i class="fa-solid fa-rotate"></i> Klik untuk membalik kembali ke pertanyaan
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Spaced Repetition Mastery Controls -->
+    <div style="display:flex;gap:12px;justify-content:center;margin-top:16px">
+      <button class="btn-nav" onclick="markFlashcardRepetition(false)" style="flex:1;justify-content:center;background:rgba(244,63,94,0.15);border:1px solid rgba(244,63,94,0.4);color:#fb7185;padding:12px;border-radius:14px;font-weight:800;font-size:13.5px">
+        <i class="fa-solid fa-rotate-left"></i> <span>Belum Paham (Ulangi)</span>
+      </button>
+      <button class="btn-nav" onclick="markFlashcardRepetition(true)" style="flex:1;justify-content:center;background:rgba(16,185,129,0.2);border:1px solid rgba(16,185,129,0.5);color:#34d399;padding:12px;border-radius:14px;font-weight:800;font-size:13.5px">
+        <i class="fa-solid fa-check"></i> <span>Sudah Paham!</span>
+      </button>
+    </div>
+
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-top:14px;padding-top:12px;border-top:1px solid var(--border)">
+      <button class="btn-nav btn-nav-ghost" onclick="navigateFlashcard(-1)" id="btn-fc-prev" style="padding:6px 14px;font-size:13px">
+        <i class="fa-solid fa-arrow-left"></i> Sebelumnya
+      </button>
+      <span style="font-size:12px;color:var(--text-muted)">Tekan <b>[Spasi]</b> untuk membalik</span>
+      <button class="btn-nav btn-nav-ghost" onclick="navigateFlashcard(1)" id="btn-fc-next" style="padding:6px 14px;font-size:13px">
+        Berikutnya <i class="fa-solid fa-arrow-right"></i>
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- 3. MODAL REDEMPTION ROUND (COBA ULANG SOAL SALAH) -->
+<div id="modal-redemption-round" class="feedback-banner hidden" style="background:rgba(10,5,22,0.94);backdrop-filter:blur(10px);z-index:99999;padding:20px 10px;overflow-y:auto">
+  <div style="max-width:580px;width:100%;background:var(--bg-card);border:1px solid rgba(244,63,94,0.4);border-radius:22px;padding:24px;position:relative;margin:auto;text-align:center;box-shadow:0 16px 48px rgba(244,63,94,0.2)">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;border-bottom:1px solid var(--border);padding-bottom:10px">
+      <div style="display:flex;align-items:center;gap:10px">
+        <div style="font-size:24px">🎯</div>
+        <div style="text-align:left">
+          <h3 style="font-size:18px;font-weight:800;margin:0;color:#fb7185">Babak Remedial (Redemption Round)</h3>
+          <span style="font-size:12px;color:var(--text-muted)">Jawab ulang butir soal salah hingga pemahaman 100%!</span>
+        </div>
+      </div>
+      <button onclick="closeRedemptionModal()" class="btn-nav btn-nav-ghost" style="padding:4px 10px;font-size:16px" title="Tutup (Esc)">
+        <i class="fa-solid fa-xmark"></i>
+      </button>
+    </div>
+
+    <!-- Active Question Card -->
+    <div id="redemption-active-card">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+        <span style="font-size:12px;font-weight:800;color:var(--cyan)" id="redemption-q-badge">REMEDIAL SOAL 1 DARI 2</span>
+        <span style="font-size:12px;color:var(--gold);font-weight:700" id="redemption-accuracy-badge">Target Akurasi: 100%</span>
+      </div>
+      <div class="q-display-text" id="redemption-q-text" style="font-size:18px;margin-bottom:16px;text-align:left;background:rgba(255,255,255,0.04);padding:14px;border-radius:14px;border:1px solid rgba(255,255,255,0.08)">
+        Pertanyaan remedial...
+      </div>
+
+      <div class="answers-grid" id="redemption-answers-grid" style="grid-template-columns:1fr;gap:8px">
+        <!-- 4 buttons injected dynamically -->
+      </div>
+
+      <div id="redemption-feedback-alert" class="hidden" style="margin-top:14px;padding:12px;border-radius:12px;font-size:13.5px;font-weight:700"></div>
+    </div>
+
+    <!-- Celebration State when all missed questions mastered -->
+    <div id="redemption-complete-card" class="hidden" style="padding:20px 10px">
+      <div style="font-size:60px;animation:flamePulse 1.2s infinite alternate">🌟</div>
+      <h2 style="font-size:24px;font-weight:900;margin:12px 0 6px" class="gradient-text">100% PENGUASAAN KONSEP!</h2>
+      <p style="color:var(--text-muted);font-size:14px;max-width:440px;margin:0 auto 18px">
+        Hebat sekali! Semua butir soal yang awalnya keliru kini telah berhasil kamu pelajari dan jawab dengan benar.
+      </p>
+      <div style="display:inline-flex;align-items:center;gap:8px;background:rgba(16,185,129,0.15);border:1px solid rgba(16,185,129,0.4);color:#34d399;padding:8px 18px;border-radius:20px;font-weight:800;font-size:13px;margin-bottom:20px">
+        <i class="fa-solid fa-medal"></i> Badge: Concept Mastery Master 🏆
+      </div>
+      <br>
+      <button class="btn-nav btn-nav-primary" onclick="closeRedemptionModal()" style="padding:12px 28px;font-size:14px">
+        Selesai &amp; Kembali ke Ringkasan
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- 4. MODAL RANGKUMAN BELAJAR / STUDY GUIDE PDF -->
+<div id="modal-study-guide" class="feedback-banner hidden" style="background:rgba(10,5,22,0.92);backdrop-filter:blur(10px);z-index:99999;padding:20px 10px;overflow-y:auto">
+  <div style="max-width:820px;width:100%;background:#fff;color:#0f172a;border-radius:20px;padding:32px;position:relative;margin:auto;text-align:left;box-shadow:0 16px 48px rgba(0,0,0,0.7)" class="study-guide-sheet">
+    <div class="no-print" style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;border-bottom:1px solid #e2e8f0;padding-bottom:14px">
+      <div style="display:flex;align-items:center;gap:10px">
+        <i class="fa-solid fa-file-lines" style="color:var(--purple-light);font-size:24px"></i>
+        <div>
+          <h3 style="font-size:18px;font-weight:800;margin:0;color:#0f172a">Lembar Rangkuman Belajar &amp; Kunci Konsep</h3>
+          <span style="font-size:12px;color:#64748b">Dokumen siap cetak A4 / simpan sebagai PDF</span>
+        </div>
+      </div>
+      <div style="display:flex;gap:10px">
+        <button class="btn-nav btn-nav-primary" onclick="window.print()" style="padding:8px 16px;font-size:13px">
+          <i class="fa-solid fa-print"></i> <span>Cetak / Simpan PDF</span>
+        </button>
+        <button onclick="closeStudyGuideModal()" class="btn-nav btn-nav-ghost" style="padding:6px 12px;font-size:14px;color:#64748b;border-color:#cbd5e1" title="Tutup (Esc)">
+          <i class="fa-solid fa-xmark"></i>
+        </button>
+      </div>
+    </div>
+
+    <!-- Printable Content Sheet -->
+    <div id="study-guide-print-content">
+      <div style="display:flex;justify-content:space-between;align-items:flex-start;border-bottom:2px solid #0f172a;padding-bottom:12px;margin-bottom:18px">
+        <div>
+          <h1 style="font-size:22px;font-weight:900;margin:0;color:#0f172a" id="sg-title">Rangkuman Kuis Quiztify</h1>
+          <p style="font-size:13px;color:#475569;margin:4px 0 0" id="sg-desc">Panduan materi persiapan ujian akademik.</p>
+        </div>
+        <div style="text-align:right">
+          <img src="/logo.png" alt="Quiztify" style="height:28px;width:auto;margin-bottom:4px">
+          <div style="font-size:11px;color:#64748b" id="sg-date">Tanggal: 21 September 2026</div>
+        </div>
+      </div>
+
+      <!-- Student & Score Header -->
+      <div style="display:grid;grid-template-columns:repeat(3, 1fr);gap:12px;background:#f8fafc;padding:12px;border-radius:10px;border:1px solid #e2e8f0;margin-bottom:20px;font-size:12.5px">
+        <div><b>Nama Siswa:</b> <span id="sg-student-name">Peserta</span></div>
+        <div><b>Total Skor:</b> <span id="sg-student-score">0 PTS</span></div>
+        <div><b>Akurasi:</b> <span id="sg-student-accuracy">100%</span></div>
+      </div>
+
+      <!-- Questions List -->
+      <div id="sg-questions-container">
+        <!-- Injected dynamically -->
+      </div>
+
+      <div style="margin-top:24px;border-top:1px solid #e2e8f0;padding-top:12px;font-size:11px;color:#64748b;display:flex;justify-content:space-between">
+        <span>Quiztify.id - Interactive Gamified Learning Platform</span>
+        <span>Dokumen Belajar Resmi Terverifikasi</span>
+      </div>
+    </div>
+  </div>
+</div>
 
 <script>
 // ---------- APP STATE & INITIALIZATION ----------
@@ -1949,6 +2494,8 @@ function renderWaitingState(state) {
   document.getElementById('waiting-my-score').textContent = `${(state.my_score || 0).toLocaleString()} PTS`;
   document.getElementById('waiting-my-rank').textContent = state.my_rank ? `#${state.my_rank}` : '-';
 
+  fetchQuizReviewData();
+
   const cont = document.getElementById('waiting-leaderboard-preview');
   if (state.leaderboard && state.leaderboard.length > 0) {
     cont.innerHTML = state.leaderboard.slice(0, 5).map(p => `
@@ -2022,6 +2569,9 @@ function renderPodium(state) {
 
   // Setup Certificate Data
   setupCertificateData(state);
+
+  // Fetch review data for Learning Retention Hub
+  fetchQuizReviewData();
 }
 
 // ---------- EXAM INTEGRITY SHIELD (ANTI-CURANG) ----------
@@ -2377,7 +2927,21 @@ window.addEventListener('keydown', (e) => {
     if (certModal && !certModal.classList.contains('hidden')) closeStudentCertificateModal();
     const cheerMenu = document.getElementById('cheer-popup-menu');
     if (cheerMenu && !cheerMenu.classList.contains('hidden')) cheerMenu.classList.add('hidden');
+    closeReviewQuestionsModal();
+    closeFlashcardsModal();
+    closeRedemptionModal();
+    closeStudyGuideModal();
     return;
+  }
+
+  // Space ketika flashcard modal aktif: Balik kartu
+  const fcModal = document.getElementById('modal-flashcards');
+  if (fcModal && !fcModal.classList.contains('hidden')) {
+    if (e.key === ' ') {
+      e.preventDefault();
+      toggleFlipFlashcard();
+      return;
+    }
   }
 
   // Space atau Enter ketika feedback banner tampil: Lanjut ke soal berikutnya
@@ -2435,6 +2999,478 @@ window.addEventListener('keydown', (e) => {
     if (btn && !btn.disabled) usePowerup('streak_shield');
   }
 });
+
+// ---------- LEARNING RETENTION & MASTERY HUB MODULE ----------
+
+let quizReviewData = null;
+let currentReviewFilter = 'all';
+
+// Flashcard Spaced Repetition State
+let flashcardDeck = [];
+let currentFlashcardIndex = 0;
+let flashcardMasteredIds = new Set();
+let isFlashcardFlipped = false;
+
+// Redemption Round State
+let redemptionQueue = [];
+let redemptionCurrentIndex = 0;
+let redemptionMasteredCount = 0;
+
+async function fetchQuizReviewData() {
+  if (!currentPin || !playerToken) return;
+  try {
+    const res = await fetch(`/api/rooms/${currentPin}/my-review?player_token=${playerToken}`);
+    if (!res.ok) return;
+    const data = await res.json();
+    if (!data.ok) return;
+    quizReviewData = data;
+
+    // Update Redemption Hub Badges
+    const redemptionDesc = document.getElementById('redemption-count-desc');
+    const waitingRedemptionBtn = document.getElementById('btn-waiting-redemption');
+    if (data.mistakes_count > 0) {
+      if (redemptionDesc) redemptionDesc.textContent = `Perbaiki ${data.mistakes_count} soal salah hingga 100%`;
+      if (waitingRedemptionBtn) waitingRedemptionBtn.style.display = 'inline-flex';
+    } else {
+      if (redemptionDesc) redemptionDesc.textContent = `🎉 Sempurna! Semua soal benar (100%)`;
+      if (waitingRedemptionBtn) waitingRedemptionBtn.style.display = 'none';
+    }
+
+    // Populate Modals
+    populateReviewModal(data);
+    initFlashcards(data);
+    populateStudyGuide(data);
+  } catch (err) {
+    console.error('Error loading review data', err);
+  }
+}
+
+// 1. REVIEW MODAL LOGIC
+function openReviewQuestionsModal() {
+  if (!quizReviewData) {
+    fetchQuizReviewData().then(() => {
+      const modal = document.getElementById('modal-review-questions');
+      if (modal) modal.classList.remove('hidden');
+    });
+  } else {
+    const modal = document.getElementById('modal-review-questions');
+    if (modal) modal.classList.remove('hidden');
+  }
+}
+
+function closeReviewQuestionsModal() {
+  const modal = document.getElementById('modal-review-questions');
+  if (modal) modal.classList.add('hidden');
+}
+
+function filterReviewQuestions(filter) {
+  currentReviewFilter = filter;
+  ['all', 'wrong', 'correct'].forEach(f => {
+    const el = document.getElementById(`filter-${f}`);
+    if (el) el.classList.toggle('active', f === filter);
+  });
+  if (quizReviewData) {
+    populateReviewModal(quizReviewData);
+  }
+}
+
+function populateReviewModal(data) {
+  const subEl = document.getElementById('review-quiz-subtitle');
+  if (subEl) subEl.textContent = `${data.quiz_title} • ${data.correct_count} Benar / ${data.total_questions} Soal (${data.accuracy_pct}% Akurasi)`;
+
+  const cAll = document.getElementById('count-filter-all');
+  const cWrong = document.getElementById('count-filter-wrong');
+  const cCorrect = document.getElementById('count-filter-correct');
+  if (cAll) cAll.textContent = data.total_questions;
+  if (cWrong) cWrong.textContent = data.mistakes_count;
+  if (cCorrect) cCorrect.textContent = data.correct_count;
+
+  const listEl = document.getElementById('review-questions-list');
+  if (!listEl) return;
+
+  const filteredItems = data.items.filter(item => {
+    if (currentReviewFilter === 'wrong') return !item.is_correct;
+    if (currentReviewFilter === 'correct') return item.is_correct;
+    return true;
+  });
+
+  if (filteredItems.length === 0) {
+    listEl.innerHTML = `
+      <div style="text-align:center;padding:32px 10px;color:var(--text-muted)">
+        <div style="font-size:36px;margin-bottom:8px">✨</div>
+        <p style="margin:0;font-size:14px">Tidak ada soal pada kategori filter ini.</p>
+      </div>
+    `;
+    return;
+  }
+
+  listEl.innerHTML = filteredItems.map(item => {
+    const statusClass = item.status; // 'correct', 'wrong', 'timed_out', 'unanswered'
+    let statusBadge = '';
+    if (item.status === 'correct') {
+      statusBadge = `<span style="background:rgba(16,185,129,0.2);color:#34d399;padding:3px 10px;border-radius:12px;font-size:11.5px;font-weight:800">✅ Benar (+${item.points_earned} PTS)</span>`;
+    } else if (item.status === 'timed_out') {
+      statusBadge = `<span style="background:rgba(245,158,11,0.2);color:var(--gold);padding:3px 10px;border-radius:12px;font-size:11.5px;font-weight:800">⏰ Waktu Habis</span>`;
+    } else {
+      statusBadge = `<span style="background:rgba(244,63,94,0.2);color:#fb7185;padding:3px 10px;border-radius:12px;font-size:11.5px;font-weight:800">❌ Kurang Tepat</span>`;
+    }
+
+    const letters = ['A', 'B', 'C', 'D'];
+    const optionsHtml = item.options.map((opt, optIdx) => {
+      const isCorrectKey = optIdx === item.correct_idx;
+      const isMyChoice = optIdx === item.my_answer_idx;
+      let optClass = 'review-opt-row';
+      let tagLabel = '';
+
+      if (isCorrectKey) {
+        optClass += ' review-opt-correct';
+        tagLabel = `<span style="font-size:11px;background:#10b981;color:#fff;padding:2px 8px;border-radius:8px;font-weight:800;margin-left:auto">Kunci Jawaban</span>`;
+      } else if (isMyChoice && !item.is_correct) {
+        optClass += ' review-opt-mywrong';
+        tagLabel = `<span style="font-size:11px;background:#f43f5e;color:#fff;padding:2px 8px;border-radius:8px;font-weight:800;margin-left:auto">Pilihan Kamu</span>`;
+      }
+
+      return `
+        <div class="${optClass}">
+          <b style="opacity:0.8">${letters[optIdx]}.</b>
+          <span>${opt}</span>
+          ${tagLabel}
+        </div>
+      `;
+    }).join('');
+
+    return `
+      <div class="review-q-card ${statusClass}">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;flex-wrap:wrap;gap:6px">
+          <span style="font-size:12px;font-weight:800;color:var(--cyan);text-transform:uppercase">SOAL #${item.index + 1}</span>
+          ${statusBadge}
+        </div>
+        <div style="font-size:15px;font-weight:700;color:#fff;margin-bottom:10px;line-height:1.4">
+          ${item.text}
+        </div>
+        <div style="display:flex;flex-direction:column;gap:4px">
+          ${optionsHtml}
+        </div>
+        <div class="concept-explanation-box">
+          <div style="font-weight:800;color:var(--cyan);margin-bottom:4px;display:flex;align-items:center;gap:6px">
+            <i class="fa-solid fa-lightbulb"></i> Pembahasan &amp; Analisis Konsep:
+          </div>
+          <div>${item.explanation}</div>
+          <div class="study-tip-badge">
+            <i class="fa-solid fa-key"></i> ${item.study_tip}
+          </div>
+        </div>
+      </div>
+    `;
+  }).join('');
+}
+
+// 2. 3D FLASHCARD & SPACED REPETITION LOGIC
+function openFlashcardsModal() {
+  if (!quizReviewData) {
+    fetchQuizReviewData().then(() => {
+      const modal = document.getElementById('modal-flashcards');
+      if (modal) modal.classList.remove('hidden');
+      if (quizReviewData) initFlashcards(quizReviewData);
+    });
+  } else {
+    const modal = document.getElementById('modal-flashcards');
+    if (modal) modal.classList.remove('hidden');
+    initFlashcards(quizReviewData);
+  }
+}
+
+function closeFlashcardsModal() {
+  const modal = document.getElementById('modal-flashcards');
+  if (modal) modal.classList.add('hidden');
+  isFlashcardFlipped = false;
+  const inner = document.getElementById('active-flashcard-inner');
+  if (inner) inner.classList.remove('is-flipped');
+}
+
+function initFlashcards(data) {
+  flashcardDeck = (data.items || []).map((it, idx) => ({ ...it, originalIdx: idx }));
+  currentFlashcardIndex = 0;
+  flashcardMasteredIds.clear();
+  isFlashcardFlipped = false;
+  renderActiveFlashcard();
+}
+
+function toggleFlipFlashcard() {
+  const inner = document.getElementById('active-flashcard-inner');
+  if (!inner) return;
+  isFlashcardFlipped = !isFlashcardFlipped;
+  inner.classList.toggle('is-flipped', isFlashcardFlipped);
+  soundEngine.play('click');
+}
+
+function renderActiveFlashcard() {
+  if (!flashcardDeck || flashcardDeck.length === 0) return;
+  const card = flashcardDeck[currentFlashcardIndex];
+  if (!card) return;
+
+  // Reset flip
+  isFlashcardFlipped = false;
+  const inner = document.getElementById('active-flashcard-inner');
+  if (inner) inner.classList.remove('is-flipped');
+
+  // Update counters
+  const total = flashcardDeck.length;
+  const masteredCount = flashcardMasteredIds.size;
+  const pct = Math.round((masteredCount / total) * 100);
+
+  const counterEl = document.getElementById('flashcard-counter-label');
+  if (counterEl) counterEl.textContent = `Kartu ${currentFlashcardIndex + 1} dari ${total}`;
+  const masteryEl = document.getElementById('flashcard-mastery-label');
+  if (masteryEl) masteryEl.textContent = `${pct}% Dikuasai`;
+  const fillEl = document.getElementById('flashcard-progress-fill');
+  if (fillEl) fillEl.style.width = `${pct}%`;
+
+  // Front Elements
+  const fNum = document.getElementById('fc-front-number');
+  if (fNum) fNum.textContent = `SOAL ${card.index + 1}`;
+  const fText = document.getElementById('fc-front-text');
+  if (fText) fText.textContent = card.text;
+  const fOpts = document.getElementById('fc-front-options');
+  if (fOpts) {
+    const letters = ['A', 'B', 'C', 'D'];
+    fOpts.innerHTML = card.options.map((opt, i) => `
+      <div style="font-size:12.5px;padding:6px 10px;background:rgba(255,255,255,0.06);border-radius:8px;display:flex;gap:8px">
+        <b style="color:var(--cyan)">${letters[i]}.</b> <span>${opt}</span>
+      </div>
+    `).join('');
+  }
+
+  // Back Elements
+  const bAns = document.getElementById('fc-back-answer');
+  if (bAns) bAns.textContent = `${card.correct_text}`;
+  const bExp = document.getElementById('fc-back-explanation');
+  if (bExp) bExp.textContent = card.explanation;
+  const bTip = document.getElementById('fc-back-tip');
+  if (bTip) bTip.textContent = `💡 ${card.study_tip}`;
+
+  // Nav buttons
+  const prevBtn = document.getElementById('btn-fc-prev');
+  const nextBtn = document.getElementById('btn-fc-next');
+  if (prevBtn) prevBtn.disabled = currentFlashcardIndex === 0;
+  if (nextBtn) nextBtn.disabled = currentFlashcardIndex === total - 1;
+}
+
+function navigateFlashcard(delta) {
+  const newIdx = currentFlashcardIndex + delta;
+  if (newIdx >= 0 && newIdx < flashcardDeck.length) {
+    currentFlashcardIndex = newIdx;
+    renderActiveFlashcard();
+  }
+}
+
+function markFlashcardRepetition(isMastered) {
+  const card = flashcardDeck[currentFlashcardIndex];
+  if (!card) return;
+
+  if (isMastered) {
+    flashcardMasteredIds.add(card.question_id);
+    soundEngine.play('correct');
+    if (currentFlashcardIndex < flashcardDeck.length - 1) {
+      currentFlashcardIndex++;
+      renderActiveFlashcard();
+    } else {
+      renderActiveFlashcard();
+      if (flashcardMasteredIds.size === flashcardDeck.length) {
+        soundEngine.playCombo(5);
+        alert('🎉 Luar Biasa! Semua kartu pada set kuis ini telah kamu kuasai!');
+      }
+    }
+  } else {
+    // Spaced repetition: put card at end of queue
+    flashcardMasteredIds.delete(card.question_id);
+    soundEngine.play('wrong');
+    const [repeatCard] = flashcardDeck.splice(currentFlashcardIndex, 1);
+    flashcardDeck.push(repeatCard);
+    renderActiveFlashcard();
+  }
+}
+
+// 3. REDEMPTION ROUND (COBA ULANG SOAL SALAH)
+function startRedemptionRound() {
+  if (!quizReviewData) {
+    fetchQuizReviewData().then(() => initRedemptionFlow());
+  } else {
+    initRedemptionFlow();
+  }
+}
+
+function initRedemptionFlow() {
+  if (!quizReviewData) return;
+  redemptionQueue = quizReviewData.items.filter(it => !it.is_correct);
+
+  if (redemptionQueue.length === 0) {
+    alert('🎉 Kamu tidak memiliki soal yang salah pada kuis ini! Akurasimu sudah 100%!');
+    return;
+  }
+
+  redemptionCurrentIndex = 0;
+  redemptionMasteredCount = 0;
+
+  const modal = document.getElementById('modal-redemption-round');
+  if (modal) modal.classList.remove('hidden');
+
+  document.getElementById('redemption-active-card').classList.remove('hidden');
+  document.getElementById('redemption-complete-card').classList.add('hidden');
+
+  renderRedemptionQuestion();
+}
+
+function closeRedemptionModal() {
+  const modal = document.getElementById('modal-redemption-round');
+  if (modal) modal.classList.add('hidden');
+}
+
+function renderRedemptionQuestion() {
+  const item = redemptionQueue[redemptionCurrentIndex];
+  if (!item) {
+    // Finished all
+    document.getElementById('redemption-active-card').classList.add('hidden');
+    document.getElementById('redemption-complete-card').classList.remove('hidden');
+    soundEngine.play('podium');
+    try {
+      confetti({ particleCount: 100, spread: 70, origin: { y: 0.6 } });
+    } catch (e) {}
+
+    // Refresh review data so counter updates
+    if (quizReviewData) {
+      quizReviewData.mistakes_count = 0;
+      quizReviewData.accuracy_pct = 100;
+      const redemptionDesc = document.getElementById('redemption-count-desc');
+      if (redemptionDesc) redemptionDesc.textContent = `🎉 Sempurna! Semua soal benar (100%)`;
+      const waitingBtn = document.getElementById('btn-waiting-redemption');
+      if (waitingBtn) waitingBtn.style.display = 'none';
+    }
+    return;
+  }
+
+  const badgeEl = document.getElementById('redemption-q-badge');
+  if (badgeEl) badgeEl.textContent = `REMEDIAL SOAL ${redemptionCurrentIndex + 1} DARI ${redemptionQueue.length}`;
+
+  const qText = document.getElementById('redemption-q-text');
+  if (qText) qText.textContent = item.text;
+
+  const feedbackAlert = document.getElementById('redemption-feedback-alert');
+  if (feedbackAlert) feedbackAlert.className = 'hidden';
+
+  const shapes = ['▲', '◆', '●', '■'];
+  const grid = document.getElementById('redemption-answers-grid');
+  if (grid) {
+    grid.innerHTML = item.options.map((opt, i) => `
+      <button class="btn-answer ans-${i % 4}" id="red-btn-${i}" onclick="submitRedemptionAnswer(${i})" style="min-height:48px;font-size:14px;padding:10px 14px">
+        <div class="shape-icon" style="font-size:14px">${shapes[i % 4]}</div>
+        <span>${opt}</span>
+      </button>
+    `).join('');
+  }
+}
+
+function submitRedemptionAnswer(selectedIdx) {
+  const item = redemptionQueue[redemptionCurrentIndex];
+  if (!item) return;
+
+  const isCorrect = selectedIdx === item.correct_idx;
+  const feedbackAlert = document.getElementById('redemption-feedback-alert');
+
+  for (let i = 0; i < item.options.length; i++) {
+    const b = document.getElementById(`red-btn-${i}`);
+    if (b) b.disabled = true;
+  }
+
+  if (isCorrect) {
+    soundEngine.play('correct');
+    soundEngine.playCombo(3);
+    feedbackAlert.className = '';
+    feedbackAlert.style.background = 'rgba(16,185,129,0.2)';
+    feedbackAlert.style.border = '1px solid rgba(16,185,129,0.5)';
+    feedbackAlert.style.color = '#34d399';
+    feedbackAlert.innerHTML = `🎉 TEPAT SEKALI! Pembahasan: ${item.explanation}`;
+
+    // Mark as fixed in local review dataset
+    item.is_correct = true;
+    item.status = 'correct';
+    redemptionMasteredCount++;
+
+    setTimeout(() => {
+      redemptionCurrentIndex++;
+      renderRedemptionQuestion();
+    }, 2000);
+  } else {
+    soundEngine.play('wrong');
+    triggerScreenShake();
+    feedbackAlert.className = '';
+    feedbackAlert.style.background = 'rgba(244,63,94,0.2)';
+    feedbackAlert.style.border = '1px solid rgba(244,63,94,0.5)';
+    feedbackAlert.style.color = '#fb7185';
+    feedbackAlert.innerHTML = `❌ Masih kurang tepat! Tips: ${item.study_tip}. Coba lagi!`;
+
+    setTimeout(() => {
+      for (let i = 0; i < item.options.length; i++) {
+        const b = document.getElementById(`red-btn-${i}`);
+        if (b) b.disabled = false;
+      }
+    }, 1500);
+  }
+}
+
+// 4. STUDY GUIDE & PRINTABLE PDF
+function openStudyGuideModal() {
+  if (!quizReviewData) {
+    fetchQuizReviewData().then(() => {
+      const modal = document.getElementById('modal-study-guide');
+      if (modal) modal.classList.remove('hidden');
+    });
+  } else {
+    const modal = document.getElementById('modal-study-guide');
+    if (modal) modal.classList.remove('hidden');
+  }
+}
+
+function closeStudyGuideModal() {
+  const modal = document.getElementById('modal-study-guide');
+  if (modal) modal.classList.add('hidden');
+}
+
+function populateStudyGuide(data) {
+  const titleEl = document.getElementById('sg-title');
+  if (titleEl) titleEl.textContent = `Ringkasan Materi: ${data.quiz_title}`;
+
+  const dateEl = document.getElementById('sg-date');
+  if (dateEl) dateEl.textContent = `Tanggal: ${new Intl.DateTimeFormat('id-ID', { dateStyle: 'long' }).format(new Date())}`;
+
+  const nameEl = document.getElementById('sg-student-name');
+  if (nameEl) nameEl.textContent = data.player_name || playerName || 'Peserta';
+
+  const scoreEl = document.getElementById('sg-student-score');
+  if (scoreEl) scoreEl.textContent = `${(data.score || 0).toLocaleString()} PTS`;
+
+  const accEl = document.getElementById('sg-student-accuracy');
+  if (accEl) accEl.textContent = `${data.accuracy_pct}% (${data.correct_count} Benar / ${data.total_questions} Soal)`;
+
+  const container = document.getElementById('sg-questions-container');
+  if (!container) return;
+
+  const letters = ['A', 'B', 'C', 'D'];
+  container.innerHTML = data.items.map((item, idx) => `
+    <div style="margin-bottom:18px;border-bottom:1px dashed #cbd5e1;padding-bottom:14px;page-break-inside:avoid">
+      <div style="font-weight:800;font-size:14px;color:#0f172a;margin-bottom:6px">
+        ${idx + 1}. ${item.text}
+      </div>
+      <div style="font-size:12.5px;color:#1e293b;margin-bottom:6px">
+        <b>Kunci Jawaban:</b> <span style="color:#15803d;font-weight:700">${letters[item.correct_idx]}. ${item.correct_text}</span>
+        ${item.is_correct ? '<span style="color:#16a34a;margin-left:8px;font-weight:700">✓ (Kamu Benar)</span>' : '<span style="color:#dc2626;margin-left:8px;font-weight:700">✗ (Pilihan Kamu: ' + item.my_answer_text + ')</span>'}
+      </div>
+      <div style="font-size:12px;color:#475569;background:#f1f5f9;padding:8px 12px;border-radius:8px;line-height:1.5">
+        <b>Pembahasan Konsep:</b> ${item.explanation}
+      </div>
+    </div>
+  `).join('');
+}
 
 // Muat preferensi aksesibilitas saat halaman dimuat
 document.addEventListener('DOMContentLoaded', () => {
