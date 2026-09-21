@@ -125,6 +125,34 @@ class QuizSoundEngine {
           osc.stop(now + offset + n.d);
           offset += n.d * 0.85;
         });
+      } else if (type === 'pop') {
+        // Suara bubble pop lembut untuk emoji floating reaction
+        const osc = this.ctx.createOscillator();
+        const gain = this.ctx.createGain();
+        osc.type = 'sine';
+        osc.frequency.setValueAtTime(450, now);
+        osc.frequency.exponentialRampToValueAtTime(1100, now + 0.04);
+        gain.gain.setValueAtTime(0.18, now);
+        gain.gain.exponentialRampToValueAtTime(0.001, now + 0.05);
+        osc.connect(gain);
+        gain.connect(this.ctx.destination);
+        osc.start(now);
+        osc.stop(now + 0.05);
+      } else if (type === 'cheer') {
+        // Suara kemeriahan / crowd cheer chime saat ranking 1 direbut atau milestone streak
+        const chords = [523.25, 659.25, 783.99, 1046.50, 1318.51];
+        chords.forEach((f, i) => {
+          const osc = this.ctx.createOscillator();
+          const gain = this.ctx.createGain();
+          osc.type = 'triangle';
+          osc.frequency.setValueAtTime(f, now + i * 0.04);
+          gain.gain.setValueAtTime(0.2, now + i * 0.04);
+          gain.gain.exponentialRampToValueAtTime(0.001, now + 0.35);
+          osc.connect(gain);
+          gain.connect(this.ctx.destination);
+          osc.start(now + i * 0.04);
+          osc.stop(now + 0.35);
+        });
       }
     } catch (e) {
       // AudioContext mungkin diblokir sebelum interaksi pertama pengguna

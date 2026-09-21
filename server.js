@@ -370,6 +370,32 @@ app.post('/api/subscription/upgrade', requireRole('creator', 'dosen'), (req, res
 
 // ---------- LIVE GAME ROOM SYSTEM (INTERACTIVE & STUDENT-PACED ALA QUIZIZZ) ----------
 
+// In-Memory Real-Time Social Reactions & Hype Events Store (Ring Buffer per PIN)
+const roomReactionsStore = new Map(); // pin -> Array<{ id, player_name, avatar, emoji, text, created_at }>
+const roomEventsStore = new Map(); // pin -> Array<{ id, type, text, avatar, created_at }>
+let reactionCounter = 1;
+let eventCounter = 1;
+
+function pushRoomReaction(pin, reaction) {
+  if (!roomReactionsStore.has(pin)) roomReactionsStore.set(pin, []);
+  const list = roomReactionsStore.get(pin);
+  const item = { id: reactionCounter++, ...reaction, created_at: Date.now() };
+  list.push(item);
+  // Keep last 40 reactions, discard older
+  if (list.length > 40) list.splice(0, list.length - 40);
+  return item;
+}
+
+function pushRoomSocialEvent(pin, event) {
+  if (!roomEventsStore.has(pin)) roomEventsStore.set(pin, []);
+  const list = roomEventsStore.get(pin);
+  const item = { id: eventCounter++, ...event, created_at: Date.now() };
+  list.push(item);
+  // Keep last 30 events, discard older
+  if (list.length > 30) list.splice(0, list.length - 30);
+  return item;
+}
+
 // 0. Check Active Live Room for Host (Persistent Reconnection)
 app.get('/api/rooms/active', requireRole('creator', 'dosen'), (req, res) => {
   const activeRoom = db.prepare(`
@@ -650,6 +676,16 @@ app.get('/api/rooms/:pin/state', (req, res) => {
     distribution: answersDistribution[idx] || { 0: 0, 1: 0, 2: 0, 3: 0, total: 0 }
   }));
 
+  // Interaksi Sosial Real-Time
+  const sinceReactionId = Number(req.query.since_reaction_id) || 0;
+  const sinceEventId = Number(req.query.since_event_id) || 0;
+
+  const allReactions = roomReactionsStore.get(pin) || [];
+  const recentReactions = allReactions.filter(r => r.id > sinceReactionId && (Date.now() - r.created_at < 12000));
+
+  const allEvents = roomEventsStore.get(pin) || [];
+  const recentEvents = allEvents.filter(e => e.id > sinceEventId && (Date.now() - e.created_at < 15000));
+
   res.json({
     pin: room.pin,
     status: room.status,
@@ -670,7 +706,12 @@ app.get('/api/rooms/:pin/state', (req, res) => {
     total_finished_players: totalFinishedPlayers,
     answers_distribution: answersDistribution,
     host_questions: hostQuestions,
-    leaderboard: leaderboard.slice(0, 15)
+    leaderboard: leaderboard.slice(0, 15),
+    // Interaksi Sosial Real-Time
+    recent_reactions: recentReactions,
+    recent_events: recentEvents,
+    last_reaction_id: allReactions.length > 0 ? allReactions[allReactions.length - 1].id : 0,
+    last_event_id: allEvents.length > 0 ? allEvents[allEvents.length - 1].id : 0
   });
 });
 
@@ -747,6 +788,8 @@ app.post('/api/rooms/:pin/answer', (req, res) => {
     }
   }
 
+  const topPlayerBefore = db.prepare('SELECT name, score FROM room_players WHERE pin = ? ORDER BY score DESC, updated_at ASC LIMIT 1').get(pin);
+
   answersMap[playerQIdx] = { 
     answer_idx: Number(answer_idx), 
     is_correct: isCorrect, 
@@ -769,6 +812,44 @@ app.post('/api/rooms/:pin/answer', (req, res) => {
     WHERE pin = ? AND player_token = ?`).run(
       newScore, newStreak, isCorrect ? 1 : 0, pointsEarned, JSON.stringify(answersMap), nextQIdx, isFinished, Date.now(), pin, player_token
     );
+
+  // Trigger Real-Time Social Hype Events
+  // 1. Leaderboard Overtake #1
+  if (topPlayerBefore && player.name !== topPlayerBefore.name && newScore > topPlayerBefore.score) {
+    pushRoomSocialEvent(pin, {
+      type: 'rank_one',
+      text: `👑 ${player.name} merebut posisi #1 dengan ${newScore.toLocaleString()} PTS!`,
+      avatar: player.avatar
+    });
+  }
+
+  // 2. High Streak Milestones (x3, x5, x7, x10)
+  if (isCorrect && (newStreak === 3 || newStreak === 5 || newStreak === 7 || newStreak === 10)) {
+    pushRoomSocialEvent(pin, {
+      type: 'streak',
+      text: `🔥 ${player.name} mencapai STREAK x${newStreak}!`,
+      avatar: player.avatar
+    });
+  }
+
+  // 3. Power-Up Activation
+  if (powerupApplied) {
+    const puName = powerupApplied === 'double_points' ? '⚡ 2x Poin' : (powerupApplied === 'streak_shield' ? '🛡️ Streak Shield' : powerupApplied);
+    pushRoomSocialEvent(pin, {
+      type: 'powerup',
+      text: `${player.avatar} ${player.name} mengaktifkan ${puName}!`,
+      avatar: player.avatar
+    });
+  }
+
+  // 4. Completed all questions
+  if (isFinished) {
+    pushRoomSocialEvent(pin, {
+      type: 'finished',
+      text: `🏁 ${player.name} telah menyelesaikan semua soal!`,
+      avatar: player.avatar
+    });
+  }
 
   res.json({
     ok: true,
@@ -813,7 +894,45 @@ app.post('/api/rooms/:pin/powerup/fifty-fifty', (req, res) => {
   const shuffled = wrongIndices.sort(() => 0.5 - Math.random());
   const eliminated = shuffled.slice(0, Math.min(2, wrongIndices.length));
 
+  // Trigger social event for 50:50 power-up
+  pushRoomSocialEvent(pin, {
+    type: 'powerup',
+    text: `${player.avatar} ${player.name} menggunakan ✂️ 50:50 Eliminator!`,
+    avatar: player.avatar
+  });
+
   res.json({ ok: true, eliminated });
+});
+
+// 5c. Submit Real-Time Reaction / Cheer Sticker (Floating Emotes Stream)
+const reactionRateLimits = new Map(); // player_token -> lastTimestamp
+
+app.post('/api/rooms/:pin/reaction', (req, res) => {
+  const pin = req.params.pin;
+  const { player_token, emoji, text } = req.body || {};
+  if (!player_token) return res.status(400).json({ error: 'Token pemain diperlukan' });
+
+  // Rate limit: 1 reaction per 350ms per player
+  const lastTime = reactionRateLimits.get(player_token) || 0;
+  if (Date.now() - lastTime < 350) {
+    return res.status(429).json({ error: 'Terlalu cepat' });
+  }
+  reactionRateLimits.set(player_token, Date.now());
+
+  const player = db.prepare('SELECT name, avatar FROM room_players WHERE pin = ? AND player_token = ?').get(pin, player_token);
+  if (!player) return res.status(404).json({ error: 'Player tidak ditemukan' });
+
+  const safeEmoji = (emoji || '🔥').slice(0, 10);
+  const safeText = text ? String(text).slice(0, 30) : null;
+
+  const item = pushRoomReaction(pin, {
+    player_name: player.name,
+    avatar: player.avatar,
+    emoji: safeEmoji,
+    text: safeText
+  });
+
+  res.json({ ok: true, reaction: item });
 });
 
 // ---------- DEEPSEEK AI SMART QUIZ GENERATOR (DeepSeek V4.1 Flash) ----------

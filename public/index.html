@@ -400,6 +400,90 @@
   .mascot-speech-sub {
     font-size: 12px; color: var(--gold); margin-top: 2px; font-weight: 700;
   }
+
+  /* REAL-TIME SOCIAL FLOATING REACTIONS & HYPE TICKER */
+  .floating-reactions-dock {
+    position: fixed; bottom: 18px; right: 18px; z-index: 100;
+    display: flex; align-items: center; gap: 7px; background: rgba(22, 13, 38, 0.88);
+    backdrop-filter: blur(14px); border: 1.5px solid rgba(255, 255, 255, 0.16);
+    border-radius: 30px; padding: 6px 12px; box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5);
+    transition: transform 0.2s ease, opacity 0.2s;
+  }
+  .btn-reaction {
+    background: transparent; border: none; font-size: 22px; cursor: pointer;
+    padding: 3px 5px; border-radius: 50%; transition: transform 0.15s, background 0.15s;
+    user-select: none; line-height: 1; display: flex; align-items: center; justify-content: center;
+  }
+  .btn-reaction:hover {
+    transform: scale(1.35) translateY(-3px); background: rgba(255, 255, 255, 0.12);
+  }
+  .btn-reaction:active {
+    transform: scale(0.88);
+  }
+  .btn-cheer-toggle {
+    background: linear-gradient(135deg, rgba(245, 158, 11, 0.25), rgba(217, 119, 6, 0.25));
+    border: 1px solid var(--amber); color: var(--gold); border-radius: 18px;
+    font-size: 12px; font-weight: 800; padding: 5px 11px; cursor: pointer;
+    display: inline-flex; align-items: center; gap: 5px; transition: all 0.2s;
+  }
+  .btn-cheer-toggle:hover {
+    background: linear-gradient(135deg, rgba(245, 158, 11, 0.4), rgba(217, 119, 6, 0.4));
+    transform: translateY(-1px);
+  }
+  .cheer-popup-menu {
+    position: absolute; bottom: 52px; right: 0; background: #1a0f2e;
+    border: 1.5px solid var(--border); border-radius: 16px; padding: 8px;
+    box-shadow: 0 10px 30px rgba(0,0,0,0.6); display: flex; flex-direction: column; gap: 6px;
+    min-width: 155px; z-index: 101;
+  }
+  .btn-cheer-option {
+    background: rgba(255, 255, 255, 0.05); border: none; color: #fff;
+    border-radius: 10px; padding: 7px 12px; font-size: 12.5px; font-weight: 700;
+    text-align: left; cursor: pointer; transition: background 0.15s;
+  }
+  .btn-cheer-option:hover {
+    background: rgba(6, 182, 212, 0.25); color: var(--cyan);
+  }
+
+  @keyframes floatReactionUp {
+    0% { transform: translateY(0) scale(0.5) rotate(0deg); opacity: 0; }
+    15% { transform: translateY(-40px) scale(1.15) rotate(-6deg); opacity: 1; }
+    80% { transform: translateY(-380px) scale(1) rotate(6deg); opacity: 0.9; }
+    100% { transform: translateY(-500px) scale(0.85) rotate(-8deg); opacity: 0; }
+  }
+  .floating-reaction-item {
+    position: fixed; pointer-events: none; z-index: 92;
+    animation: floatReactionUp 2.8s cubic-bezier(0.25, 1, 0.5, 1) forwards;
+    will-change: transform, opacity; user-select: none;
+  }
+  .floating-cheer-bubble {
+    display: inline-flex; align-items: center; gap: 7px;
+    background: rgba(20, 10, 36, 0.92); border: 1.5px solid var(--amber);
+    border-radius: 22px; padding: 6px 14px; color: #fff; font-size: 13px; font-weight: 800;
+    box-shadow: 0 6px 20px rgba(0,0,0,0.5); backdrop-filter: blur(8px);
+  }
+
+  /* Live Hype Ticker Banner */
+  .hype-ticker-container {
+    position: fixed; top: 76px; left: 50%; transform: translateX(-50%);
+    z-index: 96; pointer-events: none; display: flex; flex-direction: column;
+    align-items: center; gap: 8px; width: 90%; max-width: 480px;
+  }
+  .hype-toast {
+    background: rgba(20, 10, 36, 0.94); border: 1.5px solid var(--gold);
+    backdrop-filter: blur(12px); border-radius: 24px; padding: 7px 18px;
+    font-size: 13px; font-weight: 800; color: #fff; display: inline-flex;
+    align-items: center; gap: 8px; box-shadow: 0 6px 24px rgba(0, 0, 0, 0.5);
+    animation: toastIn 0.35s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards, toastOut 0.4s ease-in 3.5s forwards;
+  }
+  @keyframes toastIn {
+    from { transform: translateY(-20px) scale(0.9); opacity: 0; }
+    to { transform: translateY(0) scale(1); opacity: 1; }
+  }
+  @keyframes toastOut {
+    from { transform: translateY(0) scale(1); opacity: 1; }
+    to { transform: translateY(-15px) scale(0.9); opacity: 0; }
+  }
 </style>
 </head>
 <body>
@@ -565,6 +649,12 @@
 
 <!-- LIVE PLAYER ARENA VIEW -->
 <div id="view-player" class="arena-wrapper hidden">
+  <!-- Live Hype Ticker Banner Container -->
+  <div class="hype-ticker-container" id="hype-ticker-container"></div>
+
+  <!-- Floating Emote Particles Canvas Container -->
+  <div id="floating-emotes-container" style="position:fixed;top:0;left:0;width:100%;height:100%;pointer-events:none;z-index:92;overflow:hidden"></div>
+
   <!-- Top Bar -->
   <div class="arena-topbar">
     <div class="arena-stat">
@@ -702,6 +792,28 @@
       <button class="btn-nav btn-nav-primary" onclick="goHome()" style="padding:14px 28px;font-size:15px">
         <i class="fa-solid fa-rotate-right"></i> Main Kuis Lagi
       </button>
+    </div>
+  </div>
+
+  <!-- Floating Reactions Dock (Mobile & Desktop) -->
+  <div class="floating-reactions-dock" id="floating-reactions-dock">
+    <button class="btn-reaction" onclick="sendReaction('🔥')" title="Kirim Api">🔥</button>
+    <button class="btn-reaction" onclick="sendReaction('👏')" title="Tepuk Tangan">👏</button>
+    <button class="btn-reaction" onclick="sendReaction('😱')" title="Kaget">😱</button>
+    <button class="btn-reaction" onclick="sendReaction('🎉')" title="Pesta">🎉</button>
+    <button class="btn-reaction" onclick="sendReaction('🚀')" title="Melesat">🚀</button>
+    <button class="btn-reaction" onclick="sendReaction('🧠')" title="Otak Cerdas">🧠</button>
+    <div style="position:relative">
+      <button class="btn-cheer-toggle" id="btn-cheer-toggle" onclick="toggleCheerMenu(event)" title="Kirim Pesan Sorakan">
+        <i class="fa-solid fa-bullhorn"></i> <span>Cheer</span>
+      </button>
+      <div class="cheer-popup-menu hidden" id="cheer-popup-menu">
+        <button class="btn-cheer-option" onclick="sendCheerSticker('⚡ Gaskeun!')">⚡ Gaskeun!</button>
+        <button class="btn-cheer-option" onclick="sendCheerSticker('🏆 GG!')">🏆 GG!</button>
+        <button class="btn-cheer-option" onclick="sendCheerSticker('☕ Santai Dulu!')">☕ Santai Dulu!</button>
+        <button class="btn-cheer-option" onclick="sendCheerSticker('💪 Nice Try!')">💪 Nice Try!</button>
+        <button class="btn-cheer-option" onclick="sendCheerSticker('🏃 Kejar Aku!')">🏃 Kejar Aku!</button>
+      </div>
     </div>
   </div>
 </div>
@@ -851,6 +963,11 @@ let playerPowerups = {
 let activePowerup = null;
 let isTimerFrozen = false;
 
+// Real-Time Social Reactions & Hype Events State
+let lastReceivedReactionId = 0;
+let lastReceivedEventId = 0;
+let lastReactionSentTime = 0;
+
 // Update Sound Icon
 function updateSoundIcon() {
   const icon = document.getElementById('sound-icon');
@@ -987,6 +1104,10 @@ function startPlayerArena() {
   activePowerup = null;
   renderPowerupsUI();
 
+  // Reset real-time social pointers
+  lastReceivedReactionId = 0;
+  lastReceivedEventId = 0;
+
   // Poll room state every 1 second
   if (pollInterval) clearInterval(pollInterval);
   pollRoomState();
@@ -996,9 +1117,37 @@ function startPlayerArena() {
 async function pollRoomState() {
   if (!currentPin || !playerToken) return;
   try {
-    const res = await fetch(`/api/rooms/${currentPin}/state?player_token=${playerToken}`);
+    const res = await fetch(`/api/rooms/${currentPin}/state?player_token=${playerToken}&since_reaction_id=${lastReceivedReactionId}&since_event_id=${lastReceivedEventId}`);
     if (!res.ok) return;
     const state = await res.json();
+
+    // Process Incoming Real-Time Social Reactions
+    if (Array.isArray(state.recent_reactions)) {
+      state.recent_reactions.forEach(r => {
+        if (r.id > lastReceivedReactionId) {
+          lastReceivedReactionId = r.id;
+          if (r.player_name !== playerName) {
+            spawnFloatingReaction(r.emoji, r.text, r.player_name, false);
+          }
+        }
+      });
+    }
+    if (state.last_reaction_id && state.last_reaction_id > lastReceivedReactionId) {
+      lastReceivedReactionId = state.last_reaction_id;
+    }
+
+    // Process Incoming Real-Time Social Hype Events
+    if (Array.isArray(state.recent_events)) {
+      state.recent_events.forEach(e => {
+        if (e.id > lastReceivedEventId) {
+          lastReceivedEventId = e.id;
+          showHypeTicker(e);
+        }
+      });
+    }
+    if (state.last_event_id && state.last_event_id > lastReceivedEventId) {
+      lastReceivedEventId = state.last_event_id;
+    }
 
     // Update Header Badges
     if (state.my_score !== undefined) {
@@ -1387,6 +1536,129 @@ function advanceNextQuestion() {
     hasAnsweredCurrentQ = false;
     pollRoomState();
   }
+}
+
+// ---------- REAL-TIME SOCIAL FLOATING REACTIONS & HYPE TICKER ----------
+
+function toggleCheerMenu(e) {
+  if (e) e.stopPropagation();
+  const menu = document.getElementById('cheer-popup-menu');
+  if (menu) menu.classList.toggle('hidden');
+}
+
+// Close cheer popup when clicking anywhere outside
+document.addEventListener('click', (e) => {
+  const menu = document.getElementById('cheer-popup-menu');
+  const btn = document.getElementById('btn-cheer-toggle');
+  if (menu && !menu.classList.contains('hidden')) {
+    if (!menu.contains(e.target) && !btn.contains(e.target)) {
+      menu.classList.add('hidden');
+    }
+  }
+});
+
+function sendCheerSticker(text) {
+  const menu = document.getElementById('cheer-popup-menu');
+  if (menu) menu.classList.add('hidden');
+  sendReaction('📣', text);
+}
+
+async function sendReaction(emoji, text = null) {
+  if (!currentPin || !playerToken) return;
+  const now = Date.now();
+  if (now - lastReactionSentTime < 280) return; // Prevent spamming
+  lastReactionSentTime = now;
+
+  soundEngine.play('pop');
+  spawnFloatingReaction(emoji, text, playerName || 'Kamu', true);
+
+  try {
+    await fetch(`/api/rooms/${currentPin}/reaction`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        player_token: playerToken,
+        emoji,
+        text
+      })
+    });
+  } catch (err) {
+    console.error('Reaction error', err);
+  }
+}
+
+function spawnFloatingReaction(emoji, text, senderName, isMe = false) {
+  const container = document.getElementById('floating-emotes-container');
+  if (!container) return;
+
+  const item = document.createElement('div');
+  item.className = 'floating-reaction-item';
+
+  // Random horizontal positioning
+  // If isMe, spawn near right side (65% - 85%), otherwise across screen (15% - 75%)
+  const minX = isMe ? 65 : 15;
+  const maxX = isMe ? 85 : 75;
+  const startX = minX + Math.random() * (maxX - minX);
+
+  item.style.left = `${startX}%`;
+  item.style.bottom = `${20 + Math.random() * 25}px`;
+
+  if (text) {
+    item.innerHTML = `
+      <div class="floating-cheer-bubble">
+        <span style="font-size:18px">${emoji}</span>
+        <span>${text}</span>
+        <span style="opacity:0.65;font-size:11px;font-weight:600">(${senderName})</span>
+      </div>
+    `;
+  } else {
+    item.innerHTML = `
+      <div style="font-size:${isMe ? 38 : 32}px;filter:drop-shadow(0 4px 12px rgba(0,0,0,0.55))">
+        ${emoji}
+      </div>
+    `;
+  }
+
+  container.appendChild(item);
+
+  // Remove element after animation ends
+  setTimeout(() => {
+    if (item.parentNode) item.parentNode.removeChild(item);
+  }, 2800);
+}
+
+function showHypeTicker(event) {
+  const container = document.getElementById('hype-ticker-container');
+  if (!container) return;
+
+  const toast = document.createElement('div');
+  toast.className = 'hype-toast';
+
+  let icon = '⚡';
+  if (event.type === 'rank_one') {
+    icon = '👑';
+    soundEngine.play('cheer');
+  } else if (event.type === 'streak') {
+    icon = '🔥';
+    soundEngine.play('pop');
+  } else if (event.type === 'powerup') {
+    icon = '🃏';
+    soundEngine.play('pop');
+  } else if (event.type === 'finished') {
+    icon = '🏁';
+  }
+
+  toast.innerHTML = `<span style="font-size:16px">${icon}</span> <span>${event.text}</span>`;
+  container.appendChild(toast);
+
+  // Keep at most 2 toasts simultaneously
+  while (container.children.length > 2) {
+    container.removeChild(container.firstChild);
+  }
+
+  setTimeout(() => {
+    if (toast.parentNode) toast.parentNode.removeChild(toast);
+  }, 3900);
 }
 
 function renderWaitingState(state) {

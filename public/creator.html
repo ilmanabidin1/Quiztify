@@ -500,6 +500,32 @@
     }
     .no-print { display: none !important; }
   }
+
+  /* Host Real-Time Floating Crowd Emotes & Hype Marquee */
+  @keyframes hostFloatUp {
+    0% { transform: translateY(0) scale(0.6) rotate(0deg); opacity: 0; }
+    15% { transform: translateY(-50px) scale(1.2) rotate(-8deg); opacity: 1; }
+    85% { transform: translateY(-500px) scale(1.05) rotate(8deg); opacity: 0.9; }
+    100% { transform: translateY(-680px) scale(0.9) rotate(-10deg); opacity: 0; }
+  }
+  .host-floating-item {
+    position: absolute; pointer-events: none; z-index: 99;
+    animation: hostFloatUp 3.2s cubic-bezier(0.25, 1, 0.5, 1) forwards;
+    will-change: transform, opacity; user-select: none;
+  }
+  .host-cheer-bubble {
+    display: inline-flex; align-items: center; gap: 8px;
+    background: rgba(15, 8, 26, 0.92); border: 2px solid var(--amber);
+    border-radius: 24px; padding: 8px 18px; color: #fff; font-size: 15px; font-weight: 800;
+    box-shadow: 0 8px 30px rgba(0,0,0,0.6); backdrop-filter: blur(10px);
+  }
+  .host-hype-toast {
+    background: rgba(15, 8, 26, 0.94); border: 2px solid var(--gold);
+    backdrop-filter: blur(12px); border-radius: 28px; padding: 8px 22px;
+    font-size: 14.5px; font-weight: 800; color: #fff; display: inline-flex;
+    align-items: center; gap: 10px; box-shadow: 0 8px 30px rgba(0, 0, 0, 0.6);
+    animation: toastIn 0.35s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards, toastOut 0.4s ease-in 4s forwards;
+  }
 </style>
 </head>
 <body>
@@ -973,6 +999,12 @@
 
 <!-- HOST PROJECTOR FULLSCREEN MODAL (QUIZIZZ LIVE HOST) -->
 <div id="modal-host-screen" class="host-screen-modal hidden">
+  <!-- Floating Crowd Reaction Canvas on Host Projector Screen -->
+  <div id="host-floating-emotes-container" style="position:absolute;top:0;left:0;width:100%;height:100%;pointer-events:none;z-index:99;overflow:hidden"></div>
+
+  <!-- Host Live Hype Ticker Marquee -->
+  <div id="host-hype-ticker-container" style="position:absolute;bottom:16px;left:50%;transform:translateX(-50%);z-index:98;pointer-events:none;display:flex;gap:12px"></div>
+
   <div class="host-topbar">
     <div style="display:flex;align-items:center;gap:16px">
       <img src="/logo.png" alt="Quiztify" style="height:34px;width:auto;object-fit:contain;filter:drop-shadow(0 2px 8px rgba(118,216,58,0.25))">
@@ -1533,6 +1565,8 @@
 let me = null;
 let activeHostPin = null;
 let hostPollTimer = null;
+let hostLastReactionId = 0;
+let hostLastEventId = 0;
 let builderQuestions = [];
 
 window.addEventListener('DOMContentLoaded', async () => {
@@ -1884,10 +1918,36 @@ function showHostState(state) {
 async function pollHostState() {
   if (!activeHostPin) return;
   try {
-    const res = await fetch(`/api/rooms/${activeHostPin}/state`);
+    const res = await fetch(`/api/rooms/${activeHostPin}/state?since_reaction_id=${hostLastReactionId}&since_event_id=${hostLastEventId}`);
     if (!res.ok) return;
     const data = await res.json();
     hostLatestData = data;
+
+    // Render Real-Time Social Floating Reactions from students on projector
+    if (Array.isArray(data.recent_reactions)) {
+      data.recent_reactions.forEach(r => {
+        if (r.id > hostLastReactionId) {
+          hostLastReactionId = r.id;
+          spawnHostFloatingReaction(r.emoji, r.text, r.player_name);
+        }
+      });
+    }
+    if (data.last_reaction_id && data.last_reaction_id > hostLastReactionId) {
+      hostLastReactionId = data.last_reaction_id;
+    }
+
+    // Render Real-Time Hype Events on Host Screen
+    if (Array.isArray(data.recent_events)) {
+      data.recent_events.forEach(e => {
+        if (e.id > hostLastEventId) {
+          hostLastEventId = e.id;
+          showHostHypeToast(e);
+        }
+      });
+    }
+    if (data.last_event_id && data.last_event_id > hostLastEventId) {
+      hostLastEventId = data.last_event_id;
+    }
 
     document.getElementById('host-player-count').textContent = data.players_count;
 
@@ -1919,6 +1979,65 @@ async function pollHostState() {
   } catch (e) {
     console.error('Host poll error', e);
   }
+}
+
+function spawnHostFloatingReaction(emoji, text, senderName) {
+  const container = document.getElementById('host-floating-emotes-container');
+  if (!container) return;
+
+  const item = document.createElement('div');
+  item.className = 'host-floating-item';
+
+  // Random horizontal positioning across projector (10% to 90%)
+  const startX = 10 + Math.random() * 80;
+  item.style.left = `${startX}%`;
+  item.style.bottom = `${20 + Math.random() * 30}px`;
+
+  if (text) {
+    item.innerHTML = `
+      <div class="host-cheer-bubble">
+        <span style="font-size:22px">${emoji}</span>
+        <span>${text}</span>
+        <span style="opacity:0.65;font-size:12px;font-weight:600">(${senderName})</span>
+      </div>
+    `;
+  } else {
+    item.innerHTML = `
+      <div style="font-size:${42 + Math.floor(Math.random() * 16)}px;filter:drop-shadow(0 6px 16px rgba(0,0,0,0.6))">
+        ${emoji}
+      </div>
+    `;
+  }
+
+  container.appendChild(item);
+  setTimeout(() => {
+    if (item.parentNode) item.parentNode.removeChild(item);
+  }, 3200);
+}
+
+function showHostHypeToast(event) {
+  const container = document.getElementById('host-hype-ticker-container');
+  if (!container) return;
+
+  const toast = document.createElement('div');
+  toast.className = 'host-hype-toast';
+
+  let icon = '⚡';
+  if (event.type === 'rank_one') icon = '👑';
+  else if (event.type === 'streak') icon = '🔥';
+  else if (event.type === 'powerup') icon = '🃏';
+  else if (event.type === 'finished') icon = '🏁';
+
+  toast.innerHTML = `<span style="font-size:20px">${icon}</span> <span>${event.text}</span>`;
+  container.appendChild(toast);
+
+  while (container.children.length > 2) {
+    container.removeChild(container.firstChild);
+  }
+
+  setTimeout(() => {
+    if (toast.parentNode) toast.parentNode.removeChild(toast);
+  }, 4200);
 }
 
 function renderHostDistribution(data) {
