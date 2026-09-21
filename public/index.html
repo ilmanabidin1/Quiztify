@@ -26,6 +26,77 @@
     --gold: #fbbf24;
   }
 
+  /* Visual Theme Overrides */
+  [data-quiz-theme="royal"], html[data-quiz-theme="royal"] body {
+    --bg-dark: #0f0728;
+    --bg-card: #1f1147;
+    --bg-card-light: #2d1864;
+    --border: #4c1d95;
+    --purple: #6d28d9;
+    --purple-light: #8b5cf6;
+    --cyan: #f59e0b;
+    --gold: #fbbf24;
+  }
+  html[data-quiz-theme="royal"] body {
+    background: radial-gradient(circle at 50% 0%, #3b0764 0%, #0f0728 85%) !important;
+  }
+
+  [data-quiz-theme="emerald"], html[data-quiz-theme="emerald"] body {
+    --bg-dark: #021a12;
+    --bg-card: #063124;
+    --bg-card-light: #0b4534;
+    --border: #047857;
+    --purple: #059669;
+    --purple-light: #10b981;
+    --cyan: #34d399;
+    --gold: #6ee7b7;
+  }
+  html[data-quiz-theme="emerald"] body {
+    background: radial-gradient(circle at 50% 0%, #064e3b 0%, #021a12 85%) !important;
+  }
+
+  [data-quiz-theme="sunset"], html[data-quiz-theme="sunset"] body {
+    --bg-dark: #19060c;
+    --bg-card: #2e0d18;
+    --bg-card-light: #441223;
+    --border: #881337;
+    --purple: #e11d48;
+    --purple-light: #f43f5e;
+    --cyan: #fb923c;
+    --gold: #fde047;
+  }
+  html[data-quiz-theme="sunset"] body {
+    background: radial-gradient(circle at 50% 0%, #4c0519 0%, #19060c 85%) !important;
+  }
+
+  [data-quiz-theme="retro"], html[data-quiz-theme="retro"] body {
+    --bg-dark: #13051f;
+    --bg-card: #240b39;
+    --bg-card-light: #371454;
+    --border: #701a75;
+    --purple: #c026d3;
+    --purple-light: #d946ef;
+    --cyan: #06b6d4;
+    --gold: #facc15;
+  }
+  html[data-quiz-theme="retro"] body {
+    background: radial-gradient(circle at 50% 0%, #4a044e 0%, #13051f 85%) !important;
+  }
+
+  [data-quiz-theme="academic"], html[data-quiz-theme="academic"] body {
+    --bg-dark: #071328;
+    --bg-card: #0d2144;
+    --bg-card-light: #143160;
+    --border: #1d4ed8;
+    --purple: #2563eb;
+    --purple-light: #3b82f6;
+    --cyan: #60a5fa;
+    --gold: #fbbf24;
+  }
+  html[data-quiz-theme="academic"] body {
+    background: radial-gradient(circle at 50% 0%, #172554 0%, #071328 85%) !important;
+  }
+
   * { margin:0; padding:0; box-sizing:border-box; font-family:'Segoe UI',system-ui,-apple-system,sans-serif; }
   body { background: var(--bg-dark); color: var(--text); min-height: 100vh; overflow-x: hidden; }
 
@@ -1762,6 +1833,66 @@ let hasAnsweredCurrentQ = false;
 let autoAdvanceTimer = null;
 let latestAnswerResult = null;
 
+// Quiz Comprehensive Configuration State
+let currentQuizTheme = 'cyberpunk';
+let currentBreakTimeSec = 5;
+let currentQuizSettings = {
+  integrity_shield: true,
+  powerups_enabled: true,
+  reactions_enabled: true,
+  shuffle_questions: false,
+  shuffle_options: false,
+  show_explanation: true,
+  show_leaderboard: true,
+  sound_effects: true,
+  certificates_enabled: true,
+  self_paced: true
+};
+
+function applyQuizSettings(settings) {
+  if (!settings) return;
+
+  // 1. Power-Ups Deck
+  const powerupDeck = document.getElementById('powerup-deck');
+  if (powerupDeck) {
+    powerupDeck.style.display = settings.powerups_enabled === false ? 'none' : 'flex';
+  }
+
+  // 2. Real-Time Social Reactions
+  const cheerBtn = document.getElementById('btn-cheer-toggle');
+  if (cheerBtn) {
+    cheerBtn.style.display = settings.reactions_enabled === false ? 'none' : 'flex';
+  }
+  const cheerMenu = document.getElementById('cheer-popup-menu');
+  if (cheerMenu && settings.reactions_enabled === false) {
+    cheerMenu.classList.add('hidden');
+  }
+
+  // 3. Sound Effects
+  if (settings.sound_effects === false) {
+    if (soundEngine && !soundEngine.isMuted()) {
+      soundEngine.mute();
+      updateSoundIcon();
+    }
+  }
+
+  // 4. Integrity Shield Badge
+  const integrityBadge = document.getElementById('integrity-badge');
+  if (integrityBadge) {
+    integrityBadge.style.display = settings.integrity_shield === false ? 'none' : 'inline-flex';
+  }
+
+  // 5. Certificates Claim Card on Podium
+  const certCard = document.getElementById('cert-claim-card');
+  if (certCard) {
+    if (settings.certificates_enabled === false) {
+      certCard.classList.add('hidden');
+    } else {
+      certCard.classList.remove('hidden');
+    }
+  }
+}
+
 // Game Feel & Power-Ups State
 let playerPowerups = {
   fifty_fifty: 1,
@@ -1956,6 +2087,19 @@ async function pollRoomState() {
     }
     if (state.last_event_id && state.last_event_id > lastReceivedEventId) {
       lastReceivedEventId = state.last_event_id;
+    }
+
+    // Sync Visual Theme, Break Time & Feature Settings
+    if (state.quiz_theme && state.quiz_theme !== currentQuizTheme) {
+      currentQuizTheme = state.quiz_theme;
+      document.documentElement.setAttribute('data-quiz-theme', currentQuizTheme);
+    }
+    if (state.break_time_sec !== undefined && state.break_time_sec !== null) {
+      currentBreakTimeSec = Number(state.break_time_sec);
+    }
+    if (state.quiz_settings) {
+      currentQuizSettings = Object.assign({}, currentQuizSettings, state.quiz_settings);
+      applyQuizSettings(currentQuizSettings);
     }
 
     // Update Header Badges
@@ -2331,7 +2475,14 @@ function showFeedbackBanner(data, isTimedOut = false) {
   // Update Mascot Meme Reaction Card
   updateMascotReaction(data.correct, streakCount, isTimedOut);
 
-  exp.textContent = data.explanation || '';
+  if (currentQuizSettings && currentQuizSettings.show_explanation === false) {
+    exp.textContent = '';
+    exp.style.display = 'none';
+  } else {
+    exp.textContent = data.explanation || '';
+    exp.style.display = data.explanation ? 'block' : 'none';
+  }
+
   if (nextBtn) {
     nextBtn.innerHTML = data.is_finished 
       ? `<span>Lihat Hasil Akhir</span> <span class="hotkey-badge" style="position:static;display:inline-block;background:rgba(255,255,255,0.25);color:#fff;border-color:rgba(255,255,255,0.4);padding:2px 8px;font-size:12px">Space / ↵</span> <i class="fa-solid fa-flag-checkered"></i>`
@@ -2347,9 +2498,16 @@ function showFeedbackBanner(data, isTimedOut = false) {
   }
 
   if (autoAdvanceTimer) clearTimeout(autoAdvanceTimer);
-  autoAdvanceTimer = setTimeout(() => {
-    advanceNextQuestion();
-  }, 2400);
+  const breakMs = Math.max(0, (currentBreakTimeSec !== undefined ? Number(currentBreakTimeSec) : 5) * 1000);
+  if (breakMs <= 350) {
+    autoAdvanceTimer = setTimeout(() => {
+      advanceNextQuestion();
+    }, 450);
+  } else {
+    autoAdvanceTimer = setTimeout(() => {
+      advanceNextQuestion();
+    }, breakMs);
+  }
 }
 
 function advanceNextQuestion() {
@@ -2579,6 +2737,7 @@ let clientTabSwitches = 0;
 let lastSwitchTimestamp = 0;
 
 function reportIntegrityViolation() {
+  if (currentQuizSettings && currentQuizSettings.integrity_shield === false) return;
   if (!currentPin || !playerToken) return;
   const arenaQ = document.getElementById('arena-question');
   if (!arenaQ || arenaQ.classList.contains('hidden') || hasAnsweredCurrentQ) return;
@@ -2661,6 +2820,15 @@ function printCertificate() {
 }
 
 function setupCertificateData(state) {
+  const certCard = document.getElementById('cert-claim-card');
+  if (certCard) {
+    if (currentQuizSettings && currentQuizSettings.certificates_enabled === false) {
+      certCard.classList.add('hidden');
+    } else {
+      certCard.classList.remove('hidden');
+    }
+  }
+
   const myScore = state.my_score || 0;
   const myRank = state.my_rank || 1;
   const serialNo = `QZ-${new Date().getFullYear()}-${Math.floor(10000 + Math.random() * 90000)}`;

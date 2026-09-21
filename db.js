@@ -169,6 +169,9 @@ safeAddColumn('attempts', 'tab_switches INTEGER DEFAULT 0');
 safeAddColumn('quizzes', 'exam_mode INTEGER DEFAULT 0');
 safeAddColumn('quizzes', 'homework_mode INTEGER DEFAULT 0');
 safeAddColumn('quizzes', 'is_remedial_for INTEGER DEFAULT 0');
+safeAddColumn('quizzes', 'break_time_sec INTEGER DEFAULT 5');
+safeAddColumn('quizzes', 'theme TEXT DEFAULT "cyberpunk"');
+safeAddColumn('quizzes', 'settings_json TEXT DEFAULT "{}"');
 
 safeAddColumn('dosen', 'plan_expires_at TEXT');
 safeAddColumn('dosen', 'quota_ai_gen INTEGER DEFAULT 50');

@@ -428,6 +428,23 @@ app.get('/api/rooms/active', requireRole('creator', 'dosen'), (req, res) => {
   });
 });
 
+const DEFAULT_QUIZ_SETTINGS = {
+  break_time_sec: 5,
+  theme: 'cyberpunk',
+  time_per_q: 30,
+  points_per_q: 1000,
+  integrity_shield: true,
+  powerups_enabled: true,
+  reactions_enabled: true,
+  shuffle_questions: false,
+  shuffle_options: false,
+  show_explanation: true,
+  show_leaderboard: true,
+  sound_effects: true,
+  certificates_enabled: true,
+  student_paced: true
+};
+
 // 1. Host Create Live Room
 app.post('/api/rooms/create', requireRole('creator', 'dosen'), async (req, res) => {
   const { quiz_id } = req.body || {};
@@ -504,59 +521,64 @@ app.post('/api/rooms/:pin/end', requireRole('creator', 'dosen'), (req, res) => {
   res.json({ ok: true, status: 'finished' });
 });
 
-// 2. Player Join Live Room with Game PIN
+// 2. Player Join Room
 app.post('/api/rooms/join', (req, res) => {
-  const { pin, nickname, avatar } = req.body || {};
+  const { pin, nickname, name: directName, avatar } = req.body || {};
   const p = norm(pin);
-  const name = norm(nickname);
-  if (!p || p.length !== 6) return res.status(400).json({ error: 'PIN Kuis harus 6 digit angka' });
+  const name = norm(nickname || directName);
+  if (!p) return res.status(400).json({ error: 'PIN wajib diisi' });
   if (!name || name.length < 2) return res.status(400).json({ error: 'Nama/Nickname minimal 2 karakter' });
 
-  const room = db.prepare('SELECT * FROM game_rooms WHERE pin = ?').get(p);
-  if (!room) return res.status(404).json({ error: 'Room Game tidak ditemukan. Periksa kembali PIN Anda!' });
-  if (room.status === 'finished') return res.status(400).json({ error: 'Permainan kuis ini telah selesai.' });
+  const room = db.prepare("SELECT * FROM game_rooms WHERE pin = ? AND status != 'finished'").get(p);
+  if (!room) return res.status(404).json({ error: 'PIN kuis tidak ditemukan atau permainan telah selesai' });
 
-  const quiz = db.prepare('SELECT title, cover_emoji, exam_mode FROM quizzes WHERE id = ?').get(room.quiz_id);
+  const quiz = db.prepare('SELECT id, title, cover_emoji, exam_mode FROM quizzes WHERE id = ?').get(room.quiz_id);
+  const questionsCount = db.prepare('SELECT COUNT(*) as count FROM questions WHERE quiz_id = ?').get(room.quiz_id).count;
 
-  // Buat player token unik
-  const playerToken = crypto.randomBytes(16).toString('hex');
-  const chosenAvatar = avatar || ['🦁', '🦊', '🚀', '⚡', '🎮', '🦄', '🌟', '🍕'][Math.floor(Math.random() * 8)];
+  // Cek apakah player dengan nama ini sudah bergabung di room ini
+  let playerToken = '';
+  let chosenAvatar = avatar || '🦊';
+  const existingPlayer = db.prepare('SELECT * FROM room_players WHERE pin = ? AND name = ?').get(room.pin, name);
 
-  db.prepare(`INSERT OR REPLACE INTO room_players (pin, player_token, name, avatar, score, streak, current_q_idx, finished, answers_json, tab_switches, updated_at)
-    VALUES (?, ?, ?, ?, 0, 0, 0, 0, '{}', 0, ?)`).run(p, playerToken, name, chosenAvatar, Date.now());
+  if (existingPlayer) {
+    playerToken = existingPlayer.player_token;
+    chosenAvatar = existingPlayer.avatar || chosenAvatar;
+  } else {
+    playerToken = 'p_' + crypto.randomBytes(16).toString('hex');
+    db.prepare(`INSERT INTO room_players (pin, player_token, name, avatar, score, streak, current_q_idx, finished, tab_switches, updated_at)
+      VALUES (?, ?, ?, ?, 0, 0, 0, 0, 0, ?)`).run(
+        room.pin, playerToken, name, chosenAvatar, Date.now()
+      );
+  }
 
   res.json({
     ok: true,
-    pin: p,
     player_token: playerToken,
-    name,
+    pin: room.pin,
+    name: name,
     avatar: chosenAvatar,
-    quiz_title: quiz ? quiz.title : 'Quiztify Live',
+    room_status: room.status,
+    game_mode: room.game_mode || 'self_paced',
+    quiz_title: quiz ? quiz.title : 'Kuis Quiztify',
     cover_emoji: quiz ? quiz.cover_emoji : '⚡',
-    exam_mode: quiz ? (quiz.exam_mode || 0) : 0
+    exam_mode: quiz ? (quiz.exam_mode || 0) : 0,
+    quiz: { id: room.quiz_id, title: quiz ? quiz.title : 'Kuis Quiztify', total_questions: questionsCount }
   });
 });
 
-// 2b. Integrity Proctoring Flag (Tab Switch & Focus Lost Tracking)
+// 2b. Record Integrity Flag (Tab switch / App blur)
 app.post('/api/rooms/:pin/integrity-flag', (req, res) => {
   const pin = req.params.pin;
-  const { player_token, reason } = req.body || {};
-  const room = db.prepare('SELECT * FROM game_rooms WHERE pin = ?').get(pin);
-  if (!room || room.status !== 'question') {
-    return res.status(400).json({ error: 'Kuis tidak aktif' });
-  }
+  const { player_token } = req.body || {};
+  if (!player_token) return res.status(400).json({ error: 'Token pemain diperlukan' });
 
   const player = db.prepare('SELECT * FROM room_players WHERE pin = ? AND player_token = ?').get(pin, player_token);
-  if (!player) return res.status(404).json({ error: 'Player tidak ditemukan' });
+  if (!player) return res.status(404).json({ error: 'Pemain tidak ditemukan di room ini' });
 
-  const currentSwitches = Number(player.tab_switches) || 0;
-  const newSwitches = currentSwitches + 1;
+  const newSwitches = (Number(player.tab_switches) || 0) + 1;
+  db.prepare('UPDATE room_players SET tab_switches = ?, updated_at = ? WHERE pin = ? AND player_token = ?').run(newSwitches, Date.now(), pin, player_token);
 
-  db.prepare('UPDATE room_players SET tab_switches = ?, updated_at = ? WHERE pin = ? AND player_token = ?').run(
-    newSwitches, Date.now(), pin, player_token
-  );
-
-  res.json({ ok: true, tab_switches: newSwitches, reason: reason || 'tab_switch' });
+  res.json({ ok: true, tab_switches: newSwitches });
 });
 
 // 3. Room State (Polled by Host & Players with Live A, B, C, D Distribution & Self-Paced Progress)
@@ -566,7 +588,7 @@ app.get('/api/rooms/:pin/state', (req, res) => {
   const room = db.prepare('SELECT * FROM game_rooms WHERE pin = ?').get(pin);
   if (!room) return res.status(404).json({ error: 'Room tidak ditemukan' });
 
-  const quiz = db.prepare('SELECT id, title, cover_emoji, exam_mode FROM quizzes WHERE id = ?').get(room.quiz_id);
+  const quiz = db.prepare('SELECT id, title, cover_emoji, exam_mode, break_time_sec, theme, settings_json FROM quizzes WHERE id = ?').get(room.quiz_id);
   const questions = db.prepare('SELECT * FROM questions WHERE quiz_id = ? ORDER BY position ASC').all(room.quiz_id);
   const players = db.prepare('SELECT * FROM room_players WHERE pin = ? ORDER BY score DESC, updated_at ASC').all(pin);
 
@@ -686,12 +708,22 @@ app.get('/api/rooms/:pin/state', (req, res) => {
   const allEvents = roomEventsStore.get(pin) || [];
   const recentEvents = allEvents.filter(e => e.id > sinceEventId && (Date.now() - e.created_at < 15000));
 
+  let parsedSettings = {};
+  try { parsedSettings = JSON.parse(quiz.settings_json || '{}'); } catch (_) {}
+  const quizSettings = { ...DEFAULT_QUIZ_SETTINGS, ...parsedSettings };
+  if (quiz.theme) quizSettings.theme = quiz.theme;
+  if (quiz.break_time_sec !== undefined && quiz.break_time_sec !== null) quizSettings.break_time_sec = quiz.break_time_sec;
+
   res.json({
     pin: room.pin,
     status: room.status,
     game_mode: room.game_mode || 'self_paced',
     quiz_id: room.quiz_id,
     quiz_title: quiz.title,
+    cover_emoji: quiz.cover_emoji || '⚡',
+    quiz_theme: quiz.theme || quizSettings.theme || 'cyberpunk',
+    break_time_sec: quiz.break_time_sec ?? quizSettings.break_time_sec ?? 5,
+    quiz_settings: quizSettings,
     total_questions: totalQuestions,
     // Informasi untuk Pemain
     question: playerQuestion,
@@ -1444,7 +1476,10 @@ app.post('/api/classes/:id/assign-quiz', requireRole('creator', 'dosen'), (req, 
 
 // Create Quiz (Studio Pro)
 app.post('/api/dosen/quizzes', requireRole('creator', 'dosen'), (req, res) => {
-  const { class_id, title, description, category, type, duration_min, time_per_q, deadline, pair_key, cover_emoji, questions } = req.body || {};
+  const { 
+    class_id, title, description, category, type, duration_min, time_per_q, deadline, 
+    pair_key, cover_emoji, break_time_sec, theme, settings, questions 
+  } = req.body || {};
   if (!norm(title)) return res.status(400).json({ error: 'Judul kuis wajib diisi' });
   if (!Array.isArray(questions) || questions.length === 0) return res.status(400).json({ error: 'Minimal 1 soal' });
 
@@ -1452,18 +1487,23 @@ app.post('/api/dosen/quizzes', requireRole('creator', 'dosen'), (req, res) => {
   const cEmoji = cover_emoji || '⚡';
 
   for (const q of questions) {
+    const cIdx = q.correct !== undefined ? q.correct : q.correct_idx;
     if (!norm(q.text) || !Array.isArray(q.options) || q.options.length < 2 || q.options.some(o => !norm(o))) {
       return res.status(400).json({ error: 'Tiap soal butuh teks dan minimal 2 opsi jawaban terisi' });
     }
-    if (!(Number.isInteger(q.correct) && q.correct >= 0 && q.correct < q.options.length)) {
+    if (!(Number.isInteger(cIdx) && cIdx >= 0 && cIdx < q.options.length)) {
       return res.status(400).json({ error: 'Kunci jawaban belum dipilih untuk semua soal' });
     }
   }
 
   const classId = class_id ? Number(class_id) : null;
+  const breakSec = (break_time_sec !== undefined && break_time_sec !== null) ? Number(break_time_sec) : 5;
+  const qTheme = theme || 'cyberpunk';
+  const settingsJson = settings ? JSON.stringify(settings) : '{}';
+
   const info = db.prepare(`INSERT INTO quizzes 
-    (class_id, creator_id, title, description, category, type, duration_min, time_per_q, deadline, pair_key, cover_emoji)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`).run(
+    (class_id, creator_id, title, description, category, type, duration_min, time_per_q, deadline, pair_key, cover_emoji, break_time_sec, theme, settings_json)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`).run(
       classId,
       req.auth.user_id,
       norm(title),
@@ -1474,7 +1514,10 @@ app.post('/api/dosen/quizzes', requireRole('creator', 'dosen'), (req, res) => {
       Number(time_per_q) || 30,
       deadline ? new Date(deadline).toISOString() : null,
       norm(pair_key) || null,
-      cEmoji
+      cEmoji,
+      breakSec,
+      qTheme,
+      settingsJson
     );
 
   const quizId = info.lastInsertRowid;
@@ -1484,12 +1527,13 @@ app.post('/api/dosen/quizzes', requireRole('creator', 'dosen'), (req, res) => {
 
   for (let i = 0; i < questions.length; i++) {
     const q = questions[i];
+    const cIdx = q.correct !== undefined ? q.correct : q.correct_idx;
     ins.run(
       quizId,
       i + 1,
       norm(q.text),
       JSON.stringify(q.options),
-      q.correct,
+      cIdx,
       Number(q.time_limit) || Number(time_per_q) || 30,
       Number(q.points) || 1000,
       norm(q.explanation || '')
@@ -1503,20 +1547,202 @@ app.get('/api/dosen/quizzes/:id/details', requireRole('creator', 'dosen'), (req,
   const quiz = db.prepare('SELECT * FROM quizzes WHERE id = ?').get(req.params.id);
   if (!quiz) return res.status(404).json({ error: 'Kuis tidak ditemukan' });
   const questions = db.prepare('SELECT * FROM questions WHERE quiz_id = ? ORDER BY position ASC').all(quiz.id);
+
+  let parsedSettings = {};
+  try { parsedSettings = JSON.parse(quiz.settings_json || '{}'); } catch (_) {}
+  const mergedSettings = { ...DEFAULT_QUIZ_SETTINGS, ...parsedSettings };
+  if (quiz.theme) mergedSettings.theme = quiz.theme;
+  if (quiz.break_time_sec !== undefined && quiz.break_time_sec !== null) mergedSettings.break_time_sec = quiz.break_time_sec;
+
   res.json({
     ...quiz,
+    break_time_sec: quiz.break_time_sec ?? mergedSettings.break_time_sec,
+    theme: quiz.theme || mergedSettings.theme,
+    settings: mergedSettings,
     questions: questions.map(q => ({
       ...q,
+      correct: q.correct_idx,
       options: JSON.parse(q.options || '[]')
     }))
   });
 });
 
+app.put('/api/dosen/quizzes/:id', requireRole('creator', 'dosen'), (req, res) => {
+  const quizId = Number(req.params.id);
+  const quiz = db.prepare('SELECT * FROM quizzes WHERE id = ?').get(quizId);
+  if (!quiz) return res.status(404).json({ error: 'Kuis tidak ditemukan' });
+
+  const {
+    title,
+    description,
+    category,
+    type,
+    pair_key,
+    cover_emoji,
+    break_time_sec,
+    theme,
+    time_per_q,
+    points_per_q,
+    settings,
+    questions
+  } = req.body || {};
+
+  const qTitle = title !== undefined ? norm(title) : quiz.title;
+  if (!qTitle) return res.status(400).json({ error: 'Judul kuis wajib diisi' });
+
+  const qDesc = description !== undefined ? norm(description) : quiz.description;
+  const qCat = category !== undefined ? norm(category) : quiz.category;
+  const qType = ['pre', 'post', 'standard'].includes(type) ? type : quiz.type;
+  const qPairKey = pair_key !== undefined ? (norm(pair_key) || null) : quiz.pair_key;
+  const qEmoji = cover_emoji !== undefined ? (norm(cover_emoji) || '⚡') : (quiz.cover_emoji || '⚡');
+  const qBreakTime = break_time_sec !== undefined ? Math.max(0, Math.min(30, Number(break_time_sec) || 0)) : (quiz.break_time_sec ?? 5);
+  const qTheme = ['cyberpunk', 'royal', 'emerald', 'sunset', 'retro', 'academic'].includes(theme) ? theme : (quiz.theme || 'cyberpunk');
+  const qTimePerQ = Number(time_per_q) || quiz.time_per_q || 30;
+  const qPointsPerQ = Number(points_per_q) || quiz.points_per_q || 1000;
+
+  let currentSettings = {};
+  try { currentSettings = JSON.parse(quiz.settings_json || '{}'); } catch (_) {}
+  const newSettings = settings && typeof settings === 'object'
+    ? { ...currentSettings, ...settings, theme: qTheme, break_time_sec: qBreakTime }
+    : { ...currentSettings, theme: qTheme, break_time_sec: qBreakTime };
+
+  db.prepare(`UPDATE quizzes SET 
+    title = ?, 
+    description = ?, 
+    category = ?, 
+    type = ?, 
+    pair_key = ?, 
+    cover_emoji = ?, 
+    break_time_sec = ?, 
+    theme = ?, 
+    time_per_q = ?, 
+    points_per_q = ?, 
+    settings_json = ? 
+    WHERE id = ?`
+  ).run(
+    qTitle,
+    qDesc,
+    qCat,
+    qType,
+    qPairKey,
+    qEmoji,
+    qBreakTime,
+    qTheme,
+    qTimePerQ,
+    qPointsPerQ,
+    JSON.stringify(newSettings),
+    quizId
+  );
+
+  // Jika questions disertakan, perbarui pertanyaan
+  if (Array.isArray(questions)) {
+    for (const q of questions) {
+      if (!norm(q.text) || !Array.isArray(q.options) || q.options.length < 2 || q.options.some(o => !norm(o))) {
+        return res.status(400).json({ error: 'Tiap soal butuh teks dan minimal 2 opsi jawaban terisi' });
+      }
+      const correctIdx = q.correct_idx !== undefined ? q.correct_idx : q.correct;
+      if (!(Number.isInteger(correctIdx) && correctIdx >= 0 && correctIdx < q.options.length)) {
+        return res.status(400).json({ error: 'Kunci jawaban belum dipilih untuk semua soal' });
+      }
+    }
+
+    db.prepare('DELETE FROM questions WHERE quiz_id = ?').run(quizId);
+    const ins = db.prepare(`INSERT INTO questions 
+      (quiz_id, position, text, options, correct_idx, time_limit, points, explanation)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?)`);
+
+    for (let i = 0; i < questions.length; i++) {
+      const q = questions[i];
+      const correctIdx = q.correct_idx !== undefined ? q.correct_idx : q.correct;
+      ins.run(
+        quizId,
+        i + 1,
+        norm(q.text),
+        JSON.stringify(q.options),
+        correctIdx,
+        Number(q.time_limit) || Number(qTimePerQ) || 30,
+        Number(q.points) || Number(qPointsPerQ) || 1000,
+        norm(q.explanation || '')
+      );
+    }
+  }
+
+  res.json({
+    ok: true,
+    message: 'Kuis berhasil diperbarui',
+    quiz_id: quizId
+  });
+});
+
+app.put('/api/dosen/quizzes/:id/settings', requireRole('creator', 'dosen'), (req, res) => {
+  const quizId = Number(req.params.id);
+  const quiz = db.prepare('SELECT * FROM quizzes WHERE id = ?').get(quizId);
+  if (!quiz) return res.status(404).json({ error: 'Kuis tidak ditemukan' });
+
+  const {
+    break_time_sec,
+    theme,
+    cover_emoji,
+    title,
+    description,
+    category,
+    type,
+    settings
+  } = req.body || {};
+
+  const qBreakTime = break_time_sec !== undefined ? Math.max(0, Math.min(30, Number(break_time_sec) || 0)) : (quiz.break_time_sec ?? 5);
+  const qTheme = ['cyberpunk', 'royal', 'emerald', 'sunset', 'retro', 'academic'].includes(theme) ? theme : (quiz.theme || 'cyberpunk');
+  const qEmoji = cover_emoji !== undefined ? (norm(cover_emoji) || '⚡') : (quiz.cover_emoji || '⚡');
+  const qTitle = title !== undefined && norm(title) ? norm(title) : quiz.title;
+  const qDesc = description !== undefined ? norm(description) : quiz.description;
+  const qCat = category !== undefined ? norm(category) : quiz.category;
+  const qType = ['pre', 'post', 'standard'].includes(type) ? type : quiz.type;
+
+  let currentSettings = {};
+  try { currentSettings = JSON.parse(quiz.settings_json || '{}'); } catch (_) {}
+  const updatedSettings = {
+    ...currentSettings,
+    ...(settings || {}),
+    theme: qTheme,
+    break_time_sec: qBreakTime
+  };
+
+  db.prepare(`UPDATE quizzes SET 
+    title = ?,
+    description = ?,
+    category = ?,
+    type = ?,
+    cover_emoji = ?,
+    break_time_sec = ?, 
+    theme = ?, 
+    settings_json = ? 
+    WHERE id = ?`
+  ).run(
+    qTitle,
+    qDesc,
+    qCat,
+    qType,
+    qEmoji,
+    qBreakTime,
+    qTheme,
+    JSON.stringify(updatedSettings),
+    quizId
+  );
+
+  res.json({
+    ok: true,
+    message: 'Setelan kuis berhasil disimpan',
+    theme: qTheme,
+    break_time_sec: qBreakTime,
+    settings: updatedSettings
+  });
+});
+
 app.delete('/api/dosen/quizzes/:id', requireRole('creator', 'dosen'), (req, res) => {
-  const q = db.prepare('SELECT id FROM quizzes WHERE id = ?').get(req.params.id);
+  const q = db.prepare('SELECT id, title FROM quizzes WHERE id = ?').get(req.params.id);
   if (!q) return res.status(404).json({ error: 'Kuis tidak ditemukan' });
   db.prepare('DELETE FROM quizzes WHERE id = ?').run(q.id);
-  res.json({ ok: true });
+  res.json({ ok: true, message: `Kuis "${q.title}" berhasil dihapus` });
 });
 
 // QR Code Kuis Asinkron / Langsung
@@ -1527,7 +1753,7 @@ app.get('/api/dosen/quizzes/:id/qr', requireRole('creator', 'dosen'), (req, res)
   const url = `${base.replace(/\/$/, '')}/?quiz=${q.id}`;
   QRCode.toDataURL(url, { margin: 1, width: 320, color: { dark: '#1a103c', light: '#ffffff' } }, (err, dataUrl) => {
     if (err) return res.status(500).json({ error: 'Gagal membuat QR' });
-    res.json({ url, qr: dataUrl, title: q.title });
+    res.json({ url, qr: dataUrl, dataUrl, title: q.title });
   });
 });
 
