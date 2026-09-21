@@ -162,6 +162,16 @@ safeAddColumn('students', 'avatar TEXT DEFAULT "🦊"');
 safeAddColumn('game_rooms', 'game_mode TEXT DEFAULT "self_paced"');
 safeAddColumn('room_players', 'current_q_idx INTEGER DEFAULT 0');
 safeAddColumn('room_players', 'finished INTEGER DEFAULT 0');
+safeAddColumn('room_players', 'tab_switches INTEGER DEFAULT 0');
+
+safeAddColumn('attempts', 'tab_switches INTEGER DEFAULT 0');
+
+safeAddColumn('quizzes', 'exam_mode INTEGER DEFAULT 0');
+safeAddColumn('quizzes', 'homework_mode INTEGER DEFAULT 0');
+safeAddColumn('quizzes', 'is_remedial_for INTEGER DEFAULT 0');
+
+safeAddColumn('dosen', 'plan_expires_at TEXT');
+safeAddColumn('dosen', 'quota_ai_gen INTEGER DEFAULT 50');
 
 db.exec(`PRAGMA user_version = ${SCHEMA_VERSION}`);
 

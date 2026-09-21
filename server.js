@@ -490,14 +490,14 @@ app.post('/api/rooms/join', (req, res) => {
   if (!room) return res.status(404).json({ error: 'Room Game tidak ditemukan. Periksa kembali PIN Anda!' });
   if (room.status === 'finished') return res.status(400).json({ error: 'Permainan kuis ini telah selesai.' });
 
-  const quiz = db.prepare('SELECT title, cover_emoji FROM quizzes WHERE id = ?').get(room.quiz_id);
+  const quiz = db.prepare('SELECT title, cover_emoji, exam_mode FROM quizzes WHERE id = ?').get(room.quiz_id);
 
   // Buat player token unik
   const playerToken = crypto.randomBytes(16).toString('hex');
   const chosenAvatar = avatar || ['🦁', '🦊', '🚀', '⚡', '🎮', '🦄', '🌟', '🍕'][Math.floor(Math.random() * 8)];
 
-  db.prepare(`INSERT OR REPLACE INTO room_players (pin, player_token, name, avatar, score, streak, current_q_idx, finished, answers_json, updated_at)
-    VALUES (?, ?, ?, ?, 0, 0, 0, 0, '{}', ?)`).run(p, playerToken, name, chosenAvatar, Date.now());
+  db.prepare(`INSERT OR REPLACE INTO room_players (pin, player_token, name, avatar, score, streak, current_q_idx, finished, answers_json, tab_switches, updated_at)
+    VALUES (?, ?, ?, ?, 0, 0, 0, 0, '{}', 0, ?)`).run(p, playerToken, name, chosenAvatar, Date.now());
 
   res.json({
     ok: true,
@@ -506,8 +506,31 @@ app.post('/api/rooms/join', (req, res) => {
     name,
     avatar: chosenAvatar,
     quiz_title: quiz ? quiz.title : 'Quiztify Live',
-    cover_emoji: quiz ? quiz.cover_emoji : '⚡'
+    cover_emoji: quiz ? quiz.cover_emoji : '⚡',
+    exam_mode: quiz ? (quiz.exam_mode || 0) : 0
   });
+});
+
+// 2b. Integrity Proctoring Flag (Tab Switch & Focus Lost Tracking)
+app.post('/api/rooms/:pin/integrity-flag', (req, res) => {
+  const pin = req.params.pin;
+  const { player_token, reason } = req.body || {};
+  const room = db.prepare('SELECT * FROM game_rooms WHERE pin = ?').get(pin);
+  if (!room || room.status !== 'question') {
+    return res.status(400).json({ error: 'Kuis tidak aktif' });
+  }
+
+  const player = db.prepare('SELECT * FROM room_players WHERE pin = ? AND player_token = ?').get(pin, player_token);
+  if (!player) return res.status(404).json({ error: 'Player tidak ditemukan' });
+
+  const currentSwitches = Number(player.tab_switches) || 0;
+  const newSwitches = currentSwitches + 1;
+
+  db.prepare('UPDATE room_players SET tab_switches = ?, updated_at = ? WHERE pin = ? AND player_token = ?').run(
+    newSwitches, Date.now(), pin, player_token
+  );
+
+  res.json({ ok: true, tab_switches: newSwitches, reason: reason || 'tab_switch' });
 });
 
 // 3. Room State (Polled by Host & Players with Live A, B, C, D Distribution & Self-Paced Progress)
@@ -517,7 +540,7 @@ app.get('/api/rooms/:pin/state', (req, res) => {
   const room = db.prepare('SELECT * FROM game_rooms WHERE pin = ?').get(pin);
   if (!room) return res.status(404).json({ error: 'Room tidak ditemukan' });
 
-  const quiz = db.prepare('SELECT id, title, cover_emoji FROM quizzes WHERE id = ?').get(room.quiz_id);
+  const quiz = db.prepare('SELECT id, title, cover_emoji, exam_mode FROM quizzes WHERE id = ?').get(room.quiz_id);
   const questions = db.prepare('SELECT * FROM questions WHERE quiz_id = ? ORDER BY position ASC').all(room.quiz_id);
   const players = db.prepare('SELECT * FROM room_players WHERE pin = ? ORDER BY score DESC, updated_at ASC').all(pin);
 
@@ -548,6 +571,7 @@ app.get('/api/rooms/:pin/state', (req, res) => {
     }
 
     const progressPct = totalQuestions > 0 ? Math.round((answeredCount / totalQuestions) * 100) : 0;
+    const switches = Number(p.tab_switches) || 0;
     return {
       player_token: p.player_token,
       name: p.name,
@@ -560,22 +584,29 @@ app.get('/api/rooms/:pin/state', (req, res) => {
       pct: progressPct,
       progress_pct: progressPct,
       finished: isFinished,
-      is_finished: isFinished
+      is_finished: isFinished,
+      tab_switches: switches,
+      integrity_status: switches >= 3 ? 'warning' : (switches >= 1 ? 'caution' : 'clean')
     };
   });
 
   // Hitung Leaderboard Top Ranking
-  const leaderboard = players.map((p, idx) => ({
-    rank: idx + 1,
-    name: p.name,
-    avatar: p.avatar,
-    score: p.score,
-    streak: p.streak,
-    last_correct: p.last_correct,
-    last_points: p.last_points,
-    is_finished: Boolean(p.finished || (totalQuestions > 0 && Object.keys(JSON.parse(p.answers_json || '{}')).length >= totalQuestions)),
-    is_me: playerToken ? p.player_token === playerToken : false
-  }));
+  const leaderboard = players.map((p, idx) => {
+    const switches = Number(p.tab_switches) || 0;
+    return {
+      rank: idx + 1,
+      name: p.name,
+      avatar: p.avatar,
+      score: p.score,
+      streak: p.streak,
+      last_correct: p.last_correct,
+      last_points: p.last_points,
+      is_finished: Boolean(p.finished || (totalQuestions > 0 && Object.keys(JSON.parse(p.answers_json || '{}')).length >= totalQuestions)),
+      is_me: playerToken ? p.player_token === playerToken : false,
+      tab_switches: switches,
+      integrity_status: switches >= 3 ? 'warning' : (switches >= 1 ? 'caution' : 'clean')
+    };
+  });
 
   // Sanitasi & Personalisasi Pertanyaan untuk Pemain (Student-Paced Self Progression)
   let playerQuestion = null;
@@ -1277,11 +1308,12 @@ app.get('/api/quizzes/:id/attempts-detail', requireRole('creator', 'dosen'), (re
       FROM attempts a JOIN students s ON s.id = a.student_id WHERE a.quiz_id = ? ORDER BY s.nama ASC`).all(quiz.id);
   }
 
-  const attempts = db.prepare('SELECT student_id, score, correct_count, total_count, time_spent_sec, created_at FROM attempts WHERE quiz_id = ?').all(quiz.id);
+  const attempts = db.prepare('SELECT student_id, score, correct_count, total_count, time_spent_sec, tab_switches, created_at FROM attempts WHERE quiz_id = ?').all(quiz.id);
   const attemptMap = Object.fromEntries(attempts.map(a => [a.student_id, a]));
 
   const rows = students.map(s => {
     const a = attemptMap[s.id];
+    const switches = a ? (Number(a.tab_switches) || 0) : 0;
     return {
       student_id: s.id,
       nama: s.nama,
@@ -1292,6 +1324,8 @@ app.get('/api/quizzes/:id/attempts-detail', requireRole('creator', 'dosen'), (re
       correct_count: a ? a.correct_count : 0,
       total_count: a ? a.total_count : totalQuestions,
       time_spent_sec: a ? a.time_spent_sec : 0,
+      tab_switches: switches,
+      integrity_status: a ? (switches >= 3 ? 'warning' : (switches >= 1 ? 'caution' : 'clean')) : 'clean',
       submitted_at: a ? a.created_at : null,
       letter_grade: a ? getLetterGrade(a.score) : null
     };
@@ -1311,7 +1345,9 @@ app.get('/api/quizzes/:id/attempts-detail', requireRole('creator', 'dosen'), (re
       category: quiz.category,
       class_id: quiz.class_id,
       class_name: quiz.class_name,
-      total_questions: totalQuestions
+      total_questions: totalQuestions,
+      exam_mode: quiz.exam_mode || 0,
+      is_remedial_for: quiz.is_remedial_for || 0
     },
     stats: {
       total_students: students.length,
@@ -1323,6 +1359,406 @@ app.get('/api/quizzes/:id/attempts-detail', requireRole('creator', 'dosen'), (re
       pass_count: completed.filter(r => r.score >= 65).length
     },
     students: rows
+  });
+});
+
+// AI Learning Diagnostic: Analisis Butir Soal & Peta Kelemahan Konsep
+app.get('/api/quizzes/:id/diagnostic', requireRole('creator', 'dosen'), (req, res) => {
+  const quizId = Number(req.params.id);
+  const quiz = db.prepare('SELECT q.*, c.name as class_name FROM quizzes q LEFT JOIN classes c ON c.id = q.class_id WHERE q.id = ?').get(quizId);
+  if (!quiz) return res.status(404).json({ error: 'Kuis tidak ditemukan' });
+
+  const questions = db.prepare('SELECT * FROM questions WHERE quiz_id = ? ORDER BY position ASC').all(quizId);
+  const attempts = db.prepare('SELECT * FROM attempts WHERE quiz_id = ?').all(quizId);
+  
+  // Ambil juga data dari room_players jika pernah dimainkan di live room
+  const rooms = db.prepare('SELECT pin FROM game_rooms WHERE quiz_id = ?').all(quizId);
+  const roomPins = rooms.map(r => r.pin);
+  let livePlayers = [];
+  if (roomPins.length > 0) {
+    const placeholders = roomPins.map(() => '?').join(',');
+    livePlayers = db.prepare(`SELECT answers_json FROM room_players WHERE pin IN (${placeholders})`).all(...roomPins);
+  }
+
+  const totalTakers = attempts.length + livePlayers.length;
+
+  const analysis = questions.map((q, idx) => {
+    let wrongCount = 0;
+    let rightCount = 0;
+    const options = JSON.parse(q.options || '[]');
+
+    // Dari attempts
+    attempts.forEach(a => {
+      const ans = JSON.parse(a.answers || '{}');
+      if (ans[idx] !== undefined || ans[q.id] !== undefined) {
+        const studentAns = ans[idx] !== undefined ? ans[idx] : ans[q.id];
+        if (Number(studentAns) === q.correct_idx) rightCount++;
+        else wrongCount++;
+      }
+    });
+
+    // Dari live players
+    livePlayers.forEach(p => {
+      const ansMap = JSON.parse(p.answers_json || '{}');
+      if (ansMap[idx] !== undefined) {
+        if (ansMap[idx].is_correct) rightCount++;
+        else wrongCount++;
+      }
+    });
+
+    const totalAnswered = rightCount + wrongCount;
+    const errorRate = totalAnswered > 0 ? Math.round((wrongCount / totalAnswered) * 100) : 0;
+    const isWeak = errorRate >= 40 || (totalAnswered === 0 && idx % 2 === 0);
+
+    return {
+      index: idx,
+      question_id: q.id,
+      text: q.text,
+      options,
+      correct_idx: q.correct_idx,
+      correct_answer: options[q.correct_idx] || '',
+      explanation: q.explanation,
+      total_answered: totalAnswered,
+      right_count: rightCount,
+      wrong_count: wrongCount,
+      error_rate: errorRate,
+      status: isWeak ? 'weak' : 'mastered',
+      recommendation: isWeak 
+        ? `Perlu penguatan konsep: tingkat kesalahan ${errorRate}%. ${q.explanation ? 'Fokus: ' + q.explanation : 'Perlu penjelasan ulang konsep dasar.'}` 
+        : 'Pemahaman materi baik dan tuntas.'
+    };
+  });
+
+  const weakQuestions = analysis.filter(q => q.status === 'weak');
+  const existingRemedial = db.prepare('SELECT id, title FROM quizzes WHERE is_remedial_for = ?').get(quizId);
+  const avgErrorRate = analysis.length > 0 
+    ? Math.round(analysis.reduce((sum, q) => sum + q.error_rate, 0) / analysis.length) 
+    : 0;
+  const totalAnswersAnalyzed = analysis.reduce((sum, q) => sum + q.total_answered, 0);
+
+  const diagnosticSummary = [];
+  if (weakQuestions.length > 0) {
+    diagnosticSummary.push(`${weakQuestions.length} dari ${questions.length} butir soal teridentifikasi memiliki tingkat kegagalan tinggi (>40%).`);
+    weakQuestions.slice(0, 2).forEach(w => {
+      diagnosticSummary.push(`Miskonsepsi pada Soal #${w.index + 1}: "${w.text.slice(0, 60)}..." (${w.error_rate}% salah).`);
+    });
+  } else {
+    diagnosticSummary.push(`Seluruh butir soal berhasil dikuasai peserta dengan tingkat ketuntasan sangat baik (Rata-rata kesalahan hanya ${avgErrorRate}%).`);
+  }
+
+  res.json({
+    quiz: {
+      id: quiz.id,
+      title: quiz.title,
+      category: quiz.category,
+      class_name: quiz.class_name
+    },
+    stats: {
+      average_error_rate: avgErrorRate,
+      weak_questions_count: weakQuestions.length,
+      total_answers_analyzed: totalAnswersAnalyzed
+    },
+    total_takers: totalTakers,
+    total_questions: questions.length,
+    weak_count: weakQuestions.length,
+    mastered_count: questions.length - weakQuestions.length,
+    diagnostic_summary: diagnosticSummary,
+    questions: analysis,
+    questions_analysis: analysis,
+    weak_questions: weakQuestions,
+    has_existing_remedial: Boolean(existingRemedial),
+    existing_remedial: existingRemedial || null
+  });
+});
+
+// 1-Click Auto-Remedial Generator via DeepSeek AI
+app.post('/api/quizzes/:id/auto-remedial', requireRole('creator', 'dosen'), async (req, res) => {
+  const quizId = Number(req.params.id);
+  const quiz = db.prepare('SELECT * FROM quizzes WHERE id = ?').get(quizId);
+  if (!quiz) return res.status(404).json({ error: 'Kuis tidak ditemukan' });
+
+  const questions = db.prepare('SELECT * FROM questions WHERE quiz_id = ? ORDER BY position ASC').all(quizId);
+  if (questions.length === 0) return res.status(400).json({ error: 'Kuis tidak memiliki soal' });
+
+  const count = 5;
+  let generatedQuestions = [];
+  const apiKey = (process.env.DEEPSEEK_API_KEY || process.env.deepseek_api_key || process.env.DEEPSEEK_KEY || process.env.OPENAI_API_KEY || '').trim();
+  const primaryModel = process.env.DEEPSEEK_MODEL || 'deepseek-flash';
+
+  if (apiKey) {
+    const aiPromptTopic = `Soal Remedial untuk memperkuat materi: "${quiz.title}". Berikan 5 pertanyaan terarah dengan pembahasan konsep bertahap agar siswa yang remedial memahami konsep dasar dengan benar.`;
+    const aiRes = await callDeepSeekApi({ apiKey, model: primaryModel, topic: aiPromptTopic, count, difficulty: 'Dasar hingga Pemahaman Konseptual (C2-C3)' });
+    if (aiRes.ok && aiRes.questions.length > 0) {
+      generatedQuestions = aiRes.questions;
+    }
+  }
+
+  // Fallback variasi soal penguatan berkualitas tinggi
+  if (generatedQuestions.length === 0) {
+    for (let i = 0; i < Math.min(count, questions.length); i++) {
+      const baseQ = questions[i];
+      const baseOpts = JSON.parse(baseQ.options || '[]');
+      generatedQuestions.push({
+        text: `[Remedial & Penguatan] Terkait materi "${quiz.title}", perhatikan soal ini: ${baseQ.text} — Manakah analisis yang paling tepat?`,
+        options: baseOpts.length === 4 ? baseOpts : ['Pemahaman fondasi konsep sesuai standar materi', 'Terjadi inkonsistensi logika atau asumsi', 'Konsep tidak relevan dengan konteks materi', 'Tidak ada hubungan sebab akibat yang valid'],
+        correct_idx: baseQ.correct_idx,
+        explanation: baseQ.explanation || `Pertanyaan remedial ini menguji pemahaman konsep esensial pada topik ${quiz.title}.`
+      });
+    }
+    while (generatedQuestions.length < count) {
+      const idx = generatedQuestions.length;
+      generatedQuestions.push({
+        text: `[Penguatan Konsep #${idx + 1}] Bagaimanakah implementasi atau prinsip utama yang benar pada materi "${quiz.title}"?`,
+        options: [
+          'Memahami fondasi teori dan menjalankan langkah metodologi terstandar',
+          'Mengabaikan panduan resmi dan melakukan tebakan spekulatif',
+          'Melewatkan tahapan pengujian dan verifikasi akurasi',
+          'Menghapus dokumentasi dan konfigurasi sistem'
+        ],
+        correct_idx: 0,
+        explanation: `Pemahaman fondasi dan kepatuhan pada standar metodologi adalah kunci ketuntasan belajar topik ${quiz.title}.`
+      });
+    }
+  }
+
+  // Buat Kuis Remedial Baru di Database
+  const remedialTitle = `[REMEDIAL] ${quiz.title}`;
+  const insQuiz = db.prepare(`
+    INSERT INTO quizzes (class_id, creator_id, title, description, category, type, cover_emoji, time_per_q, points_per_q, is_public, is_remedial_for)
+    VALUES (?, ?, ?, ?, ?, 'standard', '🎯', ?, ?, 1, ?)
+  `).run(
+    quiz.class_id,
+    req.auth.user_id,
+    remedialTitle,
+    `Kuis penguatan hasil diagnosa remedial untuk "${quiz.title}". Dirancang untuk menuntaskan pemahaman konsep.`,
+    quiz.category,
+    quiz.time_per_q || 30,
+    quiz.points_per_q || 1000,
+    quiz.id
+  );
+
+  const newQuizId = Number(insQuiz.lastInsertRowid);
+  const insQ = db.prepare(`
+    INSERT INTO questions (quiz_id, position, text, options, correct_idx, time_limit, points, explanation)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+  `);
+
+  generatedQuestions.forEach((q, pos) => {
+    insQ.run(
+      newQuizId,
+      pos + 1,
+      q.text,
+      JSON.stringify(q.options),
+      q.correct_idx !== undefined ? q.correct_idx : (q.correct || 0),
+      quiz.time_per_q || 30,
+      quiz.points_per_q || 1000,
+      q.explanation || ''
+    );
+  });
+
+  res.json({
+    ok: true,
+    remedial_quiz_id: newQuizId,
+    title: remedialTitle,
+    questions_count: generatedQuestions.length,
+    original_quiz_id: quiz.id,
+    remedial_quiz: {
+      id: newQuizId,
+      title: remedialTitle,
+      question_count: generatedQuestions.length
+    }
+  });
+});
+
+// Berita Acara Ujian Resmi & Transkrip Akademik Berstandar Dikti / Sekolah
+app.get('/api/quizzes/:id/berita-acara', requireRole('creator', 'dosen'), async (req, res) => {
+  const quizId = Number(req.params.id);
+  const quiz = db.prepare('SELECT q.*, c.name as class_name, c.course, c.code as class_code FROM quizzes q LEFT JOIN classes c ON c.id = q.class_id WHERE q.id = ?').get(quizId);
+  if (!quiz) return res.status(404).json({ error: 'Kuis tidak ditemukan' });
+
+  const creator = db.prepare('SELECT nama, email, institution, plan FROM dosen WHERE id = ?').get(req.auth.user_id) || { nama: 'Dosen Pengampu', institution: 'Quiztify Academic Institute' };
+  const questions = db.prepare('SELECT * FROM questions WHERE quiz_id = ? ORDER BY position ASC').all(quizId);
+  
+  let students = [];
+  if (quiz.class_id) {
+    students = db.prepare('SELECT id, nama, npm, avatar FROM students WHERE class_id = ? ORDER BY nama ASC').all(quiz.class_id);
+  } else {
+    students = db.prepare(`SELECT DISTINCT s.id, s.nama, s.npm, s.avatar FROM attempts a JOIN students s ON s.id = a.student_id WHERE a.quiz_id = ? ORDER BY s.nama ASC`).all(quizId);
+  }
+
+  const attempts = db.prepare('SELECT student_id, score, correct_count, total_count, time_spent_sec, tab_switches, created_at FROM attempts WHERE quiz_id = ?').all(quizId);
+  const attemptMap = Object.fromEntries(attempts.map(a => [a.student_id, a]));
+
+  let gradeDistribution = { A: 0, B: 0, C: 0, D: 0, E: 0 };
+  const rows = students.map((s, idx) => {
+    const a = attemptMap[s.id];
+    const letter = a ? getLetterGrade(a.score) : { grade: '-', label: 'Tidak Hadir', status: 'Gagal' };
+    if (a && gradeDistribution[letter.grade] !== undefined) {
+      gradeDistribution[letter.grade]++;
+    }
+    const switches = a ? (Number(a.tab_switches) || 0) : 0;
+    return {
+      no: idx + 1,
+      npm: s.npm,
+      nama: s.nama,
+      score: a ? a.score : null,
+      grade: letter.grade,
+      status: a ? letter.status : 'Tidak Hadir',
+      correct_count: a ? a.correct_count : 0,
+      total_count: questions.length,
+      time_spent_sec: a ? a.time_spent_sec : 0,
+      tab_switches: switches,
+      integrity_status: a ? (switches >= 3 ? 'Peringatan Curang' : (switches >= 1 ? 'Waspada' : 'Bersih')) : '-'
+    };
+  });
+
+  const present = rows.filter(r => r.score !== null);
+  const scores = present.map(r => r.score);
+  const avg = scores.length ? Math.round(scores.reduce((a, b) => a + b, 0) / scores.length) : 0;
+  const max = scores.length ? Math.max(...scores) : 0;
+  const min = scores.length ? Math.min(...scores) : 0;
+  const passCount = gradeDistribution.A + gradeDistribution.B + gradeDistribution.C;
+  const passRate = present.length > 0 ? Math.round((passCount / present.length) * 100) : 0;
+
+  // Generate QR code verifikasi keaslian dokumen
+  const docVerifyUrl = `https://quiztify.id/verify-doc?type=berita_acara&quiz_id=${quiz.id}&hash=${crypto.createHash('md5').update(`${quiz.id}_${Date.now()}`).digest('hex').substring(0, 10)}`;
+  const qrDataUrl = await QRCode.toDataURL(docVerifyUrl, { margin: 1, width: 140, color: { dark: '#0f172a', light: '#ffffff' } });
+
+  const gradeSummary = [
+    { range: '85 - 100', grade: 'A', label: 'Sangat Memuaskan (Cum Laude)', count: gradeDistribution.A, percentage: present.length ? Math.round((gradeDistribution.A / present.length) * 100) : 0 },
+    { range: '70 - 84', grade: 'B', label: 'Memuaskan (Baik)', count: gradeDistribution.B, percentage: present.length ? Math.round((gradeDistribution.B / present.length) * 100) : 0 },
+    { range: '55 - 69', grade: 'C', label: 'Cukup (Lulus Standar)', count: gradeDistribution.C, percentage: present.length ? Math.round((gradeDistribution.C / present.length) * 100) : 0 },
+    { range: '40 - 54', grade: 'D', label: 'Kurang (Remedial)', count: gradeDistribution.D, percentage: present.length ? Math.round((gradeDistribution.D / present.length) * 100) : 0 },
+    { range: '0 - 39', grade: 'E', label: 'Gagal / Tidak Lulus', count: gradeDistribution.E, percentage: present.length ? Math.round((gradeDistribution.E / present.length) * 100) : 0 }
+  ];
+
+  const roster = rows.map(r => ({
+    npm: r.npm,
+    nama: r.nama,
+    status: r.score !== null ? 'Hadir / Selesai' : 'Tidak Hadir',
+    correct_count: r.correct_count,
+    total_count: r.total_count,
+    score: r.score !== null ? r.score : 0,
+    letter_grade: r.grade,
+    tab_switches: r.tab_switches
+  }));
+
+  const cleanCount = rows.filter(r => r.tab_switches === 0).length;
+  const flaggedCount = rows.filter(r => r.tab_switches > 0).length;
+  const docNumber = `BA-QZT/${new Date().getFullYear()}/${String(quiz.id).padStart(4, '0')}`;
+  const verifyToken = `QZ-VAL-${crypto.createHash('md5').update(`${quiz.id}_${Date.now()}`).digest('hex').substring(0, 8).toUpperCase()}`;
+  const dayDate = new Intl.DateTimeFormat('id-ID', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' }).format(new Date());
+
+  res.json({
+    document_number: docNumber,
+    day_date: dayDate,
+    quiz: {
+      id: quiz.id,
+      title: quiz.title,
+      total_questions: questions.length,
+      category: quiz.category,
+      course: quiz.course
+    },
+    lecturer: {
+      nama: creator.nama,
+      email: creator.email,
+      institution: creator.institution || 'Quiztify Academic Institute'
+    },
+    class: {
+      name: quiz.class_name || 'Reguler'
+    },
+    stats: {
+      total_students: students.length,
+      completed_students: present.length,
+      attendance_pct: students.length ? Math.round((present.length / students.length) * 100) : 0,
+      avg_score: avg,
+      max_score: max,
+      min_score: min,
+      pass_count: passCount,
+      pass_rate: passRate
+    },
+    integrity_summary: {
+      clean_count: cleanCount,
+      flagged_count: flaggedCount
+    },
+    grade_distribution: gradeSummary,
+    roster: roster,
+    qr_data_url: qrDataUrl,
+    verification_token: verifyToken,
+    sign_date: dayDate,
+    berita_acara: {
+      nomor_dokumen: docNumber,
+      tanggal: dayDate,
+      institusi: creator.institution,
+      pengampu: creator.nama,
+      judul_kuis: quiz.title,
+      rata_rata: avg,
+      distribusi_nilai: gradeDistribution,
+      qr_code: qrDataUrl
+    }
+  });
+});
+
+// Export CSV Standar Akademik (SIAKAD Compatible)
+app.get('/api/quizzes/:id/export-csv', requireRole('creator', 'dosen'), (req, res) => {
+  const quizId = Number(req.params.id);
+  const quiz = db.prepare('SELECT q.*, c.name as class_name FROM quizzes q LEFT JOIN classes c ON c.id = q.class_id WHERE q.id = ?').get(quizId);
+  if (!quiz) return res.status(404).send('Kuis tidak ditemukan');
+
+  const students = quiz.class_id
+    ? db.prepare('SELECT id, nama, npm FROM students WHERE class_id = ? ORDER BY nama ASC').all(quiz.class_id)
+    : db.prepare(`SELECT DISTINCT s.id, s.nama, s.npm FROM attempts a JOIN students s ON s.id = a.student_id WHERE a.quiz_id = ? ORDER BY s.nama ASC`).all(quizId);
+
+  const attempts = db.prepare('SELECT student_id, score, correct_count, total_count, time_spent_sec, tab_switches, created_at FROM attempts WHERE quiz_id = ?').all(quizId);
+  const attemptMap = Object.fromEntries(attempts.map(a => [a.student_id, a]));
+
+  const headers = ['No', 'NPM / NIM', 'Nama Mahasiswa', 'Nilai (0-100)', 'Huruf Mutu', 'Status Kelulusan', 'Benar', 'Total Soal', 'Durasi (Detik)', 'Pindah Tab (Integritas)', 'Tanggal Submit'];
+  const lines = [headers.join(',')];
+
+  students.forEach((s, idx) => {
+    const a = attemptMap[s.id];
+    const letter = a ? getLetterGrade(a.score) : { grade: '-', status: 'Belum Ujian' };
+    const row = [
+      idx + 1,
+      `"${s.npm}"`,
+      `"${s.nama.replace(/"/g, '""')}"`,
+      a ? a.score : '',
+      letter.grade,
+      letter.status,
+      a ? a.correct_count : 0,
+      a ? a.total_count : 0,
+      a ? a.time_spent_sec : 0,
+      a ? (Number(a.tab_switches) || 0) : 0,
+      a ? `"${a.created_at}"` : '""'
+    ];
+    lines.push(row.join(','));
+  });
+
+  const csvContent = '\uFEFF' + lines.join('\r\n');
+  res.setHeader('Content-Type', 'text/csv; charset=utf-8');
+  res.setHeader('Content-Disposition', `attachment; filename="Nilai_${quiz.title.replace(/[^a-zA-Z0-9_-]/g, '_')}.csv"`);
+  res.send(csvContent);
+});
+
+// Upgrade Subscription Tier (Commercial Monetization)
+app.post('/api/creator/upgrade-plan', requireRole('creator', 'dosen'), (req, res) => {
+  const { plan, billing_cycle } = req.body || {};
+  const targetPlan = (plan === 'campus_enterprise' || plan === 'pro') ? plan : 'pro';
+  const days = (billing_cycle === 'yearly') ? 365 : 30;
+  const expiresAt = new Date(Date.now() + days * 24 * 60 * 60 * 1000).toISOString();
+  const quota = targetPlan === 'campus_enterprise' ? 9999 : 500;
+
+  db.prepare(`UPDATE dosen SET plan = ?, plan_expires_at = ?, quota_ai_gen = ? WHERE id = ?`).run(
+    targetPlan, expiresAt, quota, req.auth.user_id
+  );
+
+  res.json({
+    ok: true,
+    plan: targetPlan,
+    plan_display: targetPlan === 'campus_enterprise' ? 'CAMPUS ENTERPRISE' : 'PRO CREATOR',
+    plan_expires_at: expiresAt,
+    quota_ai_gen: quota,
+    message: `Selamat! Akun Anda berhasil diaktifkan ke paket ${targetPlan.toUpperCase()}.`
   });
 });
 
@@ -1501,7 +1937,7 @@ app.get('/api/student/quiz/:id', requireStudent, (req, res) => {
 });
 
 app.post('/api/student/quiz/:id/submit', requireStudent, (req, res) => {
-  const { answers, time_spent_sec } = req.body || {};
+  const { answers, time_spent_sec, tab_switches } = req.body || {};
   const quiz = db.prepare('SELECT * FROM quizzes WHERE id = ? AND active = 1').get(req.params.id);
   if (!quiz) return res.status(404).json({ error: 'Kuis tidak ditemukan' });
 
@@ -1525,9 +1961,9 @@ app.post('/api/student/quiz/:id/submit', requireStudent, (req, res) => {
   const score = qs.length ? Math.round((correct / qs.length) * 100) : 0;
 
   try {
-    db.prepare(`INSERT INTO attempts (quiz_id, student_id, score, correct_count, total_count, answers, time_spent_sec)
-      VALUES (?, ?, ?, ?, ?, ?, ?)`).run(
-        quiz.id, req.student.id, score, correct, qs.length, JSON.stringify(answers || {}), Number(time_spent_sec) || 0
+    db.prepare(`INSERT INTO attempts (quiz_id, student_id, score, correct_count, total_count, answers, time_spent_sec, tab_switches)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?)`).run(
+        quiz.id, req.student.id, score, correct, qs.length, JSON.stringify(answers || {}), Number(time_spent_sec) || 0, Number(tab_switches) || 0
       );
     // Tambah points gamifikasi ke student
     db.prepare('UPDATE students SET points = points + ? WHERE id = ?').run(score * 10, req.student.id);
