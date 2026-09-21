@@ -327,6 +327,79 @@
     }
     .no-print { display: none !important; }
   }
+
+  /* GAME FEEL & MICRO-INTERACTIONS */
+  @keyframes screenShake {
+    0%, 100% { transform: translate(0, 0) rotate(0deg); }
+    15% { transform: translate(-6px, -2px) rotate(-1deg); }
+    30% { transform: translate(6px, 2px) rotate(1deg); }
+    45% { transform: translate(-4px, 2px) rotate(-0.5deg); }
+    60% { transform: translate(4px, -2px) rotate(0.5deg); }
+    75% { transform: translate(-2px, 0) rotate(0deg); }
+  }
+  .screen-shake {
+    animation: screenShake 0.4s ease-in-out !important;
+  }
+
+  .super-streak-glow {
+    box-shadow: 0 0 20px rgba(245, 158, 11, 0.7), inset 0 0 10px rgba(245, 158, 11, 0.4);
+    border: 1.5px solid var(--amber) !important;
+    animation: flamePulse 0.9s infinite alternate !important;
+  }
+
+  /* Power-Up Deck */
+  .powerup-deck {
+    display: flex; align-items: center; justify-content: center; gap: 10px;
+    margin-bottom: 20px; flex-wrap: wrap;
+  }
+  .btn-powerup {
+    background: rgba(255, 255, 255, 0.05); border: 1.5px solid var(--border);
+    color: #fff; border-radius: 14px; padding: 8px 14px; font-size: 13px; font-weight: 700;
+    display: inline-flex; align-items: center; gap: 8px; cursor: pointer; transition: all 0.2s;
+    user-select: none;
+  }
+  .btn-powerup:hover:not(:disabled) {
+    transform: translateY(-2px); border-color: var(--cyan); background: rgba(6, 182, 212, 0.15);
+  }
+  .btn-powerup:disabled {
+    opacity: 0.35; cursor: not-allowed; transform: none; filter: grayscale(1);
+  }
+  .btn-powerup.active {
+    background: linear-gradient(135deg, #f59e0b, #d97706); border-color: #fbbf24;
+    box-shadow: 0 0 16px rgba(245, 158, 11, 0.5); animation: flamePulse 1s infinite alternate;
+  }
+  .powerup-count-badge {
+    background: rgba(0, 0, 0, 0.45); border-radius: 10px; padding: 2px 7px; font-size: 11px; font-weight: 800;
+  }
+
+  .timer-frozen {
+    background: linear-gradient(90deg, #38bdf8, #0284c7) !important;
+    box-shadow: 0 0 16px #38bdf8 !important;
+    filter: drop-shadow(0 0 8px #7dd3fc);
+  }
+
+  /* Mascot Meme Reaction Card */
+  .mascot-reaction-card {
+    background: rgba(255, 255, 255, 0.08); border-radius: 18px;
+    padding: 14px 20px; margin: 12px 0 18px; max-width: 440px; width: 90%;
+    display: flex; align-items: center; gap: 14px; text-align: left;
+    border: 1px solid rgba(255, 255, 255, 0.18); backdrop-filter: blur(8px);
+    box-shadow: 0 8px 24px rgba(0,0,0,0.3);
+  }
+  .mascot-avatar-anim {
+    font-size: 44px; flex-shrink: 0;
+    animation: mascotBounce 0.55s infinite alternate ease-in-out;
+  }
+  @keyframes mascotBounce {
+    from { transform: translateY(0) scale(1); }
+    to { transform: translateY(-7px) scale(1.1); }
+  }
+  .mascot-speech-quote {
+    font-size: 14.5px; font-weight: 800; color: #fff; line-height: 1.35;
+  }
+  .mascot-speech-sub {
+    font-size: 12px; color: var(--gold); margin-top: 2px; font-weight: 700;
+  }
 </style>
 </head>
 <body>
@@ -539,6 +612,26 @@
         </div>
       </div>
 
+      <!-- Power-Ups Deck ala Quizizz & Blooket -->
+      <div class="powerup-deck" id="powerup-deck">
+        <button class="btn-powerup" id="pu-btn-fifty_fifty" onclick="usePowerup('fifty_fifty')" title="Eliminasi 2 pilihan salah">
+          <span>✂️ 50:50</span>
+          <span class="powerup-count-badge" id="pu-count-fifty_fifty">1</span>
+        </button>
+        <button class="btn-powerup" id="pu-btn-double_points" onclick="usePowerup('double_points')" title="Poin ganda (2x) jika jawaban berikutnya benar">
+          <span>⚡ 2x Poin</span>
+          <span class="powerup-count-badge" id="pu-count-double_points">1</span>
+        </button>
+        <button class="btn-powerup" id="pu-btn-freeze_time" onclick="usePowerup('freeze_time')" title="Bekukan waktu timer selama 7 detik">
+          <span>⏱️ Freeze</span>
+          <span class="powerup-count-badge" id="pu-count-freeze_time">1</span>
+        </button>
+        <button class="btn-powerup" id="pu-btn-streak_shield" onclick="usePowerup('streak_shield')" title="Lindungi api streak dari reset saat jawaban salah">
+          <span>🛡️ Shield</span>
+          <span class="powerup-count-badge" id="pu-count-streak_shield">1</span>
+        </button>
+      </div>
+
       <div class="answers-grid" id="answers-container">
         <!-- 4 buttons injected dynamically -->
       </div>
@@ -619,7 +712,17 @@
   <div class="feedback-title" id="feedback-title">TEPAT SEKALI!</div>
   <div class="feedback-pts" id="feedback-points">+980 PTS</div>
   <div class="feedback-exp" id="feedback-explanation"></div>
-  <button id="feedback-next-btn" class="btn-nav btn-nav-primary" style="margin-top:18px;padding:12px 30px;font-size:16px;border-radius:14px;cursor:pointer;font-weight:800;box-shadow:0 4px 20px rgba(0,0,0,0.4)" onclick="advanceNextQuestion()">
+
+  <!-- Mascot & Meme Reaction Card -->
+  <div class="mascot-reaction-card" id="mascot-reaction-card">
+    <div class="mascot-avatar-anim" id="mascot-avatar">🦁</div>
+    <div>
+      <div class="mascot-speech-quote" id="mascot-quote">"Gila sih, kecepatan kilat! Otak Einstein mode on! ⚡"</div>
+      <div class="mascot-speech-sub" id="mascot-sub">Streak On Fire! 🔥</div>
+    </div>
+  </div>
+
+  <button id="feedback-next-btn" class="btn-nav btn-nav-primary" style="margin-top:14px;padding:12px 30px;font-size:16px;border-radius:14px;cursor:pointer;font-weight:800;box-shadow:0 4px 20px rgba(0,0,0,0.4)" onclick="advanceNextQuestion()">
     <span>Lanjut ke Soal Berikutnya</span> <i class="fa-solid fa-arrow-right"></i>
   </button>
 </div>
@@ -737,6 +840,16 @@ let timerAnimationId = null;
 let hasAnsweredCurrentQ = false;
 let autoAdvanceTimer = null;
 let latestAnswerResult = null;
+
+// Game Feel & Power-Ups State
+let playerPowerups = {
+  fifty_fifty: 1,
+  double_points: 1,
+  freeze_time: 1,
+  streak_shield: 1
+};
+let activePowerup = null;
+let isTimerFrozen = false;
 
 // Update Sound Icon
 function updateSoundIcon() {
@@ -864,6 +977,16 @@ function startPlayerArena() {
   document.getElementById('player-name-badge').textContent = playerName;
   document.getElementById('lobby-big-avatar').textContent = playerAvatar;
 
+  // Reset power-ups inventory for new match
+  playerPowerups = {
+    fifty_fifty: 1,
+    double_points: 1,
+    freeze_time: 1,
+    streak_shield: 1
+  };
+  activePowerup = null;
+  renderPowerupsUI();
+
   // Poll room state every 1 second
   if (pollInterval) clearInterval(pollInterval);
   pollRoomState();
@@ -882,7 +1005,15 @@ async function pollRoomState() {
       document.getElementById('player-score-badge').textContent = `${state.my_score.toLocaleString()} PTS`;
     }
     if (state.my_streak !== undefined) {
-      document.getElementById('player-streak-badge').textContent = `Streak x${state.my_streak}`;
+      const streakBadge = document.getElementById('player-streak-badge');
+      if (streakBadge) {
+        streakBadge.textContent = `Streak x${state.my_streak}`;
+        if (state.my_streak >= 3) {
+          streakBadge.classList.add('super-streak-glow');
+        } else {
+          streakBadge.classList.remove('super-streak-glow');
+        }
+      }
     }
 
     // Handle State Transitions
@@ -940,6 +1071,9 @@ function renderQuestion(q) {
     </button>
   `).join('');
 
+  activePowerup = null;
+  renderPowerupsUI();
+
   // Start Timer Bar
   questionStartTime = Date.now();
   startTimerBar(q.time_limit);
@@ -950,17 +1084,18 @@ function startTimerBar(seconds) {
   if (timerAnimationId) cancelAnimationFrame(timerAnimationId);
   const totalMs = seconds * 1000;
   const bar = document.getElementById('timer-bar');
+  if (bar) bar.classList.remove('timer-frozen');
 
   function update() {
     const elapsed = Date.now() - questionStartTime;
     const remaining = Math.max(0, totalMs - elapsed);
     const pct = (remaining / totalMs) * 100;
-    bar.style.width = `${pct}%`;
+    if (bar) bar.style.width = `${pct}%`;
 
     if (pct < 30) {
-      bar.style.background = 'linear-gradient(90deg, #f43f5e, #e11d48)';
+      if (bar) bar.style.background = 'linear-gradient(90deg, #f43f5e, #e11d48)';
     } else {
-      bar.style.background = 'linear-gradient(90deg, #10b981, #06b6d4)';
+      if (bar) bar.style.background = 'linear-gradient(90deg, #10b981, #06b6d4)';
     }
 
     if (remaining > 0 && !hasAnsweredCurrentQ) {
@@ -977,6 +1112,101 @@ function handleTimeExpired(timeLimitSec) {
   submitAnswer(-1, timeLimitSec);
 }
 
+// ---------- POWER-UPS DECK LOGIC ----------
+function renderPowerupsUI() {
+  const types = ['fifty_fifty', 'double_points', 'freeze_time', 'streak_shield'];
+  types.forEach(t => {
+    const btn = document.getElementById(`pu-btn-${t}`);
+    const badge = document.getElementById(`pu-count-${t}`);
+    const count = playerPowerups[t] || 0;
+    if (badge) badge.textContent = count;
+    if (btn) {
+      btn.disabled = count <= 0 || hasAnsweredCurrentQ;
+      if (activePowerup === t) {
+        btn.classList.add('active');
+      } else {
+        btn.classList.remove('active');
+      }
+    }
+  });
+}
+
+function usePowerup(type) {
+  if (hasAnsweredCurrentQ) return;
+  if (!playerPowerups[type] || playerPowerups[type] <= 0) return;
+
+  if (type === 'fifty_fifty') {
+    playerPowerups.fifty_fifty = 0;
+    renderPowerupsUI();
+    soundEngine.playPowerup('fifty_fifty');
+    applyFiftyFifty();
+  } else if (type === 'double_points') {
+    if (activePowerup === 'double_points') {
+      activePowerup = null;
+    } else {
+      activePowerup = 'double_points';
+      soundEngine.playPowerup('double_points');
+    }
+    renderPowerupsUI();
+  } else if (type === 'streak_shield') {
+    if (activePowerup === 'streak_shield') {
+      activePowerup = null;
+    } else {
+      activePowerup = 'streak_shield';
+      soundEngine.playPowerup('streak_shield');
+    }
+    renderPowerupsUI();
+  } else if (type === 'freeze_time') {
+    playerPowerups.freeze_time = 0;
+    renderPowerupsUI();
+    soundEngine.playPowerup('freeze_time');
+    applyFreezeTime();
+  }
+}
+
+async function applyFiftyFifty() {
+  try {
+    const res = await fetch(`/api/rooms/${currentPin}/powerup/fifty-fifty`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ player_token: playerToken })
+    });
+    const data = await res.json();
+    if (data.ok && Array.isArray(data.eliminated)) {
+      data.eliminated.forEach(idx => {
+        const btn = document.getElementById(`ans-btn-${idx}`);
+        if (btn) {
+          btn.disabled = true;
+          btn.style.opacity = '0.22';
+          btn.style.filter = 'grayscale(1)';
+          btn.style.textDecoration = 'line-through';
+          btn.style.pointerEvents = 'none';
+        }
+      });
+    }
+  } catch (err) {
+    console.error('Fifty-fifty powerup error', err);
+  }
+}
+
+function applyFreezeTime() {
+  const bar = document.getElementById('timer-bar');
+  if (bar) bar.classList.add('timer-frozen');
+  isTimerFrozen = true;
+
+  const freezeDuration = 7000;
+  const startTime = Date.now();
+  const freezeInterval = setInterval(() => {
+    if (hasAnsweredCurrentQ || Date.now() - startTime >= freezeDuration) {
+      clearInterval(freezeInterval);
+      isTimerFrozen = false;
+      if (bar) bar.classList.remove('timer-frozen');
+    } else {
+      questionStartTime += 100;
+    }
+  }, 100);
+}
+
 // Submit Answer
 async function submitAnswer(ansIdx, timeLimitSec) {
   if (hasAnsweredCurrentQ) return;
@@ -984,13 +1214,17 @@ async function submitAnswer(ansIdx, timeLimitSec) {
   if (timerAnimationId) cancelAnimationFrame(timerAnimationId);
   soundEngine.play('click');
 
-  // Disable all buttons immediately
+  // Disable all answer buttons immediately
   for (let i = 0; i < 4; i++) {
     const b = document.getElementById(`ans-btn-${i}`);
     if (b) b.disabled = true;
   }
 
+  // Also disable powerups deck once answered
+  renderPowerupsUI();
+
   const timeSpentMs = Date.now() - questionStartTime;
+  const powerupToSend = activePowerup;
 
   try {
     const res = await fetch(`/api/rooms/${currentPin}/answer`, {
@@ -999,14 +1233,70 @@ async function submitAnswer(ansIdx, timeLimitSec) {
       body: JSON.stringify({
         player_token: playerToken,
         answer_idx: ansIdx,
-        time_spent_ms: timeSpentMs
+        time_spent_ms: timeSpentMs,
+        active_powerup: powerupToSend
       })
     });
     const data = await res.json();
     latestAnswerResult = data;
+
+    // Powerup consumed on answer submission
+    if (powerupToSend) {
+      playerPowerups[powerupToSend] = 0;
+      activePowerup = null;
+      renderPowerupsUI();
+    }
+
     showFeedbackBanner(data, ansIdx === -1);
   } catch (err) {
     console.error('Answer error', err);
+  }
+}
+
+// ---------- MASCOT MEME REACTION & MICRO-INTERACTIONS ----------
+const correctMemeQuotes = [
+  { quote: "Gila sih, kecepatan kilat! Otak Einstein mode on! ⚡", sub: "Super Fast & Correct!" },
+  { quote: "Menyala abangkuuu! Streak terus bertambah! 🔥", sub: "Streak On Fire!" },
+  { quote: "Auto dapet A+ di kelas ini! Pertahankan! 🎓", sub: "Akademik Level Dewa!" },
+  { quote: "Jagoan neon! Soal selevel ini mah enteng! 😎", sub: "Flawless Answer!" },
+  { quote: "Gokil, refleks jarimu lebih cepat dari AI! 🚀", sub: "Lightning Reflexes!" },
+  { quote: "Lawan-lawanmu mulai ketar-ketir melihat skormu! 📈", sub: "Dominating Leaderboard!" }
+];
+
+const wrongMemeQuotes = [
+  { quote: "Waduh kepeleset! Tenang, pemanasan dulu gak sih? 🙃", sub: "Tetap Santuy & Gas Terus!" },
+  { quote: "Hampir aja bener! Jangan biarkan apimu padam! 💪", sub: "Soal Berikutnya Pasti Bisa!" },
+  { quote: "Gapapa salah, yang penting jangan salah pilih jurusan! 😜", sub: "Santai, Masih Ada Kesempatan!" },
+  { quote: "Tarik napas dulu... Kuis ini belum berakhir bos! 🧘‍♂️", sub: "Fokus & Comeback!" },
+  { quote: "Jadikan pelajaran berharga buat melesat di soal depan! 🚀", sub: "Never Give Up!" }
+];
+
+function triggerScreenShake() {
+  const target = document.getElementById('view-player') || document.body;
+  if (target) {
+    target.classList.remove('screen-shake');
+    void target.offsetWidth; // Force CSS Reflow
+    target.classList.add('screen-shake');
+    setTimeout(() => target.classList.remove('screen-shake'), 450);
+  }
+}
+
+function updateMascotReaction(isCorrect, streak, isTimedOut) {
+  const avatarEl = document.getElementById('mascot-avatar');
+  const quoteEl = document.getElementById('mascot-quote');
+  const subEl = document.getElementById('mascot-sub');
+  if (!avatarEl || !quoteEl || !subEl) return;
+
+  avatarEl.textContent = playerAvatar || '🦁';
+
+  if (isCorrect) {
+    const item = correctMemeQuotes[Math.floor(Math.random() * correctMemeQuotes.length)];
+    quoteEl.textContent = `"${item.quote}"`;
+    subEl.textContent = streak >= 3 ? `🔥 Super Streak x${streak}! On Fire!` : item.sub;
+  } else {
+    const item = wrongMemeQuotes[Math.floor(Math.random() * wrongMemeQuotes.length)];
+    quoteEl.textContent = isTimedOut ? `"Waktu habis! Jangan overthinking, klik lebih lincah lagi! ⏱️"` : `"${item.quote}"`;
+    subEl.textContent = item.sub;
   }
 }
 
@@ -1021,22 +1311,48 @@ function showFeedbackBanner(data, isTimedOut = false) {
   banner.className = `feedback-banner ${data.correct ? 'correct' : 'wrong'}`;
   banner.classList.remove('hidden');
 
+  const streakCount = data.streak || 0;
+  const streakBadge = document.getElementById('player-streak-badge');
+
   if (data.correct) {
-    icon.textContent = '🎉';
-    title.textContent = 'TEPAT SEKALI!';
+    icon.textContent = streakCount >= 3 ? '🔥' : '🎉';
+    title.textContent = streakCount >= 3 ? `SUPER STREAK x${streakCount}!` : 'TEPAT SEKALI!';
     pts.textContent = `+${data.points_earned} PTS`;
-    soundEngine.play(data.streak >= 2 ? 'streak' : 'correct');
+    if (data.powerup_applied === 'double_points') {
+      pts.textContent += ' (⚡ 2X POIN AKTIF!)';
+    }
+    soundEngine.playCombo(streakCount);
+
+    if (streakBadge) {
+      if (streakCount >= 3) {
+        streakBadge.classList.add('super-streak-glow');
+      } else {
+        streakBadge.classList.remove('super-streak-glow');
+      }
+    }
   } else if (isTimedOut) {
     icon.textContent = '⏰';
     title.textContent = 'WAKTU HABIS!';
     pts.textContent = '+0 PTS';
     soundEngine.play('wrong');
+    triggerScreenShake();
+    if (streakBadge) streakBadge.classList.remove('super-streak-glow');
   } else {
     icon.textContent = '❌';
     title.textContent = 'YAH, KURANG TEPAT';
     pts.textContent = '+0 PTS';
+    if (data.powerup_applied === 'streak_shield') {
+      pts.textContent = '🛡️ SHIELD MELINDUNGI STREAK!';
+    }
     soundEngine.play('wrong');
+    triggerScreenShake();
+    if (streakBadge && data.powerup_applied !== 'streak_shield') {
+      streakBadge.classList.remove('super-streak-glow');
+    }
   }
+
+  // Update Mascot Meme Reaction Card
+  updateMascotReaction(data.correct, streakCount, isTimedOut);
 
   exp.textContent = data.explanation || '';
   if (nextBtn) {
@@ -1056,7 +1372,7 @@ function showFeedbackBanner(data, isTimedOut = false) {
   if (autoAdvanceTimer) clearTimeout(autoAdvanceTimer);
   autoAdvanceTimer = setTimeout(() => {
     advanceNextQuestion();
-  }, 2200);
+  }, 2400);
 }
 
 function advanceNextQuestion() {

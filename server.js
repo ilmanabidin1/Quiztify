@@ -695,7 +695,7 @@ app.post('/api/rooms/:pin/control', requireRole('creator', 'dosen'), (req, res) 
 // 5. Player Submit Live Answer (Self-Paced Progression)
 app.post('/api/rooms/:pin/answer', (req, res) => {
   const pin = req.params.pin;
-  const { player_token, answer_idx, time_spent_ms } = req.body || {};
+  const { player_token, answer_idx, time_spent_ms, active_powerup } = req.body || {};
   const room = db.prepare('SELECT * FROM game_rooms WHERE pin = ?').get(pin);
   if (!room || room.status !== 'question') {
     return res.status(400).json({ error: 'Waktu menjawab telah selesai atau kuis belum dimulai' });
@@ -723,6 +723,7 @@ app.post('/api/rooms/:pin/answer', (req, res) => {
   const isCorrect = Number(answer_idx) === currentQ.correct_idx;
   let pointsEarned = 0;
   let newStreak = isCorrect ? (player.streak + 1) : 0;
+  let powerupApplied = null;
 
   if (isCorrect) {
     const basePts = 600;
@@ -732,9 +733,26 @@ app.post('/api/rooms/:pin/answer', (req, res) => {
     const speedBonus = Math.round(speedRatio * 300);
     const streakBonus = newStreak >= 3 ? 150 : (newStreak >= 2 ? 75 : 0);
     pointsEarned = basePts + speedBonus + streakBonus;
+
+    // Power-Up: Double Points
+    if (active_powerup === 'double_points') {
+      pointsEarned *= 2;
+      powerupApplied = 'double_points';
+    }
+  } else {
+    // Power-Up: Streak Shield (jika salah, streak tidak kembali ke 0)
+    if (active_powerup === 'streak_shield') {
+      newStreak = player.streak;
+      powerupApplied = 'streak_shield';
+    }
   }
 
-  answersMap[playerQIdx] = { answer_idx: Number(answer_idx), is_correct: isCorrect, points: pointsEarned };
+  answersMap[playerQIdx] = { 
+    answer_idx: Number(answer_idx), 
+    is_correct: isCorrect, 
+    points: pointsEarned,
+    powerup: powerupApplied 
+  };
   const newScore = player.score + pointsEarned;
   const nextQIdx = playerQIdx + 1;
   const isFinished = nextQIdx >= totalQuestions ? 1 : 0;
@@ -762,8 +780,40 @@ app.post('/api/rooms/:pin/answer', (req, res) => {
     streak: newStreak,
     is_finished: Boolean(isFinished),
     next_q_idx: nextQIdx,
-    total_questions: totalQuestions
+    total_questions: totalQuestions,
+    powerup_applied: powerupApplied
   });
+});
+
+// 5b. Power-Up: Fifty-Fifty (Eliminates 2 wrong answer choices for current question)
+app.post('/api/rooms/:pin/powerup/fifty-fifty', (req, res) => {
+  const pin = req.params.pin;
+  const { player_token } = req.body || {};
+  const room = db.prepare('SELECT * FROM game_rooms WHERE pin = ?').get(pin);
+  if (!room || room.status !== 'question') {
+    return res.status(400).json({ error: 'Kuis belum aktif' });
+  }
+  const player = db.prepare('SELECT * FROM room_players WHERE pin = ? AND player_token = ?').get(pin, player_token);
+  if (!player) return res.status(404).json({ error: 'Player tidak ditemukan' });
+
+  const questions = db.prepare('SELECT * FROM questions WHERE quiz_id = ? ORDER BY position ASC').all(room.quiz_id);
+  const playerQIdx = Number(player.current_q_idx) || 0;
+  const currentQ = questions[playerQIdx];
+  if (!currentQ) return res.status(404).json({ error: 'Pertanyaan tidak ditemukan' });
+
+  const options = JSON.parse(currentQ.options || '[]');
+  const wrongIndices = [];
+  for (let i = 0; i < options.length; i++) {
+    if (i !== currentQ.correct_idx) {
+      wrongIndices.push(i);
+    }
+  }
+
+  // Shuffle and pick 2 wrong indices to eliminate
+  const shuffled = wrongIndices.sort(() => 0.5 - Math.random());
+  const eliminated = shuffled.slice(0, Math.min(2, wrongIndices.length));
+
+  res.json({ ok: true, eliminated });
 });
 
 // ---------- DEEPSEEK AI SMART QUIZ GENERATOR (DeepSeek V4.1 Flash) ----------
