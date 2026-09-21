@@ -963,7 +963,7 @@
             <p style="font-size:13px;color:var(--text-muted);margin-bottom:18px">Solusi terfavorit untuk evaluasi perkuliahan berstandar tinggi.</p>
             <ul style="list-style:none;font-size:13.5px;display:flex;flex-direction:column;gap:12px;margin-bottom:24px;flex:1">
               <li><i class="fa-solid fa-check" style="color:var(--emerald);margin-right:8px"></i> <b>Peserta kuis UNLIMITED</b></li>
-              <li><i class="fa-solid fa-check" style="color:var(--emerald);margin-right:8px"></i> <b>DeepSeek AI Generator UNLIMITED</b></li>
+              <li><i class="fa-solid fa-check" style="color:var(--emerald);margin-right:8px"></i> <b>Quiztify Smart AI Generator UNLIMITED</b></li>
               <li><i class="fa-solid fa-check" style="color:var(--emerald);margin-right:8px"></i> <b>Exam Integrity Shield (Anti-Curang)</b></li>
               <li><i class="fa-solid fa-check" style="color:var(--emerald);margin-right:8px"></i> <b>1-Click AI Auto-Remedial Generator</b></li>
               <li><i class="fa-solid fa-check" style="color:var(--emerald);margin-right:8px"></i> <b>Berita Acara Resmi &amp; QR Verifikasi</b></li>
@@ -1157,11 +1157,11 @@
         <div style="font-size:28px">🤖</div>
         <div>
           <h2 style="font-size:19px;font-weight:800">AI Smart Quiz Generator</h2>
-          <p style="color:var(--text-muted);font-size:12.5px">Ditenagai oleh arsitektur AI <b>DeepSeek V4.1 Flash</b></p>
+          <p style="color:var(--text-muted);font-size:12.5px">Ditenagai oleh arsitektur <b>Quiztify AI Smart Engine</b></p>
         </div>
       </div>
       <span style="font-size:11px;font-weight:800;color:#76d83a;background:rgba(118,216,58,0.12);border:1px solid rgba(118,216,58,0.35);padding:4px 8px;border-radius:6px;display:flex;align-items:center;gap:5px;white-space:nowrap">
-        <i class="fa-solid fa-bolt"></i> DeepSeek V4.1 Flash
+        <i class="fa-solid fa-bolt"></i> Quiztify AI Engine
       </span>
     </div>
 
@@ -1193,7 +1193,7 @@
 
     <div style="margin-top:12px;font-size:12px;color:var(--text-muted);background:rgba(255,255,255,0.03);border:1px dashed var(--border);border-radius:10px;padding:10px 12px;display:flex;align-items:center;gap:8px">
       <i class="fa-solid fa-circle-info" style="color:var(--cyan)"></i>
-      <span>DeepSeek V4.1 Flash akan merancang soal pilihan ganda, kunci jawaban acak, dan pembahasan ilmiah secara instan.</span>
+      <span>Quiztify AI Smart Engine akan merancang soal pilihan ganda, kunci jawaban acak, dan pembahasan ilmiah secara instan.</span>
     </div>
 
     <div style="display:flex;justify-content:flex-end;gap:10px;margin-top:20px">
@@ -1340,7 +1340,7 @@
       <div style="background:rgba(124,58,237,0.12);border:1px solid var(--purple);border-radius:16px;padding:18px 20px;margin-bottom:20px;display:flex;align-items:flex-start;gap:14px">
         <i class="fa-solid fa-wand-magic-sparkles" style="color:var(--purple-light);font-size:24px;margin-top:2px"></i>
         <div style="flex:1">
-          <b style="font-size:15px;color:#fff;display:block;margin-bottom:4px">Evaluasi Kecerdasan Buatan (DeepSeek Diagnostic)</b>
+          <b style="font-size:15px;color:#fff;display:block;margin-bottom:4px">Evaluasi Kecerdasan Buatan (Quiztify AI Diagnostic)</b>
           <p id="diag-summary-text" style="font-size:13.5px;color:var(--text-muted);margin:0;line-height:1.5">
             Menganalisis pola kesalahan mahasiswa pada seluruh butir soal...
           </p>
@@ -1379,7 +1379,7 @@
     <!-- Modal Footer Actions -->
     <div style="border-top:1px solid var(--border);padding-top:16px;margin-top:10px;display:flex;align-items:center;justify-content:space-between">
       <div style="font-size:12px;color:var(--text-muted)">
-        <i class="fa-solid fa-sparkles" style="color:var(--gold)"></i> Menggunakan AI DeepSeek V4.1 Flash
+        <i class="fa-solid fa-sparkles" style="color:var(--gold)"></i> Ditenagai oleh Quiztify AI Smart Engine
       </div>
       <div style="display:flex;gap:10px">
         <button class="btn btn-ghost" onclick="closeDiagnosticModal()">Tutup</button>
@@ -2264,7 +2264,7 @@ async function runAiGenerator() {
     return;
   }
 
-  btn.innerHTML = `<i class="fa-solid fa-spinner fa-spin"></i> Meracik dengan DeepSeek V4.1 Flash...`;
+  btn.innerHTML = `<i class="fa-solid fa-spinner fa-spin"></i> Meracik dengan Quiztify AI...`;
   btn.disabled = true;
 
   try {
@@ -2285,8 +2285,8 @@ async function runAiGenerator() {
     closeAiModal();
     window.QuizSound.play('correct');
 
-    const modelUsed = data.model_display || 'DeepSeek V4.1 Flash';
-    const alertMsg = data.source === 'deepseek-api' 
+    const modelUsed = data.model_display || 'Quiztify AI Smart Engine';
+    const alertMsg = (data.source !== 'fallback') 
       ? `🎉 Berhasil meracik ${data.generated_count || builderQuestions.length} butir soal kuis menggunakan ${modelUsed}!`
       : `ℹ️ Paket soal kuis berhasil diracik (${data.model_display}). ${data.warning || ''}`;
     
@@ -2985,7 +2985,7 @@ async function generateAutoRemedial() {
   const btn = document.getElementById('btn-generate-remedial');
   const originalHtml = btn.innerHTML;
   btn.disabled = true;
-  btn.innerHTML = `<i class="fa-solid fa-spinner fa-spin"></i> Merancang Soal Remedial via DeepSeek AI...`;
+  btn.innerHTML = `<i class="fa-solid fa-spinner fa-spin"></i> Merancang Soal Remedial via Quiztify AI...`;
 
   try {
     const res = await fetch(`/api/quizzes/${currentDiagnosticQuizId}/auto-remedial`, {

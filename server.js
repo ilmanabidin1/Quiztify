@@ -1053,7 +1053,7 @@ app.get('/api/quizzes/:id/study-guide', (req, res) => {
   });
 });
 
-// ---------- DEEPSEEK AI SMART QUIZ GENERATOR (DeepSeek V4.1 Flash) ----------
+// ---------- QUIZTIFY AI SMART QUIZ GENERATOR ----------
 
 function extractJsonFromText(raw) {
   if (!raw || typeof raw !== 'string') return null;
@@ -1092,7 +1092,7 @@ function extractJsonFromText(raw) {
   return null;
 }
 
-async function callDeepSeekApi({ apiKey, model, topic, count, difficulty }) {
+async function callQuiztifyAiApi({ apiKey, model, topic, count, difficulty }) {
   const n = Math.min(15, Math.max(3, Number(count) || 5));
   const diff = difficulty || 'Menengah / Analisis (C3-C4)';
 
@@ -1133,7 +1133,7 @@ Aturan Penulisan:
 Tingkat Kesulitan: ${diff}.
 Keluarkan HANYA dalam format JSON yang valid.`;
 
-  // Coba model yang diminta (default: deepseek-flash), lalu fallback ke deepseek-chat jika perlu
+  // Coba model primer lalu model alternatif jika diperlukan
   const modelsToTry = [model];
   if (model !== 'deepseek-chat') modelsToTry.push('deepseek-chat');
   if (model !== 'deepseek-flash' && !modelsToTry.includes('deepseek-flash')) modelsToTry.push('deepseek-flash');
@@ -1141,16 +1141,14 @@ Keluarkan HANYA dalam format JSON yang valid.`;
   let lastError = null;
 
   for (const m of modelsToTry) {
-    // 2 Strategi:
-    // Strategi 1: Prompt murni tanpa response_format strict (menghindari bug empty content DeepSeek)
-    // Strategi 2: Dengan response_format: { type: 'json_object' } jika Strategi 1 gagal
+    // 2 Strategi prompt: Standard dan Strict JSON
     const strategies = [
       { name: 'Standard Prompt', jsonMode: false },
       { name: 'JSON Mode Strict', jsonMode: true }
     ];
 
     for (const strat of strategies) {
-      console.log(`[Quiztify AI] Menghubungi DeepSeek API (${m}, strategi: ${strat.name})...`);
+      console.log(`[Quiztify AI] Menghubungi Quiztify AI Engine (${strat.name})...`);
       const controller = new AbortController();
       const timeoutId = setTimeout(() => controller.abort(), 45000);
 
@@ -1187,7 +1185,7 @@ Keluarkan HANYA dalam format JSON yang valid.`;
             const parsedErr = JSON.parse(errText);
             if (parsedErr.error?.message) errMsg = parsedErr.error.message;
           } catch (_) {}
-          console.warn(`[Quiztify AI] DeepSeek error (${m}, ${strat.name}):`, errMsg);
+          console.warn(`[Quiztify AI] Engine error (${strat.name}):`, errMsg);
           lastError = errMsg;
           if (response.status === 404 || errMsg.toLowerCase().includes('model')) break;
           continue;
@@ -1200,20 +1198,20 @@ Keluarkan HANYA dalam format JSON yang valid.`;
         let text = (msg.content || '').trim();
         // Fallback: Jika content kosong, periksa reasoning_content
         if (!text && msg.reasoning_content) {
-          console.log(`[Quiztify AI] (${m}) content kosong, mengambil dari reasoning_content...`);
+          console.log(`[Quiztify AI] (${strat.name}) content kosong, mengambil dari reasoning_content...`);
           text = msg.reasoning_content.trim();
         }
 
         if (!text) {
-          console.warn(`[Quiztify AI] (${m}, ${strat.name}) Respons kosong dari DeepSeek. Detail choice:`, JSON.stringify(choice));
-          lastError = 'Respons kosong dari DeepSeek API';
+          console.warn(`[Quiztify AI] (${strat.name}) Respons kosong dari AI Engine. Detail choice:`, JSON.stringify(choice));
+          lastError = 'Respons kosong dari Quiztify AI Engine';
           continue;
         }
 
         const parsed = extractJsonFromText(text);
         if (!parsed || !parsed.questions || !Array.isArray(parsed.questions) || parsed.questions.length === 0) {
-          console.warn(`[Quiztify AI] (${m}) Gagal membaca pertanyaan dari respons DeepSeek:`, text.slice(0, 250));
-          lastError = 'Format respons DeepSeek tidak memuat array questions yang valid';
+          console.warn(`[Quiztify AI] Gagal membaca pertanyaan dari respons AI Engine:`, text.slice(0, 250));
+          lastError = 'Format respons Quiztify AI tidak memuat array questions yang valid';
           continue;
         }
 
@@ -1246,7 +1244,7 @@ Keluarkan HANYA dalam format JSON yang valid.`;
           };
         });
 
-        console.log(`[Quiztify AI] Sukses membuat ${sanitizedQuestions.length} butir soal dari DeepSeek (${m})!`);
+        console.log(`[Quiztify AI] Sukses membuat ${sanitizedQuestions.length} butir soal dari Quiztify AI Smart Engine!`);
         return {
           ok: true,
           model: m,
@@ -1257,14 +1255,14 @@ Keluarkan HANYA dalam format JSON yang valid.`;
 
       } catch (err) {
         clearTimeout(timeoutId);
-        const errMsg = err.name === 'AbortError' ? 'Koneksi ke DeepSeek API timeout (45 detik)' : err.message;
-        console.warn(`[Quiztify AI] Exception (${m}, ${strat.name}):`, errMsg);
+        const errMsg = err.name === 'AbortError' ? 'Koneksi ke Quiztify AI timeout (45 detik)' : err.message;
+        console.warn(`[Quiztify AI] Exception (${strat.name}):`, errMsg);
         lastError = errMsg;
       }
     }
   }
 
-  return { ok: false, error: lastError || 'Gagal berkomunikasi dengan DeepSeek AI' };
+  return { ok: false, error: lastError || 'Gagal berkomunikasi dengan Quiztify AI' };
 }
 
 app.post('/api/quizzes/generate-ai', requireRole('creator', 'dosen'), async (req, res) => {
@@ -1273,23 +1271,22 @@ app.post('/api/quizzes/generate-ai', requireRole('creator', 'dosen'), async (req
   const n = Math.min(15, Math.max(3, Number(count) || 5));
   const diff = norm(difficulty) || 'Menengah / Analisis (C3-C4)';
 
-  // Periksa environment variable dari Railway (mendukung huruf besar & kecil)
-  const apiKey = (process.env.DEEPSEEK_API_KEY || process.env.deepseek_api_key || process.env.DEEPSEEK_KEY || process.env.OPENAI_API_KEY || '').trim();
+  // Periksa environment variable dari Railway (mendukung QUIZTIFY_AI_API_KEY dan deepseek_api_key)
+  const apiKey = (process.env.QUIZTIFY_AI_API_KEY || process.env.DEEPSEEK_API_KEY || process.env.deepseek_api_key || process.env.DEEPSEEK_KEY || process.env.OPENAI_API_KEY || '').trim();
 
-  // Model resmi DeepSeek V4.1 Flash adalah 'deepseek-flash'
-  const primaryModel = process.env.DEEPSEEK_MODEL || 'deepseek-flash';
+  const primaryModel = process.env.QUIZTIFY_AI_MODEL || process.env.DEEPSEEK_MODEL || 'deepseek-flash';
 
   if (apiKey) {
-    console.log(`[Quiztify AI] Memulai generate kuis via DeepSeek API (Model Primer: ${primaryModel}, Topik: "${t}", Jumlah: ${n})...`);
+    console.log(`[Quiztify AI] Memulai generate kuis via Quiztify AI Smart Engine (Topik: "${t}", Jumlah: ${n})...`);
     
-    const aiRes = await callDeepSeekApi({ apiKey, model: primaryModel, topic: t, count: n, difficulty: diff });
+    const aiRes = await callQuiztifyAiApi({ apiKey, model: primaryModel, topic: t, count: n, difficulty: diff });
 
     if (aiRes.ok) {
-      const modelLabel = aiRes.model === 'deepseek-flash' ? 'DeepSeek V4.1 Flash' : `DeepSeek AI (${aiRes.model})`;
+      const modelLabel = 'Quiztify AI Smart Engine';
       console.log(`[Quiztify AI] Sukses membuat ${aiRes.questions.length} butir soal kuis menggunakan ${modelLabel}!`);
       return res.json({
         success: true,
-        source: 'deepseek-api',
+        source: 'quiztify-ai',
         model: aiRes.model,
         model_display: modelLabel,
         topic: aiRes.topic,
@@ -1299,9 +1296,9 @@ app.post('/api/quizzes/generate-ai', requireRole('creator', 'dosen'), async (req
       });
     }
 
-    console.warn(`[Quiztify AI] Panggilan DeepSeek API gagal: ${aiRes.error}. Mengalihkan ke generator cadangan.`);
+    console.warn(`[Quiztify AI] Panggilan AI Engine gagal: ${aiRes.error}. Mengalihkan ke generator cadangan.`);
   } else {
-    console.warn('[Quiztify AI] DEEPSEEK_API_KEY belum terdeteksi di env Railway/lokal. Menggunakan bank soal cerdas.');
+    console.warn('[Quiztify AI] AI Key belum terdeteksi di env. Menggunakan bank soal cerdas.');
   }
 
   // Generator Fallback Cadangan (Jika API Key belum diset atau kuota habis)
@@ -1348,9 +1345,9 @@ app.post('/api/quizzes/generate-ai', requireRole('creator', 'dosen'), async (req
   return res.json({
     success: true,
     source: 'fallback',
-    model: 'Smart Fallback Engine',
-    model_display: 'Smart Fallback Engine (Atur deepseek_api_key di Railway untuk aktivasi DeepSeek V4.1 Flash)',
-    warning: apiKey ? 'Gagal menghubungi DeepSeek API. Menggunakan bank soal cadangan.' : 'deepseek_api_key belum terpasang di Environment Railway.',
+    model: 'Quiztify Smart Engine',
+    model_display: 'Quiztify Smart Engine',
+    warning: apiKey ? 'Gagal menghubungi Quiztify AI Engine. Menggunakan bank soal cadangan.' : 'Quiztify AI Key belum terpasang di Environment Railway.',
     topic: t,
     category: t,
     generated_count: resultQuestions.length,
@@ -1758,7 +1755,7 @@ app.get('/api/quizzes/:id/diagnostic', requireRole('creator', 'dosen'), (req, re
   });
 });
 
-// 1-Click Auto-Remedial Generator via DeepSeek AI
+// 1-Click Auto-Remedial Generator via Quiztify AI
 app.post('/api/quizzes/:id/auto-remedial', requireRole('creator', 'dosen'), async (req, res) => {
   const quizId = Number(req.params.id);
   const quiz = db.prepare('SELECT * FROM quizzes WHERE id = ?').get(quizId);
@@ -1769,12 +1766,12 @@ app.post('/api/quizzes/:id/auto-remedial', requireRole('creator', 'dosen'), asyn
 
   const count = 5;
   let generatedQuestions = [];
-  const apiKey = (process.env.DEEPSEEK_API_KEY || process.env.deepseek_api_key || process.env.DEEPSEEK_KEY || process.env.OPENAI_API_KEY || '').trim();
-  const primaryModel = process.env.DEEPSEEK_MODEL || 'deepseek-flash';
+  const apiKey = (process.env.QUIZTIFY_AI_API_KEY || process.env.DEEPSEEK_API_KEY || process.env.deepseek_api_key || process.env.DEEPSEEK_KEY || process.env.OPENAI_API_KEY || '').trim();
+  const primaryModel = process.env.QUIZTIFY_AI_MODEL || process.env.DEEPSEEK_MODEL || 'deepseek-flash';
 
   if (apiKey) {
     const aiPromptTopic = `Soal Remedial untuk memperkuat materi: "${quiz.title}". Berikan 5 pertanyaan terarah dengan pembahasan konsep bertahap agar siswa yang remedial memahami konsep dasar dengan benar.`;
-    const aiRes = await callDeepSeekApi({ apiKey, model: primaryModel, topic: aiPromptTopic, count, difficulty: 'Dasar hingga Pemahaman Konseptual (C2-C3)' });
+    const aiRes = await callQuiztifyAiApi({ apiKey, model: primaryModel, topic: aiPromptTopic, count, difficulty: 'Dasar hingga Pemahaman Konseptual (C2-C3)' });
     if (aiRes.ok && aiRes.questions.length > 0) {
       generatedQuestions = aiRes.questions;
     }
