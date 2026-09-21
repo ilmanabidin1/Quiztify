@@ -1,0 +1,520 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Quiztify.id – Creator Login</title>
+<link rel="icon" type="image/png" href="/logo.png">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --bg: #0c0822;
+    --surface: #140d2e;
+    --surface2: #1a1040;
+    --border: rgba(118,216,58,0.15);
+    --border-strong: rgba(118,216,58,0.35);
+    --text: #e2deff;
+    --text-muted: #9d96c8;
+    --emerald: #76d83a;
+    --emerald-dark: #5cb82d;
+    --cyan: #22d3ee;
+    --primary: #7c3aed;
+    --primary-light: #a78bfa;
+    --rose: #f43f5e;
+    --amber: #f59e0b;
+    --gold: #fbbf24;
+  }
+
+  html, body {
+    height: 100%;
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Inter', system-ui, -apple-system, sans-serif;
+    overflow: hidden;
+  }
+
+  /* ========== ANIMATED BACKGROUND ========== */
+  .bg-canvas {
+    position: fixed; inset: 0; z-index: 0; overflow: hidden;
+  }
+  .bg-orb {
+    position: absolute; border-radius: 50%; filter: blur(80px); opacity: 0.18; animation: floatOrb 12s ease-in-out infinite alternate;
+  }
+  .bg-orb:nth-child(1) { width: 500px; height: 500px; background: var(--primary); top: -100px; left: -120px; animation-delay: 0s; }
+  .bg-orb:nth-child(2) { width: 350px; height: 350px; background: var(--emerald); bottom: -60px; right: -80px; animation-delay: -4s; }
+  .bg-orb:nth-child(3) { width: 280px; height: 280px; background: var(--cyan); top: 40%; left: 50%; animation-delay: -8s; }
+  @keyframes floatOrb { from { transform: translate(0,0) scale(1); } to { transform: translate(30px,20px) scale(1.1); } }
+
+  .bg-grid {
+    position: absolute; inset: 0;
+    background-image: linear-gradient(rgba(118,216,58,0.04) 1px, transparent 1px),
+                      linear-gradient(90deg, rgba(118,216,58,0.04) 1px, transparent 1px);
+    background-size: 40px 40px;
+  }
+
+  /* ========== LAYOUT ========== */
+  .page-wrap {
+    position: relative; z-index: 1;
+    min-height: 100vh;
+    display: flex; align-items: center; justify-content: center;
+    padding: 20px;
+    overflow-y: auto;
+  }
+
+  .auth-container {
+    width: 100%; max-width: 440px;
+    display: flex; flex-direction: column; gap: 24px;
+  }
+
+  /* ========== LOGO HEADER ========== */
+  .auth-header {
+    text-align: center;
+    display: flex; flex-direction: column; align-items: center; gap: 12px;
+  }
+  .auth-header img { height: 48px; width: auto; object-fit: contain; filter: drop-shadow(0 0 16px rgba(118,216,58,0.4)); }
+  .auth-header h1 { font-size: 28px; font-weight: 900; letter-spacing: -0.5px; }
+  .auth-header h1 span { color: var(--emerald); }
+  .auth-header p { font-size: 14px; color: var(--text-muted); }
+
+  /* ========== CARD ========== */
+  .auth-card {
+    background: rgba(20,13,46,0.9);
+    border: 1px solid var(--border);
+    border-radius: 20px;
+    padding: 32px 28px;
+    backdrop-filter: blur(20px);
+    box-shadow: 0 8px 48px rgba(0,0,0,0.5), 0 0 1px rgba(118,216,58,0.2);
+    position: relative; overflow: hidden;
+  }
+  .auth-card::before {
+    content: ''; position: absolute; top: 0; left: 0; right: 0; height: 1px;
+    background: linear-gradient(90deg, transparent, var(--emerald), transparent);
+    opacity: 0.6;
+  }
+
+  /* ========== TABS ========== */
+  .tab-row {
+    display: flex; gap: 4px;
+    background: rgba(255,255,255,0.04);
+    border-radius: 12px; padding: 4px;
+    margin-bottom: 28px;
+  }
+  .tab-btn {
+    flex: 1; padding: 10px; border-radius: 9px; border: none; cursor: pointer;
+    font-size: 14px; font-weight: 700;
+    color: var(--text-muted); background: transparent;
+    transition: all 0.2s ease;
+  }
+  .tab-btn.active {
+    background: var(--emerald); color: #0c0822;
+    box-shadow: 0 2px 12px rgba(118,216,58,0.3);
+  }
+  .tab-btn:not(.active):hover { color: var(--text); background: rgba(255,255,255,0.06); }
+
+  /* ========== FORM ========== */
+  .form-panel { display: none; flex-direction: column; gap: 18px; }
+  .form-panel.active { display: flex; }
+
+  .field-group { display: flex; flex-direction: column; gap: 6px; }
+  .field-label {
+    font-size: 12px; font-weight: 700; color: var(--text-muted);
+    text-transform: uppercase; letter-spacing: 0.5px;
+    display: flex; align-items: center; gap: 6px;
+  }
+  .field-label i { color: var(--primary-light); font-size: 11px; }
+
+  .field-input {
+    background: rgba(255,255,255,0.05);
+    border: 1px solid var(--border);
+    border-radius: 12px; padding: 12px 16px;
+    color: var(--text); font-size: 15px; width: 100%;
+    outline: none; transition: all 0.2s ease;
+    font-family: inherit;
+  }
+  .field-input::placeholder { color: rgba(157,150,200,0.5); }
+  .field-input:focus {
+    border-color: var(--emerald);
+    background: rgba(118,216,58,0.05);
+    box-shadow: 0 0 0 3px rgba(118,216,58,0.1);
+  }
+  .field-input.error { border-color: var(--rose); background: rgba(244,63,94,0.05); }
+
+  .field-password-wrap { position: relative; }
+  .field-password-wrap .field-input { padding-right: 46px; }
+  .toggle-pw-btn {
+    position: absolute; right: 14px; top: 50%; transform: translateY(-50%);
+    background: none; border: none; color: var(--text-muted); cursor: pointer;
+    padding: 4px; font-size: 15px; transition: color 0.2s;
+  }
+  .toggle-pw-btn:hover { color: var(--text); }
+
+  /* Password Strength */
+  .pw-strength-bar {
+    display: flex; gap: 3px; height: 3px; border-radius: 2px; margin-top: 6px;
+  }
+  .pw-strength-bar span {
+    flex: 1; height: 100%; border-radius: 2px;
+    background: rgba(255,255,255,0.08); transition: background 0.3s;
+  }
+  .pw-strength-label { font-size: 11px; color: var(--text-muted); margin-top: 4px; text-align: right; }
+
+  /* ========== BUTTONS ========== */
+  .btn-submit {
+    width: 100%; padding: 14px;
+    background: linear-gradient(135deg, var(--emerald) 0%, var(--emerald-dark) 100%);
+    color: #0c0822; font-size: 15px; font-weight: 900;
+    border: none; border-radius: 12px; cursor: pointer;
+    display: flex; align-items: center; justify-content: center; gap: 8px;
+    transition: all 0.2s ease; letter-spacing: 0.3px;
+    margin-top: 4px;
+  }
+  .btn-submit:hover { transform: translateY(-1px); box-shadow: 0 6px 24px rgba(118,216,58,0.35); }
+  .btn-submit:active { transform: translateY(0); }
+  .btn-submit:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
+  .btn-submit .spinner {
+    width: 18px; height: 18px; border: 2px solid rgba(0,0,0,0.3);
+    border-top-color: #0c0822; border-radius: 50%;
+    animation: spin 0.7s linear infinite; display: none;
+  }
+  .btn-submit.loading .btn-text { display: none; }
+  .btn-submit.loading .spinner { display: block; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  /* ========== ERROR / SUCCESS BANNER ========== */
+  .alert-banner {
+    border-radius: 12px; padding: 12px 16px;
+    font-size: 13px; font-weight: 600; display: none;
+    align-items: center; gap: 10px;
+    animation: slideIn 0.3s ease;
+  }
+  @keyframes slideIn { from { opacity: 0; transform: translateY(-8px); } to { opacity: 1; transform: translateY(0); } }
+  .alert-banner.error { display: flex; background: rgba(244,63,94,0.12); border: 1px solid rgba(244,63,94,0.35); color: #fda4af; }
+  .alert-banner.success { display: flex; background: rgba(118,216,58,0.1); border: 1px solid rgba(118,216,58,0.3); color: var(--emerald); }
+
+  /* ========== DIVIDER ========== */
+  .or-divider {
+    display: flex; align-items: center; gap: 12px;
+    color: var(--text-muted); font-size: 12px; font-weight: 600;
+  }
+  .or-divider::before, .or-divider::after {
+    content: ''; flex: 1; height: 1px; background: var(--border);
+  }
+
+  /* ========== SWITCH HINT ========== */
+  .switch-hint { text-align: center; font-size: 13px; color: var(--text-muted); margin-top: 4px; }
+  .switch-hint a { color: var(--emerald); font-weight: 700; text-decoration: none; cursor: pointer; }
+  .switch-hint a:hover { text-decoration: underline; }
+
+  /* ========== BENEFITS STRIP ========== */
+  .benefits-strip {
+    display: flex; flex-wrap: wrap; gap: 8px; justify-content: center;
+    margin-top: 8px;
+  }
+  .benefit-badge {
+    background: rgba(118,216,58,0.08); border: 1px solid rgba(118,216,58,0.2);
+    border-radius: 20px; padding: 5px 12px;
+    font-size: 11.5px; font-weight: 600; color: var(--emerald);
+    display: flex; align-items: center; gap: 5px;
+  }
+  .benefit-badge i { font-size: 10px; }
+
+  /* ========== RESPONSIVE ========== */
+  @media (max-width: 460px) {
+    .auth-card { padding: 24px 18px; border-radius: 16px; }
+    .auth-header h1 { font-size: 24px; }
+  }
+</style>
+</head>
+<body>
+
+<!-- Animated background -->
+<div class="bg-canvas">
+  <div class="bg-orb"></div>
+  <div class="bg-orb"></div>
+  <div class="bg-orb"></div>
+  <div class="bg-grid"></div>
+</div>
+
+<div class="page-wrap">
+  <div class="auth-container">
+
+    <!-- Logo -->
+    <div class="auth-header">
+      <img src="/logo.png" alt="Quiztify.id">
+      <h1>Quiztify<span>.id</span></h1>
+      <p>Platform Kuis Interaktif untuk Pendidik Indonesia</p>
+    </div>
+
+    <!-- Card -->
+    <div class="auth-card">
+
+      <!-- Tabs -->
+      <div class="tab-row">
+        <button class="tab-btn active" id="tab-login" onclick="switchTab('login')">
+          <i class="fa-solid fa-right-to-bracket"></i> Masuk
+        </button>
+        <button class="tab-btn" id="tab-register" onclick="switchTab('register')">
+          <i class="fa-solid fa-user-plus"></i> Daftar Gratis
+        </button>
+      </div>
+
+      <!-- Alert Banner -->
+      <div class="alert-banner" id="alert-banner">
+        <i class="fa-solid fa-circle-exclamation"></i>
+        <span id="alert-text"></span>
+      </div>
+
+      <!-- ===================== FORM LOGIN ===================== -->
+      <form class="form-panel active" id="panel-login" onsubmit="submitLogin(event)">
+        <div class="field-group">
+          <label class="field-label" for="login-email">
+            <i class="fa-solid fa-envelope"></i> Email Terdaftar
+          </label>
+          <input id="login-email" type="email" class="field-input" placeholder="nama@institusi.ac.id" autocomplete="email" required>
+        </div>
+
+        <div class="field-group">
+          <label class="field-label" for="login-password">
+            <i class="fa-solid fa-lock"></i> Password
+          </label>
+          <div class="field-password-wrap">
+            <input id="login-password" type="password" class="field-input" placeholder="Password kamu" autocomplete="current-password" required>
+            <button type="button" class="toggle-pw-btn" onclick="togglePw('login-password', this)" tabindex="-1">
+              <i class="fa-regular fa-eye"></i>
+            </button>
+          </div>
+        </div>
+
+        <button type="submit" class="btn-submit" id="btn-login">
+          <div class="spinner"></div>
+          <span class="btn-text"><i class="fa-solid fa-right-to-bracket"></i> Masuk ke Creator Studio</span>
+        </button>
+
+        <p class="switch-hint">
+          Belum punya akun? <a onclick="switchTab('register')">Daftar Gratis →</a>
+        </p>
+      </form>
+
+      <!-- ===================== FORM REGISTER ===================== -->
+      <form class="form-panel" id="panel-register" onsubmit="submitRegister(event)">
+        <div class="field-group">
+          <label class="field-label" for="reg-nama">
+            <i class="fa-solid fa-user"></i> Nama Lengkap
+          </label>
+          <input id="reg-nama" type="text" class="field-input" placeholder="Dr. Budi Santoso, M.Pd." autocomplete="name" required>
+        </div>
+
+        <div class="field-group">
+          <label class="field-label" for="reg-email">
+            <i class="fa-solid fa-envelope"></i> Email
+          </label>
+          <input id="reg-email" type="email" class="field-input" placeholder="email@institusi.ac.id" autocomplete="email" required>
+        </div>
+
+        <div class="field-group">
+          <label class="field-label" for="reg-institution">
+            <i class="fa-solid fa-building-columns"></i> Institusi / Sekolah
+          </label>
+          <input id="reg-institution" type="text" class="field-input" placeholder="Universitas / Sekolah kamu" autocomplete="organization">
+        </div>
+
+        <div class="field-group">
+          <label class="field-label" for="reg-password">
+            <i class="fa-solid fa-lock"></i> Buat Password
+          </label>
+          <div class="field-password-wrap">
+            <input id="reg-password" type="password" class="field-input" placeholder="Min. 6 karakter" autocomplete="new-password" required oninput="checkPwStrength(this.value)">
+            <button type="button" class="toggle-pw-btn" onclick="togglePw('reg-password', this)" tabindex="-1">
+              <i class="fa-regular fa-eye"></i>
+            </button>
+          </div>
+          <!-- Password strength indicator -->
+          <div class="pw-strength-bar" id="pw-strength-bar">
+            <span id="pw-s1"></span><span id="pw-s2"></span><span id="pw-s3"></span><span id="pw-s4"></span>
+          </div>
+          <div class="pw-strength-label" id="pw-strength-label"></div>
+        </div>
+
+        <button type="submit" class="btn-submit" id="btn-register">
+          <div class="spinner"></div>
+          <span class="btn-text"><i class="fa-solid fa-rocket"></i> Buat Akun Creator</span>
+        </button>
+
+        <p class="switch-hint">
+          Sudah punya akun? <a onclick="switchTab('login')">Masuk →</a>
+        </p>
+      </form>
+
+    </div><!-- /auth-card -->
+
+    <!-- Benefits strip -->
+    <div class="benefits-strip">
+      <div class="benefit-badge"><i class="fa-solid fa-check"></i> Gratis Selamanya</div>
+      <div class="benefit-badge"><i class="fa-solid fa-bolt"></i> Host Live Instan</div>
+      <div class="benefit-badge"><i class="fa-solid fa-brain"></i> Diagnostik AI</div>
+      <div class="benefit-badge"><i class="fa-solid fa-chart-line"></i> Analitik Lengkap</div>
+      <div class="benefit-badge"><i class="fa-solid fa-qrcode"></i> QR Code Kuis</div>
+    </div>
+
+  </div><!-- /auth-container -->
+</div>
+
+<script>
+// ============================================================
+// SESSION CHECK: Jika sudah login, langsung ke creator
+// ============================================================
+(async function checkExistingSession() {
+  try {
+    const res = await fetch('/api/me');
+    const data = await res.json();
+    if (data.role === 'creator') {
+      window.location.replace('/creator.html');
+    }
+  } catch (_) { /* ignore, tampilkan form login */ }
+})();
+
+// ============================================================
+// TAB SWITCH
+// ============================================================
+function switchTab(tab) {
+  clearAlert();
+  document.getElementById('tab-login').classList.toggle('active', tab === 'login');
+  document.getElementById('tab-register').classList.toggle('active', tab === 'register');
+  document.getElementById('panel-login').classList.toggle('active', tab === 'login');
+  document.getElementById('panel-register').classList.toggle('active', tab === 'register');
+
+  // Auto-focus first input
+  setTimeout(() => {
+    const firstInput = document.querySelector(`#panel-${tab}.active input`);
+    if (firstInput) firstInput.focus();
+  }, 50);
+}
+
+// ============================================================
+// ALERT BANNER
+// ============================================================
+function showAlert(msg, type = 'error') {
+  const banner = document.getElementById('alert-banner');
+  const text = document.getElementById('alert-text');
+  banner.className = 'alert-banner ' + type;
+  banner.querySelector('i').className = type === 'error'
+    ? 'fa-solid fa-circle-exclamation'
+    : 'fa-solid fa-circle-check';
+  text.textContent = msg;
+}
+function clearAlert() {
+  const banner = document.getElementById('alert-banner');
+  banner.className = 'alert-banner';
+}
+
+// ============================================================
+// SHOW/HIDE PASSWORD
+// ============================================================
+function togglePw(inputId, btn) {
+  const input = document.getElementById(inputId);
+  const isHidden = input.type === 'password';
+  input.type = isHidden ? 'text' : 'password';
+  btn.querySelector('i').className = isHidden ? 'fa-regular fa-eye-slash' : 'fa-regular fa-eye';
+}
+
+// ============================================================
+// PASSWORD STRENGTH
+// ============================================================
+function checkPwStrength(val) {
+  const bars = [1,2,3,4].map(i => document.getElementById(`pw-s${i}`));
+  const label = document.getElementById('pw-strength-label');
+  let score = 0;
+  if (val.length >= 6) score++;
+  if (val.length >= 10) score++;
+  if (/[A-Z]/.test(val) && /[a-z]/.test(val)) score++;
+  if (/[0-9]/.test(val) && /[^A-Za-z0-9]/.test(val)) score++;
+
+  const colors = ['#f43f5e','#f59e0b','#22d3ee','#76d83a'];
+  const labels = ['Lemah','Sedang','Kuat','Sangat Kuat'];
+  bars.forEach((b, i) => { b.style.background = i < score ? colors[score - 1] : 'rgba(255,255,255,0.08)'; });
+  label.textContent = score > 0 ? labels[score - 1] : '';
+  label.style.color = score > 0 ? colors[score - 1] : 'var(--text-muted)';
+}
+
+// ============================================================
+// LOADING STATE
+// ============================================================
+function setLoading(btnId, loading) {
+  const btn = document.getElementById(btnId);
+  btn.classList.toggle('loading', loading);
+  btn.disabled = loading;
+}
+
+// ============================================================
+// SUBMIT LOGIN
+// ============================================================
+async function submitLogin(e) {
+  e.preventDefault();
+  clearAlert();
+  const email = document.getElementById('login-email').value.trim();
+  const password = document.getElementById('login-password').value;
+
+  if (!email || !password) return showAlert('Email dan password wajib diisi.');
+
+  setLoading('btn-login', true);
+  try {
+    const res = await fetch('/api/auth/creator/login', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email, password })
+    });
+    const data = await res.json();
+    if (!res.ok) return showAlert(data.error || 'Login gagal. Coba lagi.');
+
+    showAlert(`Selamat datang, ${data.nama}! Mengalihkan...`, 'success');
+    setTimeout(() => window.location.replace('/creator.html'), 900);
+  } catch (err) {
+    showAlert('Koneksi bermasalah. Periksa internet dan coba lagi.');
+  } finally {
+    setLoading('btn-login', false);
+  }
+}
+
+// ============================================================
+// SUBMIT REGISTER
+// ============================================================
+async function submitRegister(e) {
+  e.preventDefault();
+  clearAlert();
+  const nama = document.getElementById('reg-nama').value.trim();
+  const email = document.getElementById('reg-email').value.trim();
+  const institution = document.getElementById('reg-institution').value.trim() || 'Quiztify Academy';
+  const password = document.getElementById('reg-password').value;
+
+  if (!nama || nama.length < 2) return showAlert('Nama lengkap minimal 2 karakter.');
+  if (!email) return showAlert('Email wajib diisi.');
+  if (!password || password.length < 6) return showAlert('Password minimal 6 karakter.');
+
+  setLoading('btn-register', true);
+  try {
+    const res = await fetch('/api/auth/creator/register', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ nama, email, password, institution })
+    });
+    const data = await res.json();
+    if (!res.ok) return showAlert(data.error || 'Pendaftaran gagal. Coba lagi.');
+
+    showAlert(`Akun berhasil dibuat! Selamat datang, ${data.nama}! ✨`, 'success');
+    setTimeout(() => window.location.replace('/creator.html'), 1000);
+  } catch (err) {
+    showAlert('Koneksi bermasalah. Periksa internet dan coba lagi.');
+  } finally {
+    setLoading('btn-register', false);
+  }
+}
+
+// Auto-focus email field on load
+window.addEventListener('load', () => {
+  document.getElementById('login-email').focus();
+});
+</script>
+</body>
+</html>

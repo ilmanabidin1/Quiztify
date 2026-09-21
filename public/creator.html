@@ -2004,18 +2004,12 @@ async function fetchProfile() {
   try {
     const res = await fetch('/api/me');
     const data = await res.json();
-    if (!data || !data.role) {
-      // Auto login as default creator demo
-      await fetch('/api/auth/creator/login', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email: 'admin@quiztify.id', password: 'quiztify2026' })
-      });
-      const res2 = await fetch('/api/me');
-      me = await res2.json();
-    } else {
-      me = data;
+    if (!data || !data.role || data.role !== 'creator') {
+      // Tidak ada sesi creator → redirect ke halaman login
+      window.location.replace('/login.html');
+      return;
     }
+    me = data;
     document.getElementById('side-name').textContent = me.nama || 'Creator Pro';
     const planName = (me.plan || 'pro').toUpperCase();
     document.getElementById('side-plan').innerHTML = `<i class="fa-solid fa-crown"></i> ${planName} CREATOR`;
@@ -2030,12 +2024,13 @@ async function fetchProfile() {
     }
   } catch (e) {
     console.error('Profile fetch error', e);
+    window.location.replace('/login.html');
   }
 }
 
 function doLogout() {
   fetch('/api/auth/logout', { method: 'POST' }).then(() => {
-    window.location.href = '/';
+    window.location.replace('/login.html');
   });
 }
 
