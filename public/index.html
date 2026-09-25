@@ -1116,7 +1116,7 @@
     <div class="badge-hero">
       <span class="badge-dot"></span> Platform kuis interaktif untuk pendidik Indonesia
     </div>
-    <h1>Kuis interaktif yang bikin <span class="gradient-text">kelas hidup.</span></h1>
+    <h1>Kuis interaktif yang bikin <span class="hero-accent">kelas hidup.</span></h1>
     <p>
       Kuis live multiplayer, asesmen Pre/Post Test dengan N-Gain, dan analitik diagnostik
       dalam satu platform. Peserta cukup masukkan PIN, tanpa perlu akun.
@@ -1422,7 +1422,7 @@
     <div id="arena-finished-waiting" class="hidden">
       <div class="q-display-card" style="min-height:360px;flex-direction:column;gap:18px;text-align:center">
         <div style="font-size:56px;animation:flamePulse 1.5s infinite alternate">🏁</div>
-        <h2 style="font-size:26px;font-weight:900" class="gradient-text">Kamu Menyelesaikan Semua Soal!</h2>
+        <h2 style="font-size:26px;font-weight:900" >Kamu menyelesaikan semua soal</h2>
         <p style="color:var(--text-muted);font-size:15px;max-width:480px">Luar biasa! Seluruh pertanyaan kuis telah kamu jawab. Menunggu Host mengakhiri sesi untuk melihat Podium Juara.</p>
         <div style="display:flex;gap:20px;justify-content:center;margin:8px 0;flex-wrap:wrap">
           <div style="background:rgba(255,255,255,0.06);padding:14px 24px;border-radius:16px;border:1px solid var(--border)">
@@ -1461,7 +1461,7 @@
 
     <!-- State 5: Final Podium -->
     <div id="arena-podium" class="hidden" style="text-align:center">
-      <h2 style="font-size:30px;font-weight:900" class="gradient-text">🏆 PERMAINAN SELESAI! 🏆</h2>
+      <h2 style="font-size:30px;font-weight:900" >Permainan selesai</h2>
       <p style="color:var(--text-muted);font-size:15px">Selamat kepada para juara terhebat!</p>
 
       <div class="podium-wrapper" id="podium-container">
@@ -1559,7 +1559,7 @@
 <!-- ANSWER FEEDBACK OVERLAY -->
 <div id="feedback-banner" class="feedback-banner hidden">
   <div style="font-size:54px" id="feedback-icon">🎉</div>
-  <div class="feedback-title" id="feedback-title">TEPAT SEKALI!</div>
+  <div class="feedback-title" id="feedback-title">Tepat sekali</div>
   <div class="feedback-pts" id="feedback-points">+980 PTS</div>
   <div class="feedback-exp" id="feedback-explanation"></div>
 
@@ -1567,7 +1567,7 @@
   <div class="mascot-reaction-card" id="mascot-reaction-card">
     <div class="mascot-avatar-anim" id="mascot-avatar">🦁</div>
     <div>
-      <div class="mascot-speech-quote" id="mascot-quote">"Gila sih, kecepatan kilat! Otak Einstein mode on! ⚡"</div>
+      <div class="mascot-speech-quote" id="mascot-quote">"Cepat dan tepat. Pertahankan ritmenya."</div>
       <div class="mascot-speech-sub" id="mascot-sub">Streak On Fire! 🔥</div>
     </div>
   </div>
@@ -1944,7 +1944,7 @@
     <!-- Celebration State when all missed questions mastered -->
     <div id="redemption-complete-card" class="hidden" style="padding:20px 10px">
       <div style="font-size:60px;animation:flamePulse 1.2s infinite alternate">🌟</div>
-      <h2 style="font-size:24px;font-weight:900;margin:12px 0 6px" class="gradient-text">100% PENGUASAAN KONSEP!</h2>
+      <h2 style="font-size:24px;font-weight:900;margin:12px 0 6px" >Semua konsep dikuasai</h2>
       <p style="color:var(--text-muted);font-size:14px;max-width:440px;margin:0 auto 18px">
         Hebat sekali! Semua butir soal yang awalnya keliru kini telah berhasil kamu pelajari dan jawab dengan benar.
       </p>
@@ -2568,20 +2568,18 @@ async function submitAnswer(ansIdx, timeLimitSec) {
 
 // ---------- MASCOT MEME REACTION & MICRO-INTERACTIONS ----------
 const correctMemeQuotes = [
-  { quote: "Gila sih, kecepatan kilat! Otak Einstein mode on! ⚡", sub: "Super Fast & Correct!" },
-  { quote: "Menyala abangkuuu! Streak terus bertambah! 🔥", sub: "Streak On Fire!" },
-  { quote: "Auto dapet A+ di kelas ini! Pertahankan! 🎓", sub: "Akademik Level Dewa!" },
-  { quote: "Jagoan neon! Soal selevel ini mah enteng! 😎", sub: "Flawless Answer!" },
-  { quote: "Gokil, refleks jarimu lebih cepat dari AI! 🚀", sub: "Lightning Reflexes!" },
-  { quote: "Lawan-lawanmu mulai ketar-ketir melihat skormu! 📈", sub: "Dominating Leaderboard!" }
+  { quote: "Cepat dan tepat. Pertahankan ritmenya.", sub: "Jawaban sempurna" },
+  { quote: "Streak kamu terus naik. Jangan lepas fokus.", sub: "Streak aktif" },
+  { quote: "Pemahamanmu solid di materi ini.", sub: "Jawaban tepat" },
+  { quote: "Refleks yang bagus. Poin kecepatan ikut masuk.", sub: "Bonus kecepatan" },
+  { quote: "Posisimu di klasemen makin kuat.", sub: "Terus melaju" }
 ];
 
 const wrongMemeQuotes = [
-  { quote: "Waduh kepeleset! Tenang, pemanasan dulu gak sih? 🙃", sub: "Tetap Santuy & Gas Terus!" },
-  { quote: "Hampir aja bener! Jangan biarkan apimu padam! 💪", sub: "Soal Berikutnya Pasti Bisa!" },
-  { quote: "Gapapa salah, yang penting jangan salah pilih jurusan! 😜", sub: "Santai, Masih Ada Kesempatan!" },
-  { quote: "Tarik napas dulu... Kuis ini belum berakhir bos! 🧘‍♂️", sub: "Fokus & Comeback!" },
-  { quote: "Jadikan pelajaran berharga buat melesat di soal depan! 🚀", sub: "Never Give Up!" }
+  { quote: "Belum tepat, tapi ini baru pemanasan.", sub: "Soal berikutnya masih terbuka" },
+  { quote: "Tipis sekali. Baca pembahasannya, lalu lanjut.", sub: "Tetap fokus" },
+  { quote: "Salah itu bagian dari belajar.", sub: "Ambil pelajarannya" },
+  { quote: "Tarik napas. Kuis belum selesai.", sub: "Masih ada kesempatan" }
 ];
 
 function triggerScreenShake() {
@@ -2631,7 +2629,7 @@ function showFeedbackBanner(data, isTimedOut = false) {
 
   if (data.correct) {
     icon.textContent = streakCount >= 3 ? '🔥' : '🎉';
-    title.textContent = streakCount >= 3 ? `SUPER STREAK x${streakCount}!` : 'TEPAT SEKALI!';
+    title.textContent = streakCount >= 3 ? `Streak x${streakCount}` : 'Tepat sekali';
     pts.textContent = `+${data.points_earned} PTS`;
     if (data.powerup_applied === 'double_points') {
       pts.textContent += ' (⚡ 2X POIN AKTIF!)';
@@ -2647,14 +2645,14 @@ function showFeedbackBanner(data, isTimedOut = false) {
     }
   } else if (isTimedOut) {
     icon.textContent = '⏰';
-    title.textContent = 'WAKTU HABIS!';
+    title.textContent = 'Waktu habis';
     pts.textContent = '+0 PTS';
     soundEngine.play('wrong');
     triggerScreenShake();
     if (streakBadge) streakBadge.classList.remove('super-streak-glow');
   } else {
     icon.textContent = '❌';
-    title.textContent = 'YAH, KURANG TEPAT';
+    title.textContent = 'Belum tepat';
     pts.textContent = '+0 PTS';
     if (data.powerup_applied === 'streak_shield') {
       pts.textContent = '🛡️ SHIELD MELINDUNGI STREAK!';
@@ -3754,7 +3752,7 @@ function submitRedemptionAnswer(selectedIdx) {
     feedbackAlert.style.background = 'rgba(16,185,129,0.2)';
     feedbackAlert.style.border = '1px solid rgba(16,185,129,0.5)';
     feedbackAlert.style.color = '#34d399';
-    feedbackAlert.innerHTML = `🎉 TEPAT SEKALI! Pembahasan: ${item.explanation}`;
+    feedbackAlert.innerHTML = `Tepat. Pembahasan: ${item.explanation}`;
 
     // Mark as fixed in local review dataset
     item.is_correct = true;

@@ -803,26 +803,26 @@
   <div class="nav-menu">
     <div class="nav-heading">Menu Utama</div>
     <button class="nav-btn active" id="btn-nav-dash" onclick="switchNav('dash')">
-      <i class="fa-solid fa-chart-pie"></i> <span>Dashboard Ringkasan</span>
+      <i class="fa-solid fa-chart-pie"></i> <span>Beranda</span>
     </button>
     <button class="nav-btn" id="btn-nav-library" onclick="switchNav('library')">
-      <i class="fa-solid fa-layer-group"></i> <span>Koleksi Kuis (Library)</span>
+      <i class="fa-solid fa-layer-group"></i> <span>Library kuis</span>
     </button>
     <button class="nav-btn" id="btn-nav-builder" onclick="switchNav('builder')">
-      <i class="fa-solid fa-wand-magic-sparkles" style="color:var(--cyan)"></i> <span>Quiz Builder Pro (AI)</span>
+      <i class="fa-solid fa-wand-magic-sparkles" ></i> <span>Buat kuis</span>
     </button>
 
-    <div class="nav-heading">Akademik &amp; Analisis</div>
+    <div class="nav-heading">Akademik</div>
     <button class="nav-btn" id="btn-nav-classes" onclick="switchNav('classes')">
-      <i class="fa-solid fa-user-graduate"></i> <span>Kelas &amp; Peserta</span>
+      <i class="fa-solid fa-user-graduate"></i> <span>Kelas &amp; peserta</span>
     </button>
     <button class="nav-btn" id="btn-nav-reports" onclick="switchNav('reports')">
-      <i class="fa-solid fa-chart-line"></i> <span>Analisis N-Gain Pre/Post</span>
+      <i class="fa-solid fa-chart-line"></i> <span>Analisis N-Gain</span>
     </button>
 
-    <div class="nav-heading">SaaS &amp; Akun</div>
+    <div class="nav-heading">Akun</div>
     <button class="nav-btn" id="btn-nav-pricing" onclick="switchNav('pricing')">
-      <i class="fa-solid fa-gem" style="color:var(--gold)"></i> <span>Paket Langganan Pro</span>
+      <i class="fa-solid fa-gem"></i> <span>Paket langganan</span>
     </button>
   </div>
 
@@ -867,12 +867,12 @@
 <main class="main-content">
   <div class="top-header">
     <div class="page-title">
-      <h1 id="page-title-text">Dashboard Creator</h1>
+      <h1 id="page-title-text">Beranda</h1>
       <p id="page-sub-text">Pantau kinerja pembelajaran, kuis aktif, dan skor partisipan secara langsung.</p>
     </div>
     <div class="top-controls">
       <button class="btn btn-emerald" onclick="openCreateModal()">
-        <i class="fa-solid fa-plus"></i> <span>Kuis Baru</span>
+        <i class="fa-solid fa-plus"></i> <span>Kuis baru</span>
       </button>
       <a href="/" target="_blank" class="btn btn-ghost" title="Lihat Portal Publik">
         <i class="fa-solid fa-arrow-up-right-from-square"></i> <span>Quiztify.id</span>
@@ -885,7 +885,7 @@
     <div class="active-banner-left">
       <div class="live-radar-indicator">
         <span class="pulse-beacon"></span>
-        <span class="live-text">KUIS LIVE BERJALAN</span>
+        <span class="live-text">Live</span>
       </div>
       <div class="active-banner-info">
         <h3 id="active-banner-title">Judul Kuis Sedang Berjalan</h3>
@@ -898,10 +898,10 @@
     </div>
     <div class="active-banner-actions">
       <button class="btn btn-emerald btn-glow" onclick="reopenActiveHostScreen()">
-        <i class="fa-solid fa-display"></i> <span>Buka Layar Host / Proyektor</span>
+        <i class="fa-solid fa-display"></i> <span>Buka layar host</span>
       </button>
       <button class="btn btn-danger" onclick="confirmEndActiveSession()">
-        <i class="fa-solid fa-stop"></i> <span>Akhiri Sesi</span>
+        <i class="fa-solid fa-stop"></i> <span>Akhiri sesi</span>
       </button>
     </div>
   </div>
@@ -941,8 +941,8 @@
       </div>
 
       <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px">
-        <h2 style="font-size:18px;font-weight:800">Kuis Siap Host (Live &amp; Asinkron)</h2>
-        <button class="btn btn-ghost" onclick="switchNav('library')">Lihat Semua Kuis ➔</button>
+        <h2 style="font-size:18px;font-weight:800">Kuis terbaru</h2>
+        <button class="btn btn-ghost" onclick="switchNav('library')">Lihat semua</button>
       </div>
       <div class="quizzes-grid" id="dash-quizzes-grid"><div class="qz-skeleton"></div><div class="qz-skeleton"></div><div class="qz-skeleton"></div></div>
     </div>
@@ -1298,7 +1298,7 @@
       <img src="/logo.png" alt="Quiztify" style="height:34px;width:auto;object-fit:contain;filter:drop-shadow(0 2px 8px rgba(118,216,58,0.25))">
       <div style="border-left:1px solid var(--border);padding-left:14px">
         <b id="host-quiz-title" style="font-size:18px">Kuis Seru Quiztify</b>
-        <span style="font-size:11.5px;color:var(--emerald);display:block;font-weight:700">● LIVE ROOM (SELF-PACED PROGRESSION)</span>
+        <span style="font-size:11.5px;color:var(--emerald);display:block;font-weight:700">● Live, peserta maju sesuai kecepatan masing-masing</span>
       </div>
     </div>
 
@@ -1326,7 +1326,7 @@
   <div id="host-lobby-state" style="max-width:1000px;margin:0 auto;width:100%;text-align:center">
     <div class="pin-display-banner">
       <div style="text-align:left">
-        <div style="font-size:13px;color:var(--cyan);font-weight:800;letter-spacing:1px;text-transform:uppercase">Buka di Browser / HP Anda:</div>
+        <div style="font-size:13px;color:var(--text-muted);font-weight:600">Buka di browser HP</div>
         <div style="display:flex;align-items:center;gap:8px;margin:6px 0">
           <img src="/logo.png" alt="Quiztify" style="height:36px;width:auto;object-fit:contain;filter:drop-shadow(0 2px 8px rgba(118,216,58,0.25))">
           <span style="font-size:24px;font-weight:900;color:var(--cyan);line-height:1">.id</span>
@@ -1335,7 +1335,7 @@
       </div>
 
       <div>
-        <div style="font-size:13px;font-weight:700;color:var(--text-muted);letter-spacing:1px">GAME PIN:</div>
+        <div style="font-size:13px;font-weight:700;color:var(--text-muted);">Game PIN</div>
         <div class="pin-giant" id="host-pin-giant">829410</div>
       </div>
 
@@ -1344,10 +1344,10 @@
 
     <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px">
       <div style="font-size:18px;font-weight:800">
-        <i class="fa-solid fa-users" style="color:var(--purple-light)"></i> Peserta Masuk: <span id="host-player-count">0</span> orang
+        <i class="fa-solid fa-users" style="color:var(--purple-light)"></i> <span id="host-player-count">0</span> peserta bergabung
       </div>
       <button class="btn btn-emerald" style="padding:14px 32px;font-size:16px" onclick="hostStartGame()">
-        <i class="fa-solid fa-play"></i> <span>MULAI KUIS SEKARANG!</span>
+        <i class="fa-solid fa-play"></i> <span>Mulai kuis</span>
       </button>
     </div>
 
@@ -1417,7 +1417,7 @@
   <!-- State 3: Host Leaderboard Screen -->
   <div id="host-leaderboard-state" class="hidden" style="max-width:720px;margin:0 auto;width:100%;text-align:center">
     <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px">
-      <h2 style="font-size:26px;font-weight:900" class="gradient-text">🏆 Klasemen Langsung 🏆</h2>
+      <h2 style="font-size:26px;font-weight:900" >Klasemen langsung</h2>
       <button class="btn btn-emerald" onclick="hostFinishGame()"><i class="fa-solid fa-flag-checkered"></i> Akhiri &amp; Tampilkan Podium</button>
     </div>
     <div class="table-card" style="margin-top:0" id="host-leaderboard-list"></div>
@@ -1428,7 +1428,7 @@
     <div style="margin-bottom:12px">
       <img src="/logo.png" alt="Quiztify.id" style="height:40px;width:auto;object-fit:contain;filter:drop-shadow(0 2px 10px rgba(118,216,58,0.3))">
     </div>
-    <h1 style="font-size:36px;font-weight:900" class="gradient-text">🎉 PODIUM JUARA QUIZTIFY 🎉</h1>
+    <h1 style="font-size:36px;font-weight:900" >Podium juara</h1>
     <p style="color:var(--text-muted);font-size:16px;margin-bottom:30px">Permainan kuis telah selesai dengan hasil luar biasa!</p>
     <div class="podium-wrapper" id="host-podium-container"></div>
     <button class="btn btn-primary" style="padding:14px 32px;font-size:16px;margin-top:30px" onclick="closeHostScreen()">
@@ -1872,7 +1872,7 @@
       </div>
       <img id="qr-modal-img" src="" alt="QR Code Kuis" style="width:250px;height:250px;display:block;border-radius:12px">
       <div style="color:#4b5563;font-size:11.5px;font-weight:800;margin-top:12px;letter-spacing:0.8px">
-        <i class="fa-solid fa-camera"></i> SCAN UNTUK GABUNG KUIS INSTAN
+        <i class="fa-solid fa-camera"></i> Scan untuk bergabung
       </div>
     </div>
 
@@ -2257,7 +2257,7 @@ async function saveProfileSettings(e) {
     me = { ...me, nama, institution };
     document.getElementById('side-name').textContent = nama;
     updateProfilePopup();
-    showPsMsg('Profil berhasil diperbarui! ✅', 'success');
+    showPsMsg('Profil berhasil diperbarui.', 'success');
   } catch (err) {
     showPsMsg('Koneksi bermasalah.', 'error');
   }
@@ -2382,7 +2382,7 @@ function renderQuizCardHtml(q) {
 
       <div style="display:flex;align-items:center;gap:6px;border-top:1px solid var(--border);padding-top:14px">
         <button class="btn btn-emerald" style="flex:1;justify-content:center;padding:10px 14px;font-weight:800" onclick="hostLiveGame(${q.id})" title="Mulai Sesi Host Live">
-          <i class="fa-solid fa-gamepad"></i> <span>HOST LIVE</span>
+          <i class="fa-solid fa-gamepad"></i> <span>Host live</span>
         </button>
         <button class="btn btn-ghost" style="padding:10px 14px;justify-content:center" onclick="showQrModal(${q.id})" title="Tampilkan Foto QR Code Kuis">
           <i class="fa-solid fa-qrcode"></i>
@@ -2549,7 +2549,7 @@ async function confirmEndActiveSession(pin) {
 }
 
 function closeHostScreen() {
-  if (confirm('Tutup tampilan layar host proyektor?\n\nKuis akan TETAP BERJALAN di latar belakang untuk semua peserta. Anda dapat membukanya kembali kapan saja lewat banner "KUIS LIVE BERJALAN" di bagian atas studio.')) {
+  if (confirm('Tutup tampilan layar host proyektor?\n\nKuis akan TETAP BERJALAN di latar belakang untuk semua peserta. Anda dapat membukanya kembali kapan saja lewat banner "Live" di bagian atas studio.')) {
     if (hostPollTimer) clearInterval(hostPollTimer);
     document.getElementById('modal-host-screen').classList.add('hidden');
     checkActiveLiveRoom();
@@ -3207,7 +3207,7 @@ async function loadClassHubData(classId) {
 
             <div style="display:flex;align-items:center;gap:6px;border-top:1px solid var(--border);padding-top:14px">
               <button class="btn btn-emerald" style="flex:1;justify-content:center;padding:9px 12px;font-weight:800" onclick="hostLiveGame(${q.id})" title="Host Live Game">
-                <i class="fa-solid fa-gamepad"></i> <span>HOST LIVE</span>
+                <i class="fa-solid fa-gamepad"></i> <span>Host live</span>
               </button>
               <button class="btn btn-ghost" style="padding:9px 13px;justify-content:center" onclick="showQrModal(${q.id})" title="Foto QR / Link Kuis">
                 <i class="fa-solid fa-qrcode"></i>

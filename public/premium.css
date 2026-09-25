@@ -173,3 +173,52 @@ table tbody tr:hover { background: rgba(255, 255, 255, .025); }
 .qz-empty h3 { font-size: 18px; margin-bottom: 6px; }
 .qz-empty p { color: var(--text-muted); font-size: 14px; max-width: 420px; margin: 0 auto 18px; line-height: 1.6; }
 a.btn, a.btn-nav { text-decoration: none; }
+
+/* ==========================================================================
+   Restraint pass: satu warna aksi (ungu), tanpa glow, tanpa teriak.
+   Hijau hanya untuk status sukses, merah hanya untuk bahaya.
+   ========================================================================== */
+:root { --accent: #7c5cff; --accent-hover: #8f74ff; }
+
+/* Tombol: solid, tanpa glow, huruf kalimat */
+.btn, .btn-nav, .btn-join, .btn-submit, .tab-btn, button {
+  text-transform: none !important; letter-spacing: 0 !important;
+}
+.btn-primary, .btn-emerald, .btn-nav-primary, .btn-join, .btn-submit, .tab-btn.active, .btn-glow {
+  background: var(--accent) !important; box-shadow: none !important; color: #fff !important;
+  animation: none !important;
+}
+.btn-primary:hover, .btn-emerald:hover, .btn-nav-primary:hover, .btn-join:hover, .btn-submit:hover, .btn-glow:hover {
+  background: var(--accent-hover) !important; transform: none !important; box-shadow: none !important;
+}
+.btn-ghost, .btn-nav-ghost { background: transparent !important; border: 1px solid rgba(255,255,255,.12) !important; }
+.btn-ghost:hover, .btn-nav-ghost:hover { background: rgba(255,255,255,.05) !important; border-color: rgba(255,255,255,.2) !important; }
+
+/* Kartu: tanpa lompat & glow saat hover */
+.quiz-item-card:hover, .f-card:hover, .metric-card:hover { transform: none !important; border-color: rgba(255,255,255,.16) !important; }
+.p-card.featured { box-shadow: none !important; }
+
+/* Sidebar: item aktif tenang */
+.nav-btn.active { background: rgba(255,255,255,.07) !important; box-shadow: none !important; color: #fff !important; }
+.nav-btn.active i { color: var(--accent) !important; }
+.nav-btn i { color: inherit !important; }
+.nav-heading { letter-spacing: .08em !important; }
+
+/* Ikon metrik monokrom */
+.metric-icon { background: rgba(255,255,255,.05) !important; color: #b9b3dd !important; }
+.f-icon { background: rgba(124,92,255,.12) !important; color: #b8a6ff !important; }
+
+/* Judul tanpa efek */
+.gradient-text, .hero-accent { background: none !important; -webkit-text-fill-color: currentColor !important; color: #b8a6ff !important; }
+.pin-giant { text-shadow: none !important; }
+.pin-display-banner, .pin-card-wrapper { box-shadow: 0 1px 0 rgba(255,255,255,.06) inset !important; }
+.hero-glow { opacity: .55; }
+
+/* Badge label: huruf kecil, bukan KAPITAL */
+.q-badge, .p-badge, .badge-hero { text-transform: none !important; letter-spacing: 0 !important; }
+.p-badge { background: var(--accent) !important; box-shadow: none !important; }
+
+/* Timer bar: satu warna */
+.timer-bar-fill { background: var(--accent) !important; }
+.active-live-banner { box-shadow: none !important; animation: none !important; }
+.active-live-banner::before { display: none !important; }
