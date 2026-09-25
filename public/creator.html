@@ -966,11 +966,11 @@
       <div style="background:var(--bg-card);border:1px solid var(--border);border-radius:22px;padding:28px;max-width:840px;margin:0 auto">
         <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:24px;border-bottom:1px solid var(--border);padding-bottom:18px">
           <div>
-            <h2 style="font-size:22px;font-weight:800">Quiz Studio Pro ✨</h2>
+            <h2 style="font-size:22px;font-weight:800">Buat kuis</h2>
             <p style="color:var(--text-muted);font-size:13px">Desain soal interaktif dengan timer, poin, dan bantuan AI otomatis.</p>
           </div>
           <button class="btn btn-primary" onclick="openAiModal()">
-            <i class="fa-solid fa-brain"></i> <span>Generate Pakai AI ✨</span>
+            <i class="fa-solid fa-brain"></i> <span>Generate dengan AI</span>
           </button>
         </div>
 
@@ -982,7 +982,7 @@
           <div>
             <label style="font-size:12px;font-weight:700;color:var(--text-muted)">TIPE KUIS</label>
             <select id="builder-type" class="input">
-              <option value="standard">Kuis Standar / Live Quizizz</option>
+              <option value="standard">Kuis standar (live &amp; asinkron)</option>
               <option value="pre">Pre-Test (Tes Awal Sebelum Materi)</option>
               <option value="post">Post-Test (Tes Akhir Evaluasi N-Gain)</option>
             </select>
@@ -1276,7 +1276,7 @@
               <li><i class="fa-solid fa-check" style="color:var(--emerald);margin-right:8px"></i> Dedicated DB &amp; Support Prioritas 24/7</li>
             </ul>
             <button class="btn btn-primary" style="width:100%;justify-content:center;padding:12px;font-weight:800" onclick="upgradeToPlan('campus_enterprise')">
-              <i class="fa-solid fa-building-columns"></i> Simulasi Paket Enterprise
+              <i class="fa-solid fa-building-columns"></i> Pilih Campus
             </button>
           </div>
         </div>
@@ -2268,6 +2268,16 @@ function showPsMsg(text, type) {
   el.querySelector('span').textContent = text;
 }
 
+const PAGE_META = {
+  dash: ['Beranda', 'Ringkasan kuis, sesi, dan hasil belajar peserta.'],
+  library: ['Library kuis', 'Semua kuis milikmu, siap di-host atau dibagikan.'],
+  builder: ['Buat kuis', 'Susun soal manual atau generate dengan AI.'],
+  classes: ['Kelas & peserta', 'Kelola kelas, mahasiswa, dan kuis penilaian.'],
+  'class-detail': ['Detail kelas', 'Kuis, buku nilai, dan daftar mahasiswa.'],
+  reports: ['Analisis N-Gain', 'Peningkatan pemahaman dari Pre-Test ke Post-Test.'],
+  pricing: ['Paket langganan', 'Kelola paket dan kuota akunmu.']
+};
+
 function switchNav(tab) {
   ['dash', 'library', 'builder', 'classes', 'class-detail', 'reports', 'pricing'].forEach(t => {
     const el = document.getElementById(`view-${t}`);
@@ -2275,6 +2285,12 @@ function switchNav(tab) {
     const b = document.getElementById(`btn-nav-${t}`);
     if (b) b.classList.toggle('active', t === tab);
   });
+
+  const meta = PAGE_META[tab];
+  if (meta) {
+    document.getElementById('page-title-text').textContent = meta[0];
+    document.getElementById('page-sub-text').textContent = meta[1];
+  }
 
   if (tab === 'dash') loadDashboard();
   if (tab === 'library') loadLibrary();
@@ -4071,7 +4087,7 @@ async function openDiagnosticModal(quizId) {
               <div style="width:${errPct}%;height:100%;background:${barColor};border-radius:4px;transition:width 0.4s"></div>
             </div>
             <span style="font-size:12.5px;font-weight:800;color:${barColor};min-width:75px;text-align:right">${errPct}% Salah</span>
-            <span style="font-size:12px;color:var(--text-muted);min-width:100px">(${q.wrong_count}/${q.total_answers} jawaban)</span>
+            <span style="font-size:12px;color:var(--text-muted);min-width:100px">(${q.wrong_count}/${q.total_answered} jawaban)</span>
           </div>
         </div>
       `;

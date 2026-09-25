@@ -1953,7 +1953,7 @@ app.get('/api/quizzes/:id/diagnostic', requireRole('creator', 'dosen'), (req, re
 
     const totalAnswered = rightCount + wrongCount;
     const errorRate = totalAnswered > 0 ? Math.round((wrongCount / totalAnswered) * 100) : 0;
-    const isWeak = errorRate >= 40 || (totalAnswered === 0 && idx % 2 === 0);
+    const isWeak = totalAnswered > 0 && errorRate >= 40;
 
     return {
       index: idx,
