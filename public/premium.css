@@ -233,3 +233,12 @@ a.btn, a.btn-nav { text-decoration: none; }
   .table-card, .modal-box table { display: block; overflow-x: auto; }
   .modal-box { padding: 20px 16px !important; }
 }
+
+/* ---------- Tabel nilai: angka netral, status sebagai pill ---------- */
+td b[style*="color:var(--gold)"], td b[style*="color:var(--amber)"], td b[style*="color:var(--cyan)"],
+td span[style*="color:var(--amber);font-weight:800"] { color: #fff !important; }
+td.num { font-variant-numeric: tabular-nums; }
+.qz-pill { display: inline-block; padding: 3px 10px; border-radius: 99px; font-size: 12px; font-weight: 700; }
+.qz-pill.ok  { background: rgba(16,185,129,.14); color: #6ee7b7; }
+.qz-pill.mid { background: rgba(245,158,11,.14); color: #fcd34d; }
+.qz-pill.low { background: rgba(244,63,94,.14);  color: #fda4af; }

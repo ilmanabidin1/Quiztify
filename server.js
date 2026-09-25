@@ -89,6 +89,48 @@ function requireRole(...roles) {
   };
 }
 
+// ---------- Paket langganan ----------
+const FREE_MAX_PLAYERS = 30;
+const FREE_AI_PER_MONTH = 10;
+
+function isPaidPlan(plan) {
+  return plan === 'pro' || plan === 'enterprise' || plan === 'campus_enterprise';
+}
+function planOf(userId) {
+  const d = db.prepare('SELECT plan, plan_expires_at FROM dosen WHERE id = ?').get(userId);
+  if (!d) return 'free';
+  if (d.plan_expires_at && new Date(d.plan_expires_at) < new Date()) return 'free';
+  return d.plan || 'free';
+}
+function aiUsage(userId) {
+  const month = new Date().toISOString().slice(0, 7);
+  const d = db.prepare('SELECT ai_used_month, ai_used_count FROM dosen WHERE id = ?').get(userId) || {};
+  const used = d.ai_used_month === month ? (d.ai_used_count || 0) : 0;
+  const paid = isPaidPlan(planOf(userId));
+  return { used, limit: paid ? null : FREE_AI_PER_MONTH, remaining: paid ? null : Math.max(0, FREE_AI_PER_MONTH - used) };
+}
+// Fitur khusus Pro: tolak akun Free dengan pesan yang jelas
+function requirePaid(feature) {
+  return (req, res, next) => {
+    if (isPaidPlan(planOf(req.auth.user_id))) return next();
+    res.status(402).json({ error: `${feature} tersedia di paket Pro.`, upgrade_required: true });
+  };
+}
+// Kuota generate AI bulanan untuk akun Free; dihitung hanya jika generate berhasil
+function aiQuotaGuard(req, res, next) {
+  const usage = aiUsage(req.auth.user_id);
+  if (usage.limit !== null && usage.remaining <= 0) {
+    return res.status(402).json({ error: `Kuota generate AI paket Free (${FREE_AI_PER_MONTH}/bulan) sudah habis. Kuota direset awal bulan depan.`, upgrade_required: true });
+  }
+  res.on('finish', () => {
+    if (res.statusCode !== 200) return;
+    const month = new Date().toISOString().slice(0, 7);
+    db.prepare(`UPDATE dosen SET ai_used_count = CASE WHEN ai_used_month = ? THEN ai_used_count + 1 ELSE 1 END, ai_used_month = ? WHERE id = ?`)
+      .run(month, month, req.auth.user_id);
+  });
+  next();
+}
+
 // Hake's Normalized Gain (N-Gain)
 function ngain(pre, post) {
   if (pre === null || post === null) return null;
@@ -288,9 +330,9 @@ app.post('/api/auth/creator/register', (req, res) => {
     return res.status(409).json({ error: 'Email sudah terdaftar. Silakan login.' });
   }
   const info = db.prepare(`INSERT INTO dosen (nama, email, password_hash, plan, institution)
-    VALUES (?, ?, ?, 'pro', ?)`).run(n, em, hashPassword(p), inst);
+    VALUES (?, ?, ?, 'free', ?)`).run(n, em, hashPassword(p), inst);
   setSession(res, 'creator', info.lastInsertRowid);
-  res.json({ id: info.lastInsertRowid, nama: n, email: em, role: 'creator', plan: 'pro', institution: inst });
+  res.json({ id: info.lastInsertRowid, nama: n, email: em, role: 'creator', plan: 'free', institution: inst });
 });
 
 app.post('/api/auth/student/register', (req, res) => {
@@ -308,11 +350,15 @@ app.post('/api/auth/student/register', (req, res) => {
   if (db.prepare('SELECT id FROM students WHERE npm = ?').get(m)) {
     return res.status(409).json({ error: 'NPM/NISN ini sudah terdaftar, silakan login' });
   }
+  // Tanpa pilihan avatar, beri avatar berbeda per mahasiswa (stabil dari NIM) supaya daftar nilai tidak seragam
+  const AVATARS = ['🦊', '🦁', '🐼', '🐯', '🐨', '🦉', '🐙', '🦄', '🐸', '🐧', '🐬', '🦋'];
+  const autoAvatar = AVATARS[[...m].reduce((h, ch) => (h * 31 + ch.charCodeAt(0)) >>> 0, 7) % AVATARS.length];
+  const av = (typeof avatar === 'string' && avatar && !/[<>"'`&]/.test(avatar)) ? avatar.slice(0, 8) : autoAvatar;
   const info = db.prepare('INSERT INTO students (class_id, nama, npm, password_hash, avatar) VALUES (?, ?, ?, ?, ?)').run(
-    classId, n, m, hashPassword(password), avatar || '🦊'
+    classId, n, m, hashPassword(password), av
   );
   setSession(res, 'student', info.lastInsertRowid);
-  res.json({ id: info.lastInsertRowid, nama: n, npm: m, class_id: classId, avatar: avatar || '🦊' });
+  res.json({ id: info.lastInsertRowid, nama: n, npm: m, class_id: classId, avatar: av });
 });
 
 // Backward compatible student register
@@ -350,8 +396,9 @@ app.get('/api/me', (req, res) => {
   const a = auth(req);
   if (!a) return res.json({ role: null });
   if (a.role === 'creator' || a.role === 'dosen') {
-    const d = db.prepare('SELECT id, nama, email, plan, institution FROM dosen WHERE id = ?').get(a.user_id);
-    return res.json({ role: 'creator', ...d });
+    const d = db.prepare('SELECT id, nama, email, plan, institution, plan_expires_at FROM dosen WHERE id = ?').get(a.user_id);
+    const usage = d ? aiUsage(d.id) : null;
+    return res.json({ role: 'creator', ...d, ai_quota: usage });
   }
   const s = db.prepare(`SELECT s.id, s.nama, s.npm, s.avatar, s.points, c.id AS class_id, c.name AS class_name, c.course
     FROM students s LEFT JOIN classes c ON c.id = s.class_id WHERE s.id = ?`).get(a.user_id);
@@ -378,6 +425,7 @@ app.put('/api/creator/profile', requireRole('creator', 'dosen'), (req, res) => {
 
 // Mock Upgrade Subscription
 app.post('/api/subscription/upgrade', requireRole('creator', 'dosen'), (req, res) => {
+  return res.status(501).json({ error: 'Fitur langganan masih dalam tahap pengembangan. Pembayaran akan segera tersedia.' });
   const { plan } = req.body || {};
   const targetPlan = ['pro', 'enterprise'].includes(plan) ? plan : 'pro';
   db.prepare('UPDATE dosen SET plan = ? WHERE id = ?').run(targetPlan, req.auth.user_id);
@@ -558,6 +606,13 @@ app.post('/api/rooms/join', (req, res) => {
   let playerToken = '';
   let chosenAvatar = (typeof avatar === 'string' && avatar && !/[<>"'`&]/.test(avatar)) ? avatar.slice(0, 8) : '🦊';
   const existingPlayer = db.prepare('SELECT * FROM room_players WHERE pin = ? AND name = ?').get(room.pin, name);
+
+  if (!existingPlayer && !isPaidPlan(planOf(room.host_id))) {
+    const joined = db.prepare('SELECT COUNT(*) AS c FROM room_players WHERE pin = ?').get(room.pin).c;
+    if (joined >= FREE_MAX_PLAYERS) {
+      return res.status(403).json({ error: `Ruang kuis ini sudah penuh (maksimal ${FREE_MAX_PLAYERS} peserta untuk paket Free host).` });
+    }
+  }
 
   if (existingPlayer) {
     playerToken = existingPlayer.player_token;
@@ -1316,7 +1371,7 @@ Keluarkan HANYA dalam format JSON yang valid.`;
   return { ok: false, error: lastError || 'Gagal berkomunikasi dengan Quiztify AI' };
 }
 
-app.post('/api/quizzes/generate-ai', requireRole('creator', 'dosen'), async (req, res) => {
+app.post('/api/quizzes/generate-ai', requireRole('creator', 'dosen'), aiQuotaGuard, async (req, res) => {
   const { topic, count, difficulty } = req.body || {};
   const t = norm(topic) || 'Teknologi Informasi & Pemrograman Modern';
   const n = Math.min(15, Math.max(3, Number(count) || 5));
@@ -2017,7 +2072,7 @@ app.get('/api/quizzes/:id/diagnostic', requireRole('creator', 'dosen'), (req, re
 });
 
 // 1-Click Auto-Remedial Generator via Quiztify AI
-app.post('/api/quizzes/:id/auto-remedial', requireRole('creator', 'dosen'), async (req, res) => {
+app.post('/api/quizzes/:id/auto-remedial', requireRole('creator', 'dosen'), requirePaid('Remedial otomatis'), async (req, res) => {
   const quizId = Number(req.params.id);
   const quiz = db.prepare('SELECT * FROM quizzes WHERE id = ?').get(quizId);
   if (!quiz) return res.status(404).json({ error: 'Kuis tidak ditemukan' });
@@ -2116,7 +2171,7 @@ app.post('/api/quizzes/:id/auto-remedial', requireRole('creator', 'dosen'), asyn
 });
 
 // Berita Acara Ujian Resmi & Transkrip Akademik Berstandar Dikti / Sekolah
-app.get('/api/quizzes/:id/berita-acara', requireRole('creator', 'dosen'), async (req, res) => {
+app.get('/api/quizzes/:id/berita-acara', requireRole('creator', 'dosen'), requirePaid('Berita Acara'), async (req, res) => {
   const quizId = Number(req.params.id);
   const quiz = db.prepare('SELECT q.*, c.name as class_name, c.course, c.code as class_code FROM quizzes q LEFT JOIN classes c ON c.id = q.class_id WHERE q.id = ?').get(quizId);
   if (!quiz) return res.status(404).json({ error: 'Kuis tidak ditemukan' });
@@ -2245,7 +2300,7 @@ app.get('/api/quizzes/:id/berita-acara', requireRole('creator', 'dosen'), async 
 });
 
 // Export CSV Standar Akademik (SIAKAD Compatible)
-app.get('/api/quizzes/:id/export-csv', requireRole('creator', 'dosen'), (req, res) => {
+app.get('/api/quizzes/:id/export-csv', requireRole('creator', 'dosen'), requirePaid('Ekspor CSV'), (req, res) => {
   const quizId = Number(req.params.id);
   const quiz = db.prepare('SELECT q.*, c.name as class_name FROM quizzes q LEFT JOIN classes c ON c.id = q.class_id WHERE q.id = ?').get(quizId);
   if (!quiz) return res.status(404).send('Kuis tidak ditemukan');
@@ -2287,6 +2342,7 @@ app.get('/api/quizzes/:id/export-csv', requireRole('creator', 'dosen'), (req, re
 
 // Upgrade Subscription Tier (Commercial Monetization)
 app.post('/api/creator/upgrade-plan', requireRole('creator', 'dosen'), (req, res) => {
+  return res.status(501).json({ error: 'Fitur langganan masih dalam tahap pengembangan. Pembayaran akan segera tersedia.' });
   const { plan, billing_cycle } = req.body || {};
   const targetPlan = (plan === 'campus_enterprise' || plan === 'pro') ? plan : 'pro';
   const days = (billing_cycle === 'yearly') ? 365 : 30;
@@ -2386,7 +2442,7 @@ app.get('/api/classes/:id/gradebook', requireRole('creator', 'dosen'), (req, res
 });
 
 // Ekspor Rekap Nilai Akhir CSV
-app.get('/api/classes/:id/export-csv', requireRole('creator', 'dosen'), (req, res) => {
+app.get('/api/classes/:id/export-csv', requireRole('creator', 'dosen'), requirePaid('Ekspor CSV'), (req, res) => {
   const c = db.prepare('SELECT id, name, course FROM classes WHERE id = ?').get(req.params.id);
   if (!c) return res.status(404).send('Kelas tidak ditemukan');
 
