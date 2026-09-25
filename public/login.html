@@ -226,6 +226,8 @@
     .auth-header h1 { font-size: 24px; }
   }
 </style>
+<link rel="stylesheet" href="/premium.css">
+<script src="/ui.js"></script>
 </head>
 <body>
 
@@ -390,6 +392,11 @@ function switchTab(tab) {
     const firstInput = document.querySelector(`#panel-${tab}.active input`);
     if (firstInput) firstInput.focus();
   }, 50);
+}
+
+// Deep link dari landing: /login.html?mode=register
+if (new URLSearchParams(location.search).get('mode') === 'register') {
+  document.addEventListener('DOMContentLoaded', () => switchTab('register'));
 }
 
 // ============================================================
