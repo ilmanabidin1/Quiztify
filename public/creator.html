@@ -773,6 +773,23 @@
 </style>
 <link rel="stylesheet" href="/premium.css">
 <script src="/ui.js"></script>
+
+<style id="host-premium">
+  .pin-display-banner {
+    border: 1px solid rgba(167,139,250,.35) !important; border-radius: 28px !important; padding: 28px 32px !important;
+    background: radial-gradient(600px 220px at 50% 0%, rgba(124,58,237,.35), transparent 70%), linear-gradient(180deg, rgba(255,255,255,.05), rgba(255,255,255,.02)) !important;
+    box-shadow: 0 30px 80px -30px rgba(124,58,237,.6), inset 0 1px 0 rgba(255,255,255,.08);
+  }
+  .pin-giant { font-family: var(--font-mono) !important; font-size: clamp(48px, 7vw, 88px) !important; letter-spacing: .12em !important; color: #fff !important; text-shadow: 0 0 40px rgba(167,139,250,.55) !important; font-variant-numeric: tabular-nums; }
+  #host-qr-img { box-shadow: 0 12px 30px -10px rgba(0,0,0,.6); border: 0 !important; padding: 8px; }
+  .p-chip { background: rgba(255,255,255,.05) !important; border: 1px solid rgba(255,255,255,.12) !important; backdrop-filter: blur(6px); }
+  .host-waiting { display: flex; flex-direction: column; align-items: center; gap: 16px; color: var(--text-muted); font-size: 15px; margin-top: 48px; }
+  .host-waiting-dots { display: inline-flex; gap: 8px; }
+  .host-waiting-dots i { width: 10px; height: 10px; border-radius: 50%; background: #a78bfa; animation: hostDot 1.2s ease-in-out infinite; }
+  .host-waiting-dots i:nth-child(2) { animation-delay: .15s; }
+  .host-waiting-dots i:nth-child(3) { animation-delay: .3s; }
+  @keyframes hostDot { 0%, 80%, 100% { opacity: .25; transform: scale(.8); } 40% { opacity: 1; transform: scale(1); } }
+</style>
 </head>
 <body>
 
@@ -918,7 +935,7 @@
           <div class="metric-icon" style="background:rgba(245,158,11,0.2);color:var(--amber)"><i class="fa-solid fa-graduation-cap"></i></div>
           <div>
             <div class="metric-lbl">Efektivitas N-Gain</div>
-            <div class="metric-val" id="metric-ngain">0.72<small>Tinggi</small></div>
+            <div class="metric-val" id="metric-ngain">–</div>
           </div>
         </div>
       </div>
@@ -927,7 +944,7 @@
         <h2 style="font-size:18px;font-weight:800">Kuis Siap Host (Live &amp; Asinkron)</h2>
         <button class="btn btn-ghost" onclick="switchNav('library')">Lihat Semua Kuis ➔</button>
       </div>
-      <div class="quizzes-grid" id="dash-quizzes-grid"></div>
+      <div class="quizzes-grid" id="dash-quizzes-grid"><div class="qz-skeleton"></div><div class="qz-skeleton"></div><div class="qz-skeleton"></div></div>
     </div>
 
     <!-- VIEW 2: QUIZ LIBRARY -->
@@ -941,7 +958,7 @@
           <i class="fa-solid fa-wand-magic-sparkles"></i> <span>Buat Kuis Baru (AI)</span>
         </button>
       </div>
-      <div class="quizzes-grid" id="full-quizzes-grid"></div>
+      <div class="quizzes-grid" id="full-quizzes-grid"><div class="qz-skeleton"></div><div class="qz-skeleton"></div><div class="qz-skeleton"></div></div>
     </div>
 
     <!-- VIEW 3: QUIZ BUILDER PRO & AI GENERATOR -->
@@ -2273,14 +2290,34 @@ async function loadDashboard() {
 
     document.getElementById('metric-quizzes').textContent = quizzes.length;
     let totalAttempts = 0;
-    let totalScore = 0;
+    let weightedScore = 0;
     quizzes.forEach(q => {
       totalAttempts += q.attempt_count || 0;
-      if (q.avg_score) totalScore += q.avg_score;
+      if (q.avg_score) weightedScore += q.avg_score * (q.attempt_count || 0);
     });
 
     document.getElementById('metric-attempts').textContent = totalAttempts;
-    document.getElementById('metric-avg-score').textContent = quizzes.length ? `${Math.round(totalScore / quizzes.length)}%` : '0%';
+    document.getElementById('metric-avg-score').textContent = totalAttempts ? `${Math.round(weightedScore / totalAttempts)}%` : '–';
+
+    fetch('/api/creator/ngain-summary').then(r => r.json()).then(ng => {
+      const el = document.getElementById('metric-ngain');
+      if (ng.avg_ngain === null || ng.avg_ngain === undefined) {
+        el.innerHTML = '–<small>Belum ada Pre/Post</small>';
+      } else {
+        el.innerHTML = `${ng.avg_ngain.toFixed(2)}<small>${ng.category}</small>`;
+      }
+    }).catch(() => {});
+
+    if (!quizzes.length) {
+      document.getElementById('dash-quizzes-grid').innerHTML = `
+        <div class="qz-empty">
+          <div class="qz-empty-icon"><i class="fa-solid fa-wand-magic-sparkles"></i></div>
+          <h3>Belum ada kuis</h3>
+          <p>Buat kuis pertamamu secara manual atau biarkan Quiztify AI menyusunnya dari satu topik.</p>
+          <button class="btn btn-primary" onclick="switchNav('builder')"><i class="fa-solid fa-plus"></i> Buat kuis pertama</button>
+        </div>`;
+      return;
+    }
 
     const dashGrid = document.getElementById('dash-quizzes-grid');
     dashGrid.innerHTML = quizzes.slice(0, 3).map(q => renderQuizCardHtml(q)).join('');
@@ -2292,7 +2329,13 @@ async function loadLibrary() {
     const res = await fetch('/api/creator/quizzes');
     const quizzes = await res.json();
     const grid = document.getElementById('full-quizzes-grid');
-    grid.innerHTML = quizzes.map(q => renderQuizCardHtml(q)).join('');
+    grid.innerHTML = quizzes.length ? quizzes.map(q => renderQuizCardHtml(q)).join('') : `
+      <div class="qz-empty">
+        <div class="qz-empty-icon"><i class="fa-solid fa-layer-group"></i></div>
+        <h3>Library masih kosong</h3>
+        <p>Kuis yang kamu buat akan muncul di sini, siap di-host live atau dibagikan lewat QR.</p>
+        <button class="btn btn-primary" onclick="switchNav('builder')"><i class="fa-solid fa-plus"></i> Buat kuis</button>
+      </div>`;
   } catch (e) {}
 }
 
@@ -2618,7 +2661,7 @@ async function pollHostState() {
       showHostState('lobby');
       const chipsCont = document.getElementById('host-lobby-chips');
       if (data.players.length === 0) {
-        chipsCont.innerHTML = `<div style="color:var(--text-muted);font-size:15px;margin-top:40px">Menunggu peserta memasukkan PIN di perangkat mereka...</div>`;
+        chipsCont.innerHTML = `<div class="host-waiting"><span class="host-waiting-dots"><i></i><i></i><i></i></span>Menunggu peserta memasukkan PIN di perangkat mereka</div>`;
       } else {
         chipsCont.innerHTML = data.players.map(p => `
           <div class="p-chip"><span>${p.avatar}</span> <span>${p.name}</span></div>

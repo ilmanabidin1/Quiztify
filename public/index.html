@@ -1052,6 +1052,39 @@
     .pin-card-wrapper .btn-join { padding: 15px; justify-content: center; }
     .brand-badge-id { display: none; }
   }
+
+  /* ----- Arena (premium pass) ----- */
+  .arena-wrapper { padding-bottom: 96px; }
+  .arena-topbar { gap: 12px; flex-wrap: wrap; padding: 10px 14px; background: rgba(255,255,255,.04); border-color: rgba(255,255,255,.08); }
+  .arena-stat { white-space: nowrap; }
+  #player-name-badge { max-width: 120px; overflow: hidden; text-overflow: ellipsis; }
+  #player-score-badge { font-variant-numeric: tabular-nums; }
+  .timer-bar-container { height: 6px; border-radius: 99px; }
+  .timer-bar-fill { border-radius: 99px; }
+  .q-display-card { background: rgba(255,255,255,.04); border-color: rgba(255,255,255,.08); box-shadow: inset 0 1px 0 rgba(255,255,255,.06); }
+  .q-display-text { letter-spacing: -0.015em; }
+  .btn-answer { padding: 20px 18px; min-height: 72px; border-radius: 16px; transition: transform .15s var(--ease-out), filter .15s, box-shadow .15s; }
+  .btn-answer .ans-text { flex: 1; min-width: 0; overflow-wrap: anywhere; line-height: 1.35; }
+  .btn-answer:hover:not(:disabled) { filter: brightness(1.08); transform: translateY(-2px); }
+  .btn-answer:active:not(:disabled) { transform: translateY(4px) !important; box-shadow: 0 2px 0 rgba(0,0,0,.35) !important; }
+  .btn-answer .hotkey-badge { margin-left: 0; background: rgba(0,0,0,.22); border-color: rgba(255,255,255,.2); color: rgba(255,255,255,.85); font-family: var(--font-mono); font-weight: 700; }
+  @media (hover: none) { .btn-answer .hotkey-badge { display: none; } }
+  #feedback-next-btn { max-width: calc(100vw - 40px); justify-content: center; }
+  .feedback-title { letter-spacing: -0.02em; text-align: center; padding: 0 20px; }
+  @media (max-width: 560px) {
+    .arena-wrapper { padding: 14px 14px 96px; }
+    .arena-topbar { display: grid; grid-template-columns: 1fr auto auto; row-gap: 8px; }
+    .arena-topbar .arena-stat:nth-child(1) { grid-column: 1; }
+    .arena-topbar .arena-stat:nth-child(4) { grid-column: 1 / 3; }
+    .arena-stat { font-size: 13px; }
+    .integrity-shield-badge { font-size: 11px; padding: 4px 10px; }
+    .q-display-card { padding: 22px 18px; min-height: 130px; }
+    .q-display-text { font-size: 19px; }
+    .answers-grid { gap: 12px; }
+    #feedback-next-btn { font-size: 15px !important; padding: 12px 20px !important; }
+    #feedback-next-btn .hotkey-badge { display: none !important; }
+    .floating-reactions-dock { left: 50%; right: auto; transform: translateX(-50%); bottom: 12px; }
+  }
 </style>
 </head>
 <body>
@@ -2333,9 +2366,9 @@ function renderQuestion(q) {
   const ansGrid = document.getElementById('answers-container');
   ansGrid.innerHTML = q.options.map((opt, i) => `
     <button class="btn-answer ans-${i % 4}" id="ans-btn-${i}" onclick="submitAnswer(${i}, ${q.time_limit})" aria-label="Pilihan ${hotkeyLabels[i]}: ${opt.replace(/"/g, '&quot;')}">
-      <span class="hotkey-badge">${hotkeyLabels[i]}</span>
       <div class="shape-icon">${shapes[i % 4]}</div>
-      <span>${opt}</span>
+      <span class="ans-text">${opt}</span>
+      <span class="hotkey-badge">${hotkeyLabels[i]}</span>
     </button>
   `).join('');
 

@@ -160,3 +160,16 @@ table tbody tr:hover { background: rgba(255, 255, 255, .025); }
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { animation-duration: .01ms !important; animation-iteration-count: 1 !important; transition-duration: .01ms !important; scroll-behavior: auto !important; }
 }
+
+/* ---------- Empty states ---------- */
+.qz-empty {
+  grid-column: 1 / -1; text-align: center; padding: 48px 24px; border-radius: 20px;
+  border: 1px dashed rgba(255, 255, 255, .14); background: rgba(255, 255, 255, .02);
+}
+.qz-empty-icon {
+  width: 56px; height: 56px; margin: 0 auto 16px; border-radius: 16px; display: grid; place-items: center;
+  font-size: 22px; color: #c4b5fd; background: rgba(124, 58, 237, .16);
+}
+.qz-empty h3 { font-size: 18px; margin-bottom: 6px; }
+.qz-empty p { color: var(--text-muted); font-size: 14px; max-width: 420px; margin: 0 auto 18px; line-height: 1.6; }
+a.btn, a.btn-nav { text-decoration: none; }

@@ -543,7 +543,8 @@ app.post('/api/rooms/:pin/end', requireRole('creator', 'dosen'), (req, res) => {
 app.post('/api/rooms/join', (req, res) => {
   const { pin, nickname, name: directName, avatar } = req.body || {};
   const p = norm(pin);
-  const name = norm(nickname || directName);
+  // Nama & avatar peserta dirender di layar host dan leaderboard, jadi buang karakter HTML
+  const name = norm(nickname || directName).replace(/[<>"'`&]/g, '').slice(0, 24);
   if (!p) return res.status(400).json({ error: 'PIN wajib diisi' });
   if (!name || name.length < 2) return res.status(400).json({ error: 'Nama/Nickname minimal 2 karakter' });
 
@@ -555,7 +556,7 @@ app.post('/api/rooms/join', (req, res) => {
 
   // Cek apakah player dengan nama ini sudah bergabung di room ini
   let playerToken = '';
-  let chosenAvatar = avatar || '🦊';
+  let chosenAvatar = (typeof avatar === 'string' && avatar && !/[<>"'`&]/.test(avatar)) ? avatar.slice(0, 8) : '🦊';
   const existingPlayer = db.prepare('SELECT * FROM room_players WHERE pin = ? AND name = ?').get(room.pin, name);
 
   if (existingPlayer) {
@@ -1418,6 +1419,22 @@ app.get('/api/creator/quizzes', requireRole('creator', 'dosen'), (req, res) => {
     WHERE q.creator_id = ? OR q.creator_id IS NULL
     ORDER BY q.created_at DESC`).all(req.auth.user_id);
   res.json(rows);
+});
+
+// Ringkasan N-Gain seluruh pasangan Pre/Post milik creator (untuk metrik dashboard)
+app.get('/api/creator/ngain-summary', requireRole('creator', 'dosen'), (req, res) => {
+  const scores = db.prepare(`SELECT a.student_id, q.pair_key, q.type, a.score
+    FROM attempts a JOIN quizzes q ON q.id = a.quiz_id
+    WHERE q.creator_id = ? AND q.pair_key IS NOT NULL AND q.type IN ('pre', 'post')`).all(req.auth.user_id);
+  const pairs = {};
+  for (const r of scores) {
+    const k = r.student_id + '|' + r.pair_key;
+    (pairs[k] = pairs[k] || {})[r.type] = r.score;
+  }
+  const gains = Object.values(pairs).map(p => ngain(p.pre ?? null, p.post ?? null)).filter(g => g !== null);
+  const avg = gains.length ? Math.round((gains.reduce((a, b) => a + b, 0) / gains.length) * 100) / 100 : null;
+  const category = avg === null ? null : avg >= 0.7 ? 'Tinggi' : avg >= 0.3 ? 'Sedang' : 'Rendah';
+  res.json({ avg_ngain: avg, category, pairs: gains.length });
 });
 
 // Backward compatible dosen quiz list
