@@ -1,0 +1,33 @@
+/* Halaman legal: kebijakan privasi & syarat layanan */
+:root { --bg-dark: #0e0725; --text-muted: #a39ec4; }
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body { background: var(--bg-dark); color: #e9e6f8; min-height: 100vh; }
+header { display: flex; justify-content: space-between; align-items: center; padding: 14px clamp(16px, 4vw, 40px); border-bottom: 1px solid rgba(255,255,255,.06); }
+header img { height: 32px; display: block; }
+header nav { display: flex; gap: 18px; font-size: 14px; }
+header nav a { color: #c9c5e6; text-decoration: none; }
+header nav a[aria-current] { color: #fff; font-weight: 700; }
+main { max-width: 760px; margin: 0 auto; padding: clamp(36px, 6vw, 72px) 20px 80px; }
+h1 { font-size: clamp(30px, 4.4vw, 44px); letter-spacing: -0.03em; line-height: 1.1; margin-bottom: 10px; }
+.updated { color: var(--text-muted); font-size: 14px; margin-bottom: 28px; }
+.summary { padding: 18px 20px; border-radius: 16px; background: rgba(124,92,255,.1); border: 1px solid rgba(184,166,255,.25); margin-bottom: 36px; }
+.summary b { display: block; margin-bottom: 8px; }
+.summary ul { padding-left: 18px; display: grid; gap: 6px; color: #d6d3ea; font-size: 15px; line-height: 1.55; }
+.toc { margin-bottom: 40px; font-size: 14.5px; }
+.toc ol { padding-left: 20px; columns: 2; column-gap: 32px; }
+.toc li { margin-bottom: 6px; break-inside: avoid; }
+.toc a { color: #c4b5fd; text-decoration: none; }
+.toc a:hover { text-decoration: underline; }
+h2 { font-size: 21px; letter-spacing: -0.02em; margin: 40px 0 12px; scroll-margin-top: 24px; }
+h3 { font-size: 16px; margin: 20px 0 8px; }
+p, li { font-size: 15.5px; line-height: 1.75; color: #d6d3ea; }
+p + p { margin-top: 12px; }
+main ul, main ol:not(.toc ol) { padding-left: 20px; margin: 10px 0; display: grid; gap: 6px; }
+a { color: #c4b5fd; }
+table { width: 100%; border-collapse: collapse; margin: 14px 0; font-size: 14.5px; }
+th, td { text-align: left; vertical-align: top; padding: 10px 12px; border-bottom: 1px solid rgba(255,255,255,.08); line-height: 1.55; color: #d6d3ea; }
+th { color: #fff; font-weight: 700; background: rgba(255,255,255,.03); }
+.table-wrap { overflow-x: auto; }
+footer { max-width: 760px; margin: 0 auto; padding: 24px 20px 40px; border-top: 1px solid rgba(255,255,255,.06); color: #7b76a3; font-size: 13px; }
+@media (max-width: 560px) { .toc ol { columns: 1; } header nav { gap: 12px; font-size: 13px; } }
+@media print { body { background: #fff; color: #111; } header, .toc { display: none; } p, li, td { color: #222; } .summary { background: #f4f1ff; } }

@@ -30,6 +30,31 @@ const app = express();
 app.use(express.json({ limit: '5mb' }));
 app.use(express.static(path.join(__dirname, 'public')));
 
+// ---------- Kepemilikan data dosen ----------
+// Kuis milik creator ini, atau kuis demo bawaan (creator_id kosong) yang tidak terikat kelas orang lain.
+function ownsQuiz(userId, quizId) {
+  const q = db.prepare(`SELECT q.creator_id, c.dosen_id FROM quizzes q LEFT JOIN classes c ON c.id = q.class_id WHERE q.id = ?`).get(Number(quizId));
+  if (!q) return false;
+  if (q.creator_id !== null && q.creator_id !== undefined) return q.creator_id === userId;
+  return q.dosen_id === null || q.dosen_id === undefined || q.dosen_id === userId;
+}
+function ownsClass(userId, classId) {
+  return Boolean(db.prepare('SELECT 1 FROM classes WHERE id = ? AND dosen_id = ?').get(Number(classId), userId));
+}
+// Satu penjaga untuk semua endpoint dosen ber-ID: dosen lain mendapat 404, seolah datanya tidak ada.
+function ownershipGuard(kind) {
+  return (req, res, next) => {
+    if (!/^\d+$/.test(req.params.id)) return next();
+    const a = auth(req);
+    if (!a || (a.role !== 'creator' && a.role !== 'dosen')) return next(); // endpoint publik / requireRole yang memutuskan
+    const ok = kind === 'quiz' ? ownsQuiz(a.user_id, req.params.id) : ownsClass(a.user_id, req.params.id);
+    if (!ok) return res.status(404).json({ error: kind === 'quiz' ? 'Kuis tidak ditemukan' : 'Kelas tidak ditemukan' });
+    next();
+  };
+}
+app.use(['/api/quizzes/:id', '/api/dosen/quizzes/:id'], ownershipGuard('quiz'));
+app.use(['/api/classes/:id', '/api/dosen/classes/:id'], ownershipGuard('class'));
+
 // ---------- UTILITIES ----------
 function hashPassword(pw) {
   const salt = crypto.randomBytes(16).toString('hex');
@@ -543,7 +568,7 @@ const DEFAULT_QUIZ_SETTINGS = {
 app.post('/api/rooms/create', requireRole('creator', 'dosen'), async (req, res) => {
   const { quiz_id } = req.body || {};
   const quiz = db.prepare('SELECT * FROM quizzes WHERE id = ?').get(Number(quiz_id));
-  if (!quiz) return res.status(404).json({ error: 'Kuis tidak ditemukan' });
+  if (!quiz || !ownsQuiz(req.auth.user_id, quiz.id)) return res.status(404).json({ error: 'Kuis tidak ditemukan' });
 
   const questionsCount = db.prepare('SELECT COUNT(*) as count FROM questions WHERE quiz_id = ?').get(quiz.id).count;
   if (questionsCount === 0) {
@@ -795,6 +820,9 @@ app.get('/api/rooms/:pin/state', (req, res) => {
     }
   }
 
+  const viewer = auth(req);
+  const isHostViewer = Boolean(viewer && (viewer.role === 'creator' || viewer.role === 'dosen') && viewer.user_id === room.host_id);
+
   // Data Soal Lengkap untuk Layar Host / Projector
   const hostQuestions = questions.map((q, idx) => ({
     index: idx,
@@ -849,8 +877,9 @@ app.get('/api/rooms/:pin/state', (req, res) => {
     my_team: myInfo && room.team_count > 0 && myInfo.team !== null ? { id: myInfo.team, ...TEAMS[myInfo.team] } : null,
     players_progress: playersProgress,
     total_finished_players: totalFinishedPlayers,
-    answers_distribution: answersDistribution,
-    host_questions: hostQuestions,
+    // Kunci jawaban & distribusi hanya untuk host; peserta tidak boleh bisa mengintip lewat DevTools
+    answers_distribution: isHostViewer ? answersDistribution : undefined,
+    host_questions: isHostViewer ? hostQuestions : undefined,
     leaderboard: leaderboard.slice(0, 15),
     // Interaksi Sosial Real-Time
     recent_reactions: recentReactions,
@@ -1698,7 +1727,7 @@ app.post('/api/classes/:id/assign-quiz', requireRole('creator', 'dosen'), (req, 
   if (!c) return res.status(404).json({ error: 'Kelas tidak ditemukan' });
 
   const q = db.prepare('SELECT id FROM quizzes WHERE id = ?').get(Number(quiz_id));
-  if (!q) return res.status(404).json({ error: 'Kuis tidak ditemukan' });
+  if (!q || !ownsQuiz(req.auth.user_id, q.id)) return res.status(404).json({ error: 'Kuis tidak ditemukan' });
 
   db.prepare('UPDATE quizzes SET class_id = ? WHERE id = ?').run(c.id, q.id);
   res.json({ ok: true, message: 'Kuis berhasil dihubungkan ke kelas' });
@@ -1727,6 +1756,7 @@ app.post('/api/dosen/quizzes', requireRole('creator', 'dosen'), (req, res) => {
   }
 
   const classId = class_id ? Number(class_id) : null;
+  if (classId && !ownsClass(req.auth.user_id, classId)) return res.status(404).json({ error: 'Kelas tidak ditemukan' });
   const breakSec = (break_time_sec !== undefined && break_time_sec !== null) ? Number(break_time_sec) : 5;
   const qTheme = theme || 'cyberpunk';
   const settingsJson = settings ? JSON.stringify(settings) : '{}';
