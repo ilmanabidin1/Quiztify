@@ -58,6 +58,7 @@
   }
 
   window.qzToast = toast;
+  window.qzEsc = (v) => String(v == null ? '' : v).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
   // Every alert() in the app is fire-and-forget feedback, so a toast keeps
   // the same message without freezing the page behind a browser dialog.
   window.alert = function (msg) { toast(msg); };

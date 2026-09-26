@@ -953,6 +953,7 @@
 </style>
 <link rel="stylesheet" href="/premium.css">
 <script src="/ui.js"></script>
+<script src="/share-card.js" defer></script>
 <style id="landing-premium">
   /* ----- Landing (premium pass) ----- */
   #view-landing { position: relative; overflow: hidden; }
@@ -1011,6 +1012,8 @@
   .f-card { background: rgba(255,255,255,.03); border-color: rgba(255,255,255,.07); padding: 26px; }
   .f-card:hover { border-color: rgba(167,139,250,.45); transform: translateY(-3px); }
   .f-card-wide { grid-column: span 2; }
+  .f-card-full { grid-column: 1 / -1; }
+  body:has(#view-landing.hidden) .btn-student { display: none; }
   .f-icon { width: 44px; height: 44px; font-size: 19px; border-radius: 12px; }
   .f-card p { font-size: 14px; line-height: 1.6; }
   @media (max-width: 900px) { .features-grid { grid-template-columns: repeat(2, minmax(0,1fr)); } }
@@ -1046,6 +1049,8 @@
   @media (max-width: 560px) {
     .nav-actions { gap: 8px; }
     .btn-studio span { display: none; }
+    .btn-student { padding: 0 12px; height: 40px; }
+    #header-a11y-btn { display: none; }
     .btn-studio { width: 40px; height: 40px; padding: 0; justify-content: center; }
     .pin-card-wrapper { padding: 16px; }
     .pin-card-wrapper .pin-input-group { flex-direction: column; }
@@ -1103,6 +1108,9 @@
     <button class="btn-sound" id="sound-btn" onclick="toggleSound()" title="Aktifkan/Matikan Suara">
       <i class="fa-solid fa-volume-high" id="sound-icon"></i>
     </button>
+    <a href="/student.html" class="btn-nav btn-nav-ghost btn-student">
+      <span>Mahasiswa</span>
+    </a>
     <a href="/creator.html" class="btn-nav btn-nav-primary btn-studio">
       <i class="fa-solid fa-chalkboard-user"></i> <span>Studio Creator</span>
     </a>
@@ -1194,7 +1202,7 @@
       <div class="f-card">
         <div class="f-icon" style="background:rgba(245,158,11,0.18);color:#fcd34d"><i class="fa-solid fa-stethoscope"></i></div>
         <h3>Diagnostik &amp; remedial</h3>
-        <p>Temukan soal tersulit dan buat kuis remedial otomatis.</p>
+        <p>Peta miskonsepsi kelas: jawaban salah yang paling banyak dipilih, plus remedial otomatis.</p>
       </div>
       <div class="f-card">
         <div class="f-icon" style="background:rgba(244,63,94,0.18);color:#fda4af"><i class="fa-solid fa-shield-halved"></i></div>
@@ -1202,6 +1210,21 @@
         <p>Deteksi pindah tab dan salin soal, plus Berita Acara siap cetak.</p>
       </div>
       <div class="f-card f-card-wide">
+        <div class="f-icon"><i class="fa-solid fa-fire-flame-curved"></i></div>
+        <h3>Streak harian &amp; liga mingguan</h3>
+        <p>Mahasiswa dapat 5 soal sehari dari materi kelasnya. Soal yang pernah salah muncul lagi sampai dikuasai, dan XP-nya menentukan naik-turun divisi liga tiap minggu.</p>
+      </div>
+      <div class="f-card">
+        <div class="f-icon"><i class="fa-solid fa-bolt"></i></div>
+        <h3>Duel 1 lawan 1</h3>
+        <p>Tantang teman lewat link WhatsApp. 5 soal, siapa cepat dan tepat menang.</p>
+      </div>
+      <div class="f-card">
+        <div class="f-icon"><i class="fa-solid fa-file-arrow-up"></i></div>
+        <h3>Kuis dari materi kuliah</h3>
+        <p>Upload PDF atau PPTX, soal dibuat dari isinya lengkap dengan rujukan halaman.</p>
+      </div>
+      <div class="f-card f-card-full">
         <div class="f-icon" style="background:rgba(148,163,184,0.18);color:#e2e8f0"><i class="fa-solid fa-universal-access"></i></div>
         <h3>Inklusif untuk semua peserta</h3>
         <p>Mode kontras tinggi, font ramah disleksia, ukuran teks, text-to-speech, dan navigasi keyboard penuh.</p>
@@ -1244,6 +1267,7 @@
             <li><i class="fa-solid fa-check"></i> Generate AI tanpa batas</li>
             <li><i class="fa-solid fa-check"></i> Ekspor nilai CSV (format SIAKAD)</li>
             <li><i class="fa-solid fa-check"></i> Berita Acara &amp; remedial otomatis</li>
+            <li><i class="fa-solid fa-check"></i> Rapor semester siap akreditasi</li>
           </ul>
         </div>
         <a href="/login.html?mode=register" class="btn-nav btn-nav-primary p-cta">Mulai gratis</a>
@@ -1282,6 +1306,7 @@
         <p>Platform kuis interaktif &amp; asesmen untuk pendidik Indonesia.</p>
       </div>
       <nav class="footer-links" aria-label="Tautan footer">
+        <a href="/student.html">Portal mahasiswa</a>
         <a href="/login.html">Masuk Creator</a>
         <a href="/login.html?mode=register">Daftar</a>
         <a href="mailto:contact@quiztify.id">Kontak</a>
@@ -1474,7 +1499,14 @@
         <div style="font-size:14px;color:var(--text-muted)">Hasil Akhir Kamu</div>
         <div style="font-size:28px;font-weight:800;color:var(--gold)" id="final-my-score">0 PTS</div>
         <div style="font-size:16px;font-weight:700" id="final-my-rank">Peringkat #1</div>
+        <div class="podium-actions">
+          <button class="btn-nav btn-nav-primary" onclick="shareMyResult()"><i class="fa-solid fa-share-nodes"></i> Bagikan hasil</button>
+          <button class="btn-nav btn-nav-ghost" onclick="challengeFriend()"><i class="fa-solid fa-bolt"></i> Tantang teman</button>
+        </div>
       </div>
+
+      <!-- Rekap sesi otomatis -->
+      <div id="session-recap" class="session-recap hidden"></div>
 
       <!-- E-Sertifikat Kelulusan Card -->
       <div id="cert-claim-card" class="q-display-card" style="max-width:480px;margin:16px auto;flex-direction:column;gap:10px;background:rgba(16,185,129,0.08);border:1px solid rgba(16,185,129,0.3);text-align:center">
@@ -2317,6 +2349,9 @@ async function pollRoomState() {
       }
     }
 
+    renderTeamBadge(state.my_team);
+    latestPlayerState = state;
+
     // Handle State Transitions
     if (state.status === 'lobby') {
       showArenaState('lobby');
@@ -2358,6 +2393,29 @@ function showArenaState(stateName) {
 }
 
 // Render Live Question
+let latestPlayerState = null;
+function renderTeamBadge(team) {
+  let el = document.getElementById('player-team-badge');
+  if (!team) { if (el) el.remove(); return; }
+  if (!el) {
+    el = document.createElement('span');
+    el.id = 'player-team-badge';
+    el.className = 'team-badge';
+    const nameEl = document.getElementById('player-name-badge');
+    nameEl.parentNode.appendChild(el);
+  }
+  el.textContent = team.name;
+  el.style.setProperty('--team', team.color);
+}
+
+let wagerPct = 0;
+function pickWager(pct) {
+  if (hasAnsweredCurrentQ) return;
+  wagerPct = pct;
+  document.querySelectorAll('.wager-opt').forEach(b => b.classList.toggle('active', Number(b.dataset.pct) === pct));
+  soundEngine.play('click');
+}
+
 function renderQuestion(q) {
   if (!q) return;
   document.getElementById('q-number-badge').textContent = `SOAL ${q.index + 1} DARI ${q.total}`;
@@ -2369,10 +2427,31 @@ function renderQuestion(q) {
   ansGrid.innerHTML = q.options.map((opt, i) => `
     <button class="btn-answer ans-${i % 4}" id="ans-btn-${i}" onclick="submitAnswer(${i}, ${q.time_limit})" aria-label="Pilihan ${hotkeyLabels[i]}: ${opt.replace(/"/g, '&quot;')}">
       <div class="shape-icon">${shapes[i % 4]}</div>
-      <span class="ans-text">${opt}</span>
+      <span class="ans-text">${qzEsc(opt)}</span>
       <span class="hotkey-badge">${hotkeyLabels[i]}</span>
     </button>
   `).join('');
+
+  // Soal terakhir: pemain boleh mempertaruhkan sebagian poinnya
+  wagerPct = 0;
+  let wagerBox = document.getElementById('wager-box');
+  if (!wagerBox) {
+    wagerBox = document.createElement('div');
+    wagerBox.id = 'wager-box';
+    wagerBox.className = 'wager-box';
+    ansGrid.parentNode.insertBefore(wagerBox, ansGrid);
+  }
+  if (q.is_wager) {
+    wagerBox.innerHTML = `
+      <div class="wager-title"><b>Soal terakhir.</b> Pertaruhkan poinmu? Benar = tambah, salah = hilang.</div>
+      <div class="wager-options">
+        ${[0, 10, 25, 50].map(p => `<button type="button" class="wager-opt${p === 0 ? ' active' : ''}" data-pct="${p}" onclick="pickWager(${p})">${p === 0 ? 'Tidak' : p + '%'}</button>`).join('')}
+      </div>`;
+    wagerBox.classList.remove('hidden');
+  } else {
+    wagerBox.innerHTML = '';
+    wagerBox.classList.add('hidden');
+  }
 
   activePowerup = null;
   renderPowerupsUI();
@@ -2549,7 +2628,8 @@ async function submitAnswer(ansIdx, timeLimitSec) {
         player_token: playerToken,
         answer_idx: ansIdx,
         time_spent_ms: timeSpentMs,
-        active_powerup: powerupToSend
+        active_powerup: powerupToSend,
+        wager_pct: wagerPct || undefined
       })
     });
     const data = await res.json();
@@ -2664,6 +2744,12 @@ function showFeedbackBanner(data, isTimedOut = false) {
     if (streakBadge && data.powerup_applied !== 'streak_shield') {
       streakBadge.classList.remove('super-streak-glow');
     }
+  }
+
+  if (data.wager) {
+    pts.textContent = data.wager.won
+      ? `+${data.points_earned.toLocaleString()} PTS (taruhan ${data.wager.pct}% menang)`
+      : `-${data.wager.stake.toLocaleString()} PTS (taruhan ${data.wager.pct}% kalah)`;
   }
 
   // Announce to Screen Reader
@@ -2884,6 +2970,70 @@ function renderLeaderboard(state) {
   `).join('');
 }
 
+// ---------- Rekap sesi, kartu hasil & duel ----------
+let sessionRecap = null;
+async function loadSessionRecap() {
+  const box = document.getElementById('session-recap');
+  try {
+    const res = await fetch(`/api/rooms/${currentPin}/my-review?player_token=${playerToken}`);
+    const data = await res.json();
+    if (!res.ok) return;
+    sessionRecap = data;
+    const wrong = (data.items || []).filter(i => !i.is_correct).slice(0, 3);
+    box.innerHTML = `
+      <div class="recap-head">
+        <b>Rekap sesimu</b>
+        <span>${data.correct_count} dari ${data.total_questions} benar · akurasi ${data.accuracy_pct}%</span>
+      </div>
+      ${wrong.length ? `
+        <div class="recap-sub">Yang perlu dipelajari lagi</div>
+        ${wrong.map(w => `
+          <div class="recap-item">
+            <div class="recap-q">${qzEsc(w.text)}</div>
+            <div class="recap-a">Jawaban benar: <b>${qzEsc(w.correct_text)}</b></div>
+            ${w.explanation ? `<div class="recap-e">${qzEsc(w.explanation)}</div>` : ''}
+          </div>`).join('')}
+        <button class="btn-nav btn-nav-ghost recap-cta" onclick="startRedemptionRound()"><i class="fa-solid fa-rotate-right"></i> Latihan ulang soal yang salah</button>`
+      : `<div class="recap-perfect">Semua jawaban benar. Kamu menguasai materi ini.</div>`}`;
+    box.classList.remove('hidden');
+  } catch (_) {}
+}
+
+function shareMyResult() {
+  const rank = (latestPlayerState && latestPlayerState.my_rank) || '-';
+  const total = latestPlayerState ? latestPlayerState.players_count : '-';
+  qzShareCard({
+    eyebrow: 'Hasil kuis',
+    title: (sessionRecap && sessionRecap.quiz_title) || (latestPlayerState && latestPlayerState.quiz_title) || 'Quiztify',
+    big: `#${rank}`,
+    sub: `dari ${total} peserta`,
+    stats: [
+      ['Poin', (latestPlayerState ? latestPlayerState.my_score : 0).toLocaleString('id-ID')],
+      ['Akurasi', sessionRecap ? sessionRecap.accuracy_pct + '%' : '-'],
+      ['Benar', sessionRecap ? `${sessionRecap.correct_count}/${sessionRecap.total_questions}` : '-']
+    ],
+    filename: 'quiztify-hasil',
+    shareText: 'Hasil kuisku di Quiztify'
+  });
+}
+
+async function challengeFriend() {
+  try {
+    const name = document.getElementById('player-name-badge').textContent;
+    const avatar = document.getElementById('player-avatar-badge').textContent;
+    const res = await fetch('/api/duels', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ pin: currentPin, player_token: playerToken, name, avatar })
+    });
+    const data = await res.json();
+    if (!res.ok) return alert(data.error || 'Gagal membuat duel');
+    try { sessionStorage.setItem('qz_duel_' + data.code, data.token); } catch (_) {}
+    location.href = `/duel.html?code=${data.code}`;
+  } catch (_) {
+    alert('Gagal membuat duel');
+  }
+}
+
 // Render Final Podium
 function renderPodium(state) {
   soundEngine.play('podium');
@@ -2892,6 +3042,7 @@ function renderPodium(state) {
   } catch (e) {}
 
   document.getElementById('final-my-score').textContent = `${state.my_score.toLocaleString()} PTS`;
+  loadSessionRecap();
   document.getElementById('final-my-rank').textContent = `Peringkat #${state.my_rank || '-'}`;
 
   const top3 = state.leaderboard.slice(0, 3);

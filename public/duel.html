@@ -1,0 +1,289 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Duel Kuis · Quiztify</title>
+<meta name="description" content="Kamu ditantang duel kuis 1 lawan 1 di Quiztify. 5 soal, siapa cepat dan tepat menang.">
+<link rel="icon" type="image/png" href="/logo.png">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+<script src="/sound.js"></script>
+<style>
+  :root {
+    --bg-dark: #0e0725; --bg-card: #18103c; --border: #322475;
+    --text: #fff; --text-muted: #a39ec4; --emerald: #10b981; --rose: #f43f5e;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { background: radial-gradient(900px 500px at 50% -10%, rgba(124,58,237,.35), transparent 70%), var(--bg-dark); color: var(--text); min-height: 100vh; }
+  .hidden { display: none !important; }
+  header { display: flex; justify-content: space-between; align-items: center; padding: 14px clamp(16px, 4vw, 40px); }
+  header img { height: 34px; }
+  main { max-width: 560px; margin: 0 auto; padding: 16px 16px 60px; }
+  .card { background: rgba(255,255,255,.04); border: 1px solid rgba(255,255,255,.09); border-radius: 22px; padding: 24px; }
+  .eyebrow { font-size: 12px; font-weight: 700; letter-spacing: .1em; text-transform: uppercase; color: #b8a6ff; }
+  h1 { font-size: clamp(26px, 6vw, 34px); line-height: 1.15; margin: 8px 0 10px; }
+  .muted { color: var(--text-muted); font-size: 14.5px; line-height: 1.6; }
+  .vs { display: flex; align-items: center; justify-content: center; gap: 18px; margin: 22px 0; }
+  .vs-slot { text-align: center; width: 120px; }
+  .vs-avatar { font-size: 44px; width: 76px; height: 76px; margin: 0 auto 8px; border-radius: 50%; display: grid; place-items: center; background: rgba(255,255,255,.06); border: 1px solid rgba(255,255,255,.12); }
+  .vs-name { font-weight: 700; font-size: 14px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .vs-mid { font-size: 22px; font-weight: 800; color: #f59e0b; }
+  label { display: block; font-size: 12.5px; font-weight: 700; color: var(--text-muted); margin: 16px 0 8px; }
+  input[type=text] { width: 100%; padding: 14px; border-radius: 12px; background: rgba(8,4,24,.7); border: 1px solid rgba(255,255,255,.12); color: #fff; font-size: 16px; }
+  .avatars { display: grid; grid-template-columns: repeat(6, 1fr); gap: 8px; }
+  .avatars button { font-size: 24px; padding: 8px 0; border-radius: 12px; background: rgba(255,255,255,.04); border: 1px solid rgba(255,255,255,.1); }
+  .avatars button.active { border-color: var(--accent); background: rgba(124,92,255,.2); }
+  .btn { display: inline-flex; justify-content: center; align-items: center; gap: 8px; width: 100%; margin-top: 18px; padding: 15px; border-radius: 14px; border: 0; font-weight: 800; font-size: 16px; color: #fff; background: var(--accent); }
+  .btn.ghost { background: transparent; border: 1px solid rgba(255,255,255,.14); }
+  .row { display: flex; gap: 10px; }
+  .row .btn { margin-top: 10px; font-size: 14.5px; padding: 13px 10px; }
+
+  .q-top { display: flex; justify-content: space-between; font-size: 13px; color: var(--text-muted); margin-bottom: 10px; }
+  .timer { height: 6px; border-radius: 99px; background: rgba(255,255,255,.08); overflow: hidden; margin-bottom: 18px; }
+  .timer i { display: block; height: 100%; background: var(--accent); width: 100%; }
+  .q-text { font-size: 21px; font-weight: 700; line-height: 1.4; margin-bottom: 20px; }
+  .opts { display: grid; gap: 10px; }
+  .opt { text-align: left; padding: 16px 18px; border-radius: 14px; background: rgba(255,255,255,.05); border: 1px solid rgba(255,255,255,.1); color: #fff; font-size: 16px; font-weight: 600; }
+  .opt:hover:not(:disabled) { border-color: rgba(167,139,250,.6); }
+  .opt.right { background: rgba(16,185,129,.2); border-color: #10b981; }
+  .opt.wrong { background: rgba(244,63,94,.18); border-color: #f43f5e; }
+  .explain { margin-top: 14px; font-size: 13.5px; color: #cfcae8; line-height: 1.5; }
+
+  .result-big { font-size: clamp(36px, 10vw, 52px); font-weight: 800; letter-spacing: -.03em; margin: 6px 0; }
+  .board { margin-top: 18px; }
+  .board-row { display: flex; align-items: center; gap: 12px; padding: 12px 0; border-top: 1px solid rgba(255,255,255,.07); }
+  .board-rank { width: 26px; font-weight: 800; color: var(--text-muted); }
+  .board-av { font-size: 24px; }
+  .board-name { flex: 1; font-weight: 700; min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+  .board-meta { font-size: 12.5px; color: var(--text-muted); }
+  .board-score { font-weight: 800; font-variant-numeric: tabular-nums; }
+  .me { color: #c4b5fd; }
+  .waiting { font-size: 13px; color: var(--text-muted); margin-top: 10px; }
+</style>
+<link rel="stylesheet" href="/premium.css">
+<script src="/ui.js"></script>
+<script src="/share-card.js" defer></script>
+</head>
+<body>
+<header>
+  <a href="/"><img src="/logo.png" alt="Quiztify"></a>
+</header>
+
+<main>
+  <!-- Intro -->
+  <section id="v-intro" class="card hidden">
+    <div class="eyebrow">Duel kuis</div>
+    <h1 id="intro-title">Kamu ditantang</h1>
+    <p class="muted" id="intro-sub">5 soal. Poin dari jawaban benar dan kecepatan.</p>
+    <div class="vs">
+      <div class="vs-slot"><div class="vs-avatar" id="vs-a-av">🦁</div><div class="vs-name" id="vs-a-name">Penantang</div></div>
+      <div class="vs-mid">VS</div>
+      <div class="vs-slot"><div class="vs-avatar" id="vs-b-av">?</div><div class="vs-name">Kamu</div></div>
+    </div>
+    <label for="name">Nama kamu</label>
+    <input type="text" id="name" maxlength="24" placeholder="Ketik nama panggilan" autocomplete="nickname">
+    <label>Pilih avatar</label>
+    <div class="avatars" id="avatars"></div>
+    <button class="btn" onclick="joinDuel()">Terima tantangan <i class="fa-solid fa-arrow-right"></i></button>
+  </section>
+
+  <!-- Main -->
+  <section id="v-play" class="card hidden">
+    <div class="q-top"><span id="q-count">Soal 1 dari 5</span><span id="q-score">0 poin</span></div>
+    <div class="timer"><i id="timer-bar"></i></div>
+    <div class="q-text" id="q-text"></div>
+    <div class="opts" id="q-opts"></div>
+    <div class="explain hidden" id="q-explain"></div>
+  </section>
+
+  <!-- Result -->
+  <section id="v-result" class="card hidden">
+    <div class="eyebrow" id="res-eyebrow">Hasil duel</div>
+    <div class="result-big" id="res-big">-</div>
+    <p class="muted" id="res-sub"></p>
+    <div class="board" id="board"></div>
+    <div class="waiting hidden" id="waiting">Menunggu lawan menyelesaikan duel. Halaman ini diperbarui otomatis.</div>
+    <button class="btn" onclick="shareDuelLink()"><i class="fa-brands fa-whatsapp"></i> Kirim tantangan ke teman</button>
+    <div class="row">
+      <button class="btn ghost" onclick="shareDuelCard()">Bagikan hasil</button>
+      <button class="btn ghost" onclick="location.href='/'">Beranda</button>
+    </div>
+  </section>
+
+  <section id="v-error" class="card hidden">
+    <h1>Duel tidak ditemukan</h1>
+    <p class="muted">Link duel ini tidak valid atau sudah dihapus.</p>
+    <button class="btn" onclick="location.href='/'">Ke beranda</button>
+  </section>
+</main>
+
+<script>
+const code = (new URLSearchParams(location.search).get('code') || '').toUpperCase();
+const AVATARS = ['🦁', '🦊', '🐼', '🐯', '🦉', '🐙', '🦄', '🐸', '🐧', '🐬', '🦋', '🚀'];
+const storeKey = 'qz_duel_' + code;
+let duel = null, token = null, myName = '', avatar = AVATARS[0];
+let qIdx = 0, myScore = 0, qStart = 0, timerRaf = null, locked = false, pollTimer = null;
+
+const $ = (id) => document.getElementById(id);
+function show(view) { ['intro', 'play', 'result', 'error'].forEach(v => $('v-' + v).classList.toggle('hidden', v !== view)); }
+function getToken() { try { return sessionStorage.getItem(storeKey) || localStorage.getItem(storeKey); } catch (_) { return null; } }
+function saveToken(t) { try { sessionStorage.setItem(storeKey, t); localStorage.setItem(storeKey, t); } catch (_) {} }
+
+async function load() {
+  const res = await fetch('/api/duels/' + encodeURIComponent(code) + (token ? '?token=' + encodeURIComponent(token) : ''));
+  if (!res.ok) return null;
+  return res.json();
+}
+
+async function init() {
+  if (!code) return show('error');
+  token = getToken();
+  duel = await load();
+  if (!duel) return show('error');
+
+  if (token && duel.me) {
+    // Lanjutkan dari soal terakhir, atau tampilkan hasil jika sudah selesai
+    myName = duel.me.name; avatar = duel.me.avatar;
+    const me = duel.entries.find(e => e.is_me);
+    myScore = me ? me.score : 0;
+    if (duel.me.progress >= duel.total) return showResult();
+    qIdx = duel.me.progress; show('play'); return renderQ();
+  }
+  token = null;
+
+  const host = duel.entries[0];
+  $('intro-title').textContent = host ? `${host.name} menantangmu duel` : 'Duel kuis';
+  $('intro-sub').textContent = `${duel.quiz_title} · ${duel.total} soal. Poin dari jawaban benar dan kecepatan.`;
+  if (host) { $('vs-a-av').textContent = host.avatar; $('vs-a-name').textContent = host.name; }
+  $('avatars').innerHTML = AVATARS.map((a, i) => `<button type="button" class="${i === 0 ? 'active' : ''}" onclick="pickAvatar('${a}', this)">${a}</button>`).join('');
+  show('intro');
+}
+
+function pickAvatar(a, btn) {
+  avatar = a;
+  document.querySelectorAll('#avatars button').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  $('vs-b-av').textContent = a;
+}
+
+async function joinDuel() {
+  const name = $('name').value.trim();
+  if (name.length < 2) return qzToast('Nama minimal 2 karakter', 'error');
+  const res = await fetch(`/api/duels/${code}/join`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ name, avatar }) });
+  const data = await res.json();
+  if (!res.ok) return qzToast(data.error || 'Gagal bergabung', 'error');
+  token = data.token; myName = name;
+  saveToken(token);
+  show('play');
+  renderQ();
+}
+
+function renderQ() {
+  const q = duel.questions[qIdx];
+  locked = false;
+  $('q-count').textContent = `Soal ${qIdx + 1} dari ${duel.total}`;
+  $('q-score').textContent = `${myScore} poin`;
+  $('q-text').textContent = q.text;
+  $('q-explain').classList.add('hidden');
+  $('q-opts').innerHTML = q.options.map((o, i) => `<button class="opt" id="opt-${i}" onclick="answer(${i})">${qzEsc(o)}</button>`).join('');
+  qStart = performance.now();
+  cancelAnimationFrame(timerRaf);
+  const tick = () => {
+    const left = Math.max(0, 1 - (performance.now() - qStart) / duel.time_limit_ms);
+    $('timer-bar').style.width = (left * 100) + '%';
+    if (left <= 0) return answer(-1);
+    timerRaf = requestAnimationFrame(tick);
+  };
+  tick();
+}
+
+async function answer(i) {
+  if (locked) return;
+  locked = true;
+  cancelAnimationFrame(timerRaf);
+  document.querySelectorAll('.opt').forEach(b => b.disabled = true);
+  const t = Math.round(performance.now() - qStart);
+  const res = await fetch(`/api/duels/${code}/answer`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ token, answer_idx: i, time_ms: t }) });
+  const data = await res.json();
+  if (!res.ok) { qzToast(data.error || 'Gagal mengirim jawaban', 'error'); return showResult(); }
+  myScore += data.points;
+  const right = $('opt-' + data.correct_idx);
+  if (right) right.classList.add('right');
+  if (!data.correct && i >= 0) $('opt-' + i).classList.add('wrong');
+  try { window.QuizSound && window.QuizSound.play(data.correct ? 'correct' : 'wrong'); } catch (_) {}
+  if (data.explanation) { $('q-explain').textContent = data.explanation; $('q-explain').classList.remove('hidden'); }
+  $('q-score').textContent = `${myScore} poin`;
+  setTimeout(() => {
+    qIdx++;
+    if (data.finished || qIdx >= duel.total) showResult(); else renderQ();
+  }, data.correct ? 1100 : 2200);
+}
+
+async function showResult() {
+  show('result');
+  duel = await load() || duel;
+  const board = duel.entries;
+  const meIdx = board.findIndex(e => e.is_me);
+  const me = board[meIdx];
+  const others = board.filter((e, i) => i !== meIdx);
+  const pending = others.filter(e => !e.finished);
+  const allDone = board.length > 1 && !pending.length;
+
+  if (!me) { $('res-big').textContent = '-'; }
+  else if (board.length < 2) {
+    $('res-eyebrow').textContent = 'Menunggu lawan';
+    $('res-big').textContent = me.score + ' poin';
+    $('res-sub').textContent = 'Kirim link duel ini ke teman. Hasil muncul setelah mereka selesai.';
+  } else if (!allDone) {
+    $('res-eyebrow').textContent = 'Skor sementara';
+    $('res-big').textContent = me.score + ' poin';
+    $('res-sub').textContent = `${me.correct} dari ${duel.total} benar.`;
+  } else {
+    const won = meIdx === 0;
+    $('res-eyebrow').textContent = 'Hasil duel';
+    $('res-big').textContent = won ? 'Kamu menang' : (board.length === 2 ? 'Kamu kalah' : `Peringkat ${meIdx + 1}`);
+    if (!won) $('res-eyebrow').textContent = 'Hasil duel · tantang balik?';
+    $('res-sub').textContent = `${me.score} poin · ${me.correct} dari ${duel.total} benar.`;
+    if (won) { try { window.QuizSound && window.QuizSound.play('podium'); } catch (_) {} }
+  }
+
+  $('board').innerHTML = board.map((e, i) => `
+    <div class="board-row">
+      <div class="board-rank">${i + 1}</div>
+      <div class="board-av">${qzEsc(e.avatar)}</div>
+      <div class="board-name ${e.is_me ? 'me' : ''}">${qzEsc(e.name)}${e.is_me ? ' (kamu)' : ''}
+        <div class="board-meta">${e.finished ? `${e.correct}/${duel.total} benar · ${(e.time_ms / 1000).toFixed(1)} dtk` : `sedang main (${e.progress}/${duel.total})`}</div>
+      </div>
+      <div class="board-score">${e.score}</div>
+    </div>`).join('');
+
+  $('waiting').classList.toggle('hidden', allDone);
+  clearTimeout(pollTimer);
+  if (!allDone) pollTimer = setTimeout(showResult, 4000);
+}
+
+function shareDuelLink() {
+  const url = `${location.origin}/duel.html?code=${code}`;
+  const text = `Aku tantang kamu duel kuis "${duel.quiz_title}" di Quiztify. Berani? ${url}`;
+  if (navigator.share) navigator.share({ text, url }).catch(() => {});
+  else window.open('https://wa.me/?text=' + encodeURIComponent(text), '_blank');
+}
+
+function shareDuelCard() {
+  const me = duel.entries.find(e => e.is_me) || { score: myScore, correct: 0 };
+  const rank = duel.entries.findIndex(e => e.is_me) + 1;
+  qzShareCard({
+    eyebrow: 'Duel kuis',
+    title: duel.quiz_title,
+    big: duel.entries.length > 1 && rank === 1 ? 'Menang' : `${me.score}`,
+    sub: duel.entries.length > 1 && rank === 1 ? `${me.score} poin` : 'poin',
+    stats: [['Benar', `${me.correct}/${duel.total}`], ['Peringkat', rank ? '#' + rank : '-'], ['Lawan', Math.max(0, duel.entries.length - 1)]],
+    filename: 'quiztify-duel',
+    shareText: `Duel kuis di Quiztify. Coba kalahkan skorku: ${location.origin}/duel.html?code=${code}`
+  });
+}
+
+init();
+</script>
+</body>
+</html>

@@ -176,6 +176,8 @@ safeAddColumn('quizzes', 'settings_json TEXT DEFAULT "{}"');
 safeAddColumn('dosen', 'plan_expires_at TEXT');
 safeAddColumn('dosen', 'quota_ai_gen INTEGER DEFAULT 50');
 safeAddColumn('dosen', 'ai_used_month TEXT');
+safeAddColumn('game_rooms', 'team_count INTEGER DEFAULT 0');
+safeAddColumn('room_players', 'team INTEGER');
 safeAddColumn('dosen', 'ai_used_count INTEGER DEFAULT 0');
 
 db.exec(`PRAGMA user_version = ${SCHEMA_VERSION}`);

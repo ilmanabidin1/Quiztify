@@ -242,3 +242,73 @@ td.num { font-variant-numeric: tabular-nums; }
 .qz-pill.ok  { background: rgba(16,185,129,.14); color: #6ee7b7; }
 .qz-pill.mid { background: rgba(245,158,11,.14); color: #fcd34d; }
 .qz-pill.low { background: rgba(244,63,94,.14);  color: #fda4af; }
+
+/* ---------- Upload materi (AI generator) ---------- */
+.material-drop {
+  display: flex; align-items: center; gap: 14px; margin-top: 14px; padding: 14px 16px; border-radius: 14px;
+  border: 1px dashed rgba(255,255,255,.18); background: rgba(255,255,255,.02); cursor: pointer; position: relative;
+}
+.material-drop:hover { border-color: rgba(167,139,250,.5); }
+.material-drop.ready { border-style: solid; border-color: rgba(16,185,129,.45); background: rgba(16,185,129,.06); }
+.material-drop > i { font-size: 20px; color: #b8a6ff; }
+.material-drop b { display: block; font-size: 13.5px; }
+.material-drop span { display: block; font-size: 12px; color: var(--text-muted); margin-top: 2px; }
+.material-clear { margin-left: auto; background: none; border: 0; color: var(--text-muted); font-size: 20px; }
+
+/* ---------- Peta miskonsepsi ---------- */
+.miscon-card { border: 1px solid rgba(244,63,94,.28); background: rgba(244,63,94,.05); border-radius: 16px; padding: 16px 18px; margin-bottom: 20px; }
+.miscon-head b { display: block; font-size: 15px; }
+.miscon-head span { display: block; font-size: 12.5px; color: var(--text-muted); margin: 2px 0 10px; }
+.miscon-row { display: flex; gap: 14px; align-items: flex-start; padding: 10px 0; border-top: 1px solid rgba(255,255,255,.06); }
+.miscon-pct { flex: 0 0 56px; font-size: 20px; font-weight: 800; color: #fda4af; font-variant-numeric: tabular-nums; }
+.miscon-q { font-size: 13.5px; font-weight: 600; }
+.miscon-a { font-size: 13px; color: var(--text-muted); margin-top: 3px; }
+.miscon-a s { color: #fda4af; }
+.miscon-a b { color: #6ee7b7; }
+
+/* ---------- Taruhan soal terakhir & badge tim ---------- */
+.wager-box { margin: 0 0 16px; padding: 14px 16px; border-radius: 16px; border: 1px solid rgba(245,158,11,.35); background: rgba(245,158,11,.07); }
+.wager-title { font-size: 14px; color: #fde68a; margin-bottom: 10px; }
+.wager-title b { color: #fff; }
+.wager-options { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; }
+.wager-opt { padding: 10px 0; border-radius: 10px; border: 1px solid rgba(255,255,255,.14); background: rgba(255,255,255,.04); color: #fff; font-weight: 700; font-size: 14px; }
+.wager-opt.active { background: #f59e0b; border-color: #f59e0b; color: #1a1030; }
+.team-badge { font-size: 12px; font-weight: 700; padding: 3px 10px; border-radius: 99px; color: #fff; background: color-mix(in srgb, var(--team, #8b5cf6) 30%, transparent); border: 1px solid var(--team, #8b5cf6); }
+
+/* ---------- Host: mode tim ---------- */
+.team-toggle { display: inline-flex; align-items: center; gap: 4px; padding: 4px; border-radius: 12px; background: rgba(255,255,255,.05); border: 1px solid rgba(255,255,255,.1); }
+.team-toggle span { font-size: 12.5px; color: var(--text-muted); padding: 0 8px; }
+.team-toggle button { background: none; border: 0; color: #cfcae8; font-weight: 700; font-size: 13px; padding: 7px 12px; border-radius: 8px; }
+.team-toggle button.active { background: var(--accent); color: #fff; }
+.host-team-strip { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 12px; max-width: 1040px; margin: 0 auto 20px; width: 100%; }
+.host-team { padding: 14px 16px; border-radius: 14px; background: rgba(255,255,255,.04); border: 1px solid color-mix(in srgb, var(--team) 45%, transparent); }
+.host-team-head { display: flex; justify-content: space-between; align-items: baseline; font-size: 14px; }
+.host-team-head span { font-size: 12px; color: var(--text-muted); }
+.host-team-bar { height: 6px; border-radius: 99px; background: rgba(255,255,255,.08); margin: 10px 0 8px; overflow: hidden; }
+.host-team-bar i { display: block; height: 100%; background: var(--team); border-radius: 99px; transition: width .6s var(--ease-out); }
+.host-team-score { font-size: 22px; font-weight: 800; font-variant-numeric: tabular-nums; }
+.host-team-score small { font-size: 12px; font-weight: 600; color: var(--text-muted); }
+
+/* ---------- Kartu hasil (share) ---------- */
+.qz-share-modal { position: fixed; inset: 0; z-index: 200000; display: grid; place-items: center; padding: 16px; background: rgba(5,3,18,.8); backdrop-filter: blur(8px); }
+.qz-share-box { width: min(420px, 100%); max-height: calc(100vh - 32px); overflow: auto; background: #140d33; border: 1px solid rgba(255,255,255,.1); border-radius: 22px; padding: 16px; animation: qzModalIn .35s var(--ease-out); }
+.qz-share-box img { width: 100%; border-radius: 14px; display: block; }
+.qz-share-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 12px; }
+.qz-share-btn { padding: 12px; border-radius: 12px; border: 1px solid rgba(255,255,255,.14); background: transparent; color: #fff; font-weight: 700; font-size: 14px; }
+.qz-share-btn.primary { background: var(--accent); border-color: var(--accent); grid-column: 1 / -1; }
+.qz-share-btn.ghost { color: var(--text-muted, #a39ec4); }
+
+/* ---------- Podium: aksi & rekap sesi ---------- */
+.podium-actions { display: flex; gap: 10px; justify-content: center; flex-wrap: wrap; margin-top: 8px; }
+.podium-actions .btn-nav { padding: 11px 18px; }
+.session-recap { max-width: 480px; margin: 0 auto 16px; text-align: left; padding: 18px; border-radius: 18px; background: rgba(255,255,255,.04); border: 1px solid rgba(255,255,255,.08); }
+.recap-head b { display: block; font-size: 16px; }
+.recap-head span { font-size: 13px; color: var(--text-muted); }
+.recap-sub { font-size: 12px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: #fda4af; margin: 16px 0 8px; }
+.recap-item { padding: 12px 0; border-top: 1px solid rgba(255,255,255,.06); }
+.recap-q { font-size: 14px; font-weight: 600; }
+.recap-a { font-size: 13px; color: var(--text-muted); margin-top: 4px; }
+.recap-a b { color: #6ee7b7; }
+.recap-e { font-size: 12.5px; color: #b3aed6; margin-top: 4px; line-height: 1.5; }
+.recap-cta { width: 100%; justify-content: center; margin-top: 10px; }
+.recap-perfect { margin-top: 10px; font-size: 14px; color: #6ee7b7; }

@@ -1,0 +1,463 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Portal Mahasiswa · Quiztify</title>
+<meta name="description" content="Kerjakan kuis kelas, jaga streak harian, dan naik divisi di liga mingguan.">
+<link rel="icon" type="image/png" href="/logo.png">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+<script src="/sound.js"></script>
+<style>
+  :root {
+    --bg-dark: #0e0725; --bg-card: #18103c; --border: #322475;
+    --text: #fff; --text-muted: #a39ec4; --emerald: #10b981; --rose: #f43f5e; --amber: #f59e0b;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { background: radial-gradient(900px 480px at 50% -10%, rgba(124,58,237,.3), transparent 70%), var(--bg-dark); color: var(--text); min-height: 100vh; }
+  .hidden { display: none !important; }
+  header { display: flex; justify-content: space-between; align-items: center; padding: 14px clamp(16px, 4vw, 40px); border-bottom: 1px solid rgba(255,255,255,.06); position: sticky; top: 0; z-index: 10; background: rgba(14,7,37,.8); backdrop-filter: blur(12px); }
+  header img { height: 32px; }
+  .who { display: flex; align-items: center; gap: 10px; font-size: 14px; font-weight: 600; }
+  .who .av { font-size: 22px; }
+  .icon-btn { background: transparent; border: 1px solid rgba(255,255,255,.12); color: #fff; border-radius: 10px; padding: 8px 12px; font-size: 13px; font-weight: 600; }
+  main { max-width: 760px; margin: 0 auto; padding: 22px 16px 80px; }
+  .card { background: rgba(255,255,255,.04); border: 1px solid rgba(255,255,255,.08); border-radius: 20px; padding: 22px; }
+  .eyebrow { font-size: 12px; font-weight: 700; letter-spacing: .1em; text-transform: uppercase; color: #b8a6ff; }
+  h1 { font-size: clamp(24px, 5vw, 32px); line-height: 1.15; margin: 6px 0 8px; }
+  h2 { font-size: 18px; margin-bottom: 12px; }
+  .muted { color: var(--text-muted); font-size: 14px; line-height: 1.6; }
+  .btn { display: inline-flex; align-items: center; justify-content: center; gap: 8px; padding: 13px 18px; border-radius: 12px; border: 0; background: var(--accent); color: #fff; font-weight: 700; font-size: 15px; }
+  .btn.block { width: 100%; }
+  .btn.ghost { background: transparent; border: 1px solid rgba(255,255,255,.14); }
+  .btn:disabled { opacity: .5; }
+
+  /* Auth */
+  .auth { max-width: 420px; margin: 6vh auto 0; }
+  .tabs { display: grid; grid-template-columns: 1fr 1fr; gap: 4px; padding: 4px; border-radius: 12px; background: rgba(255,255,255,.05); margin: 18px 0; }
+  .tabs button { padding: 10px; border: 0; border-radius: 9px; background: none; color: var(--text-muted); font-weight: 700; }
+  .tabs button.active { background: var(--accent); color: #fff; }
+  label { display: block; font-size: 12.5px; font-weight: 700; color: var(--text-muted); margin: 14px 0 6px; }
+  input { width: 100%; padding: 13px 14px; border-radius: 12px; background: rgba(8,4,24,.7); border: 1px solid rgba(255,255,255,.12); color: #fff; font-size: 16px; }
+  .err { color: #fda4af; font-size: 13px; margin-top: 12px; min-height: 18px; }
+
+  /* Home */
+  .hello { margin-bottom: 18px; }
+  .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-bottom: 14px; }
+  .streak-card { position: relative; overflow: hidden; }
+  .streak-num { font-size: 52px; font-weight: 800; letter-spacing: -.03em; line-height: 1; }
+  .streak-num .flame { font-size: 40px; }
+  .streak-card.off .flame { filter: grayscale(1); opacity: .5; }
+  .week { display: flex; gap: 6px; margin: 14px 0 16px; }
+  .week i { flex: 1; height: 6px; border-radius: 99px; background: rgba(255,255,255,.1); }
+  .week i.on { background: var(--amber); }
+  .league-div { font-size: 26px; font-weight: 800; }
+  .league-meta { font-size: 13px; color: var(--text-muted); margin-top: 4px; }
+  .pill { display: inline-block; font-size: 12px; font-weight: 700; padding: 3px 10px; border-radius: 99px; }
+  .pill.up { background: rgba(16,185,129,.15); color: #6ee7b7; }
+  .pill.down { background: rgba(244,63,94,.15); color: #fda4af; }
+  .pill.todo { background: rgba(124,92,255,.18); color: #c4b5fd; }
+  .pill.done { background: rgba(255,255,255,.07); color: var(--text-muted); }
+  .quiz-row { display: flex; align-items: center; gap: 14px; padding: 14px 0; border-top: 1px solid rgba(255,255,255,.06); }
+  .quiz-row:first-of-type { border-top: 0; }
+  .quiz-emoji { font-size: 24px; width: 44px; height: 44px; border-radius: 12px; display: grid; place-items: center; background: rgba(255,255,255,.05); flex: 0 0 44px; }
+  .quiz-info { flex: 1; min-width: 0; }
+  .quiz-info b { display: block; font-size: 15px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .quiz-info span { font-size: 12.5px; color: var(--text-muted); }
+  .quiz-row .btn { padding: 9px 14px; font-size: 13.5px; }
+  .empty { text-align: center; padding: 22px 0; color: var(--text-muted); font-size: 14px; }
+
+  /* Play (daily & quiz) */
+  .play-top { display: flex; justify-content: space-between; align-items: center; margin-bottom: 14px; font-size: 13px; color: var(--text-muted); }
+  .dots { display: flex; gap: 6px; margin-bottom: 18px; }
+  .dots i { flex: 1; height: 6px; border-radius: 99px; background: rgba(255,255,255,.1); }
+  .dots i.ok { background: var(--emerald); } .dots i.no { background: var(--rose); } .dots i.cur { background: var(--accent); }
+  .tag { font-size: 12px; color: #fcd34d; margin-bottom: 8px; }
+  .q-text { font-size: 20px; font-weight: 700; line-height: 1.45; margin-bottom: 18px; }
+  .opts { display: grid; gap: 10px; }
+  .opt { text-align: left; padding: 15px 16px; border-radius: 14px; background: rgba(255,255,255,.05); border: 1px solid rgba(255,255,255,.1); color: #fff; font-size: 15.5px; font-weight: 600; }
+  .opt:hover:not(:disabled) { border-color: rgba(167,139,250,.6); }
+  .opt.sel { border-color: var(--accent); background: rgba(124,92,255,.18); }
+  .opt.right { background: rgba(16,185,129,.2); border-color: #10b981; }
+  .opt.wrong { background: rgba(244,63,94,.18); border-color: #f43f5e; }
+  .explain { margin-top: 14px; padding: 12px 14px; border-radius: 12px; background: rgba(255,255,255,.04); font-size: 13.5px; color: #d6d3ea; line-height: 1.55; }
+  .nav-row { display: flex; gap: 10px; margin-top: 18px; }
+  .nav-row .btn { flex: 1; }
+  .done-hero { text-align: center; padding: 16px 0 6px; }
+  .done-hero .big { font-size: 64px; font-weight: 800; letter-spacing: -.03em; }
+
+  /* League */
+  .lg-row { display: flex; align-items: center; gap: 12px; padding: 12px 0; border-top: 1px solid rgba(255,255,255,.06); }
+  .lg-rank { width: 28px; font-weight: 800; color: var(--text-muted); text-align: right; }
+  .lg-av { font-size: 22px; }
+  .lg-name { flex: 1; font-weight: 600; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .lg-row.me .lg-name { color: #c4b5fd; }
+  .lg-xp { font-weight: 800; font-variant-numeric: tabular-nums; }
+  .lg-zone { font-size: 11.5px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; padding: 12px 0 4px; }
+  .lg-zone.up { color: #6ee7b7; } .lg-zone.down { color: #fda4af; }
+  .back { background: none; border: 0; color: var(--text-muted); font-size: 14px; font-weight: 600; margin-bottom: 14px; }
+
+  @media (max-width: 560px) { .grid2 { grid-template-columns: 1fr; } }
+</style>
+<link rel="stylesheet" href="/premium.css">
+<script src="/ui.js"></script>
+<script src="/share-card.js" defer></script>
+</head>
+<body>
+<header>
+  <a href="/"><img src="/logo.png" alt="Quiztify"></a>
+  <div class="who hidden" id="who">
+    <span class="av" id="who-av"></span><span id="who-name"></span>
+    <button class="icon-btn" onclick="logout()">Keluar</button>
+  </div>
+</header>
+
+<main>
+  <!-- AUTH -->
+  <section id="v-auth" class="auth hidden">
+    <div class="eyebrow">Portal mahasiswa</div>
+    <h1>Belajar sedikit, setiap hari.</h1>
+    <p class="muted">5 soal sehari dari materi kelasmu, liga mingguan, dan duel dengan teman.</p>
+    <div class="tabs">
+      <button id="tab-login" class="active" onclick="authTab('login')">Masuk</button>
+      <button id="tab-reg" onclick="authTab('reg')">Daftar</button>
+    </div>
+    <form id="f-login" onsubmit="event.preventDefault();doLogin()">
+      <label for="l-npm">NIM</label>
+      <input id="l-npm" autocomplete="username" required>
+      <label for="l-pw">Password</label>
+      <input id="l-pw" type="password" autocomplete="current-password" required>
+      <button class="btn block" style="margin-top:18px">Masuk</button>
+    </form>
+    <form id="f-reg" class="hidden" onsubmit="event.preventDefault();doRegister()">
+      <label for="r-code">Kode kelas</label>
+      <input id="r-code" placeholder="Contoh: QZ-4525" required>
+      <div class="muted" id="r-class" style="font-size:12.5px;margin-top:6px"></div>
+      <label for="r-nama">Nama lengkap</label>
+      <input id="r-nama" autocomplete="name" required>
+      <label for="r-npm">NIM</label>
+      <input id="r-npm" autocomplete="username" required>
+      <label for="r-pw">Password (min. 6 karakter)</label>
+      <input id="r-pw" type="password" autocomplete="new-password" minlength="6" required>
+      <button class="btn block" style="margin-top:18px">Daftar &amp; masuk kelas</button>
+    </form>
+    <div class="err" id="auth-err"></div>
+  </section>
+
+  <!-- HOME -->
+  <section id="v-home" class="hidden">
+    <div class="hello">
+      <div class="eyebrow" id="home-class"></div>
+      <h1 id="home-hello">Halo</h1>
+    </div>
+
+    <div class="grid2">
+      <div class="card streak-card" id="streak-card">
+        <div class="eyebrow">Streak harian</div>
+        <div class="streak-num"><span class="flame">🔥</span> <span id="streak-days">0</span></div>
+        <div class="week" id="streak-week"></div>
+        <p class="muted" id="streak-msg" style="font-size:13px;margin-bottom:14px"></p>
+        <button class="btn block" id="btn-daily" onclick="openDaily()">Kerjakan 5 soal hari ini</button>
+      </div>
+      <div class="card">
+        <div class="eyebrow">Liga minggu ini</div>
+        <div class="league-div" id="lg-div" style="margin-top:8px">-</div>
+        <div class="league-meta" id="lg-meta"></div>
+        <div class="league-meta" id="lg-ends"></div>
+        <button class="btn ghost block" style="margin-top:16px" onclick="openLeague()">Lihat klasemen</button>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>Kuis kelas</h2>
+      <div id="quiz-list"></div>
+    </div>
+  </section>
+
+  <!-- DAILY -->
+  <section id="v-daily" class="hidden">
+    <button class="back" onclick="goHome()"><i class="fa-solid fa-arrow-left"></i> Kembali</button>
+    <div class="card" id="daily-card"></div>
+  </section>
+
+  <!-- LEAGUE -->
+  <section id="v-league" class="hidden">
+    <button class="back" onclick="goHome()"><i class="fa-solid fa-arrow-left"></i> Kembali</button>
+    <div class="card">
+      <div class="eyebrow" id="lgv-week"></div>
+      <h1 id="lgv-title">Liga</h1>
+      <p class="muted" id="lgv-rule"></p>
+      <div id="lgv-list" style="margin-top:10px"></div>
+    </div>
+  </section>
+
+  <!-- QUIZ -->
+  <section id="v-quiz" class="hidden">
+    <button class="back" onclick="confirmLeaveQuiz()"><i class="fa-solid fa-arrow-left"></i> Kembali</button>
+    <div class="card" id="quiz-card"></div>
+  </section>
+</main>
+
+<script>
+const $ = (id) => document.getElementById(id);
+const VIEWS = ['auth', 'home', 'daily', 'league', 'quiz'];
+function show(v) { VIEWS.forEach(x => $('v-' + x).classList.toggle('hidden', x !== v)); window.scrollTo(0, 0); }
+async function api(path, body) {
+  const res = await fetch(path, body ? { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) } : {});
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) throw data;
+  return data;
+}
+const sound = (n) => { try { window.QuizSound && window.QuizSound.play(n); } catch (_) {} };
+let home = null;
+
+// ---------- Auth ----------
+function authTab(t) {
+  $('tab-login').classList.toggle('active', t === 'login');
+  $('tab-reg').classList.toggle('active', t === 'reg');
+  $('f-login').classList.toggle('hidden', t !== 'login');
+  $('f-reg').classList.toggle('hidden', t !== 'reg');
+  $('auth-err').textContent = '';
+}
+let codeTimer;
+$('r-code').addEventListener('input', () => {
+  clearTimeout(codeTimer);
+  const code = $('r-code').value.trim();
+  $('r-class').textContent = '';
+  if (code.length < 4) return;
+  codeTimer = setTimeout(async () => {
+    try { const c = await api('/api/classes/by-code/' + encodeURIComponent(code)); $('r-class').textContent = `Kelas: ${c.name}${c.course ? ' · ' + c.course : ''}`; }
+    catch (e) { $('r-class').textContent = 'Kode kelas tidak ditemukan'; }
+  }, 350);
+});
+async function doLogin() {
+  try { await api('/api/auth/student/login', { npm: $('l-npm').value.trim(), password: $('l-pw').value }); boot(); }
+  catch (e) { $('auth-err').textContent = e.error || 'Gagal masuk'; }
+}
+async function doRegister() {
+  try {
+    await api('/api/auth/student/register', { class_code: $('r-code').value.trim(), nama: $('r-nama').value.trim(), npm: $('r-npm').value.trim(), password: $('r-pw').value });
+    qzToast('Akun dibuat. Selamat datang di kelas!', 'success');
+    boot();
+  } catch (e) { $('auth-err').textContent = e.error || 'Gagal mendaftar'; }
+}
+async function logout() { await fetch('/api/auth/logout', { method: 'POST' }); location.reload(); }
+
+// ---------- Home ----------
+async function boot() {
+  const me = await api('/api/me').catch(() => ({}));
+  if (me.role !== 'student') {
+    const code = new URLSearchParams(location.search).get('kelas');
+    if (code) { authTab('reg'); $('r-code').value = code; $('r-code').dispatchEvent(new Event('input')); }
+    $('who').classList.add('hidden');
+    return show('auth');
+  }
+  $('who').classList.remove('hidden');
+  $('who-av').textContent = me.avatar || '🦊';
+  $('who-name').textContent = me.nama;
+  goHome();
+}
+
+async function goHome() {
+  show('home');
+  try {
+    home = await api('/api/student/home');
+  } catch (e) { return qzToast(e.error || 'Gagal memuat beranda', 'error'); }
+  const s = home.streak;
+  $('home-class').textContent = home.class ? `${home.class.name}${home.class.course ? ' · ' + home.class.course : ''}` : 'Belum tergabung di kelas';
+  $('home-hello').textContent = `Halo, ${home.student.nama.split(' ')[0]}`;
+  $('streak-days').textContent = s.streak;
+  $('streak-card').classList.toggle('off', !s.done_today);
+  // Titik 7 hari terakhir: hari yang masih termasuk streak berjalan
+  const lit = Math.min(7, s.done_today ? s.streak : s.streak);
+  $('streak-week').innerHTML = Array.from({ length: 7 }, (_, i) => `<i class="${i >= 7 - lit - (s.done_today ? 0 : 1) && i < 7 - (s.done_today ? 0 : 1) ? 'on' : ''}"></i>`).join('');
+  $('streak-msg').textContent = s.done_today
+    ? `Streak aman untuk hari ini. Rekor terbaikmu ${s.best} hari.`
+    : s.streak > 0 ? `Kerjakan hari ini supaya streak ${s.streak} hari tidak putus.` : 'Mulai streak pertamamu hari ini.';
+  $('btn-daily').textContent = s.done_today ? 'Lihat hasil hari ini' : (home.review_due ? `Kerjakan 5 soal (${home.review_due} soal ulangan)` : 'Kerjakan 5 soal hari ini');
+
+  if (home.league) {
+    $('lg-div').textContent = 'Divisi ' + home.league.division_name;
+    $('lg-meta').textContent = `Peringkat ${home.league.rank} dari ${home.league.size} · ${home.league.xp} XP`;
+    $('lg-ends').textContent = 'Berakhir ' + relTime(home.league.ends_at);
+  }
+  loadQuizzes();
+}
+
+function relTime(iso) {
+  const ms = new Date(iso) - Date.now();
+  const d = Math.floor(ms / 86400e3), h = Math.floor((ms % 86400e3) / 3600e3);
+  return d > 0 ? `dalam ${d} hari ${h} jam` : `dalam ${Math.max(1, h)} jam`;
+}
+
+async function loadQuizzes() {
+  const list = await api('/api/student/quizzes').catch(() => []);
+  $('quiz-list').innerHTML = list.length ? list.map(q => `
+    <div class="quiz-row">
+      <div class="quiz-emoji">${qzEsc(q.cover_emoji || '📝')}</div>
+      <div class="quiz-info">
+        <b>${qzEsc(q.title)}</b>
+        <span>${q.type === 'pre' ? 'Pre-Test' : q.type === 'post' ? 'Post-Test' : 'Kuis'}${q.deadline ? ' · tenggat ' + new Date(q.deadline).toLocaleDateString('id-ID', { day: 'numeric', month: 'short' }) : ''}</span>
+      </div>
+      ${q.done
+        ? `<span class="pill done">Nilai ${q.my_score}</span><button class="btn ghost" onclick="duelFromQuiz(${q.id})" title="Tantang teman">Duel</button>`
+        : q.open ? `<button class="btn" onclick="startQuiz(${q.id})">Kerjakan</button>` : '<span class="pill down">Ditutup</span>'}
+    </div>`).join('') : '<div class="empty">Belum ada kuis dari dosen untuk kelas ini.</div>';
+}
+
+// ---------- Soal harian ----------
+let daily = null, dIdx = 0;
+async function openDaily() {
+  show('daily');
+  const card = $('daily-card');
+  card.innerHTML = '<div class="muted">Menyiapkan soal...</div>';
+  try { daily = await api('/api/student/daily'); } catch (e) { card.innerHTML = `<div class="muted">${qzEsc(e.error || 'Gagal memuat soal')}</div>`; return; }
+  if (daily.empty) { card.innerHTML = `<div class="eyebrow">5 soal harian</div><h1>Belum ada soal</h1><p class="muted">${qzEsc(daily.message)}</p>`; return; }
+  dIdx = daily.questions.findIndex(q => !q.answered);
+  if (dIdx < 0 || daily.done) return renderDailyDone();
+  renderDailyQ();
+}
+
+function dailyDots() {
+  return `<div class="dots">${daily.questions.map((q, i) => `<i class="${q.answered ? (q.your_answer === q.correct_idx ? 'ok' : 'no') : i === dIdx ? 'cur' : ''}"></i>`).join('')}</div>`;
+}
+
+function renderDailyQ() {
+  const q = daily.questions[dIdx];
+  $('daily-card').innerHTML = `
+    <div class="play-top"><span>Soal ${dIdx + 1} dari ${daily.questions.length}</span><span>${qzEsc(q.quiz_title)}</span></div>
+    ${dailyDots()}
+    ${q.is_review ? '<div class="tag"><i class="fa-solid fa-rotate"></i> Soal yang dulu kamu jawab salah</div>' : ''}
+    <div class="q-text">${qzEsc(q.text)}</div>
+    <div class="opts">${q.options.map((o, i) => `<button class="opt" id="d-opt-${i}" onclick="answerDaily(${i})">${qzEsc(o)}</button>`).join('')}</div>
+    <div id="d-after"></div>`;
+}
+
+async function answerDaily(i) {
+  const q = daily.questions[dIdx];
+  document.querySelectorAll('#daily-card .opt').forEach(b => b.disabled = true);
+  let r;
+  try { r = await api('/api/student/daily/answer', { question_id: q.id, answer_idx: i }); }
+  catch (e) { return qzToast(e.error || 'Gagal mengirim jawaban', 'error'); }
+  Object.assign(q, { answered: true, your_answer: i, correct_idx: r.correct_idx, explanation: r.explanation });
+  $('d-opt-' + r.correct_idx).classList.add('right');
+  if (!r.correct) $('d-opt-' + i).classList.add('wrong');
+  sound(r.correct ? 'correct' : 'wrong');
+  daily.correct = r.total_correct; daily.xp = r.xp;
+  if (r.finished) { daily.done = true; daily.newStreak = r.streak; }
+  $('d-after').innerHTML = `
+    ${r.explanation ? `<div class="explain">${qzEsc(r.explanation)}</div>` : ''}
+    <div class="nav-row"><button class="btn" onclick="${r.finished ? 'renderDailyDone()' : 'nextDaily()'}">${r.finished ? 'Lihat hasil' : 'Lanjut'}</button></div>`;
+}
+function nextDaily() { dIdx++; renderDailyQ(); }
+
+function renderDailyDone() {
+  const total = daily.questions.length;
+  const correct = daily.questions.filter(q => q.your_answer === q.correct_idx).length;
+  const streak = daily.newStreak || (home && home.streak.streak) || 1;
+  if (daily.newStreak) { sound('podium'); try { confetti && confetti({ particleCount: 80, spread: 70 }); } catch (_) {} }
+  $('daily-card').innerHTML = `
+    ${dailyDots()}
+    <div class="done-hero">
+      <div class="eyebrow">Selesai untuk hari ini</div>
+      <div class="big">🔥 ${streak}</div>
+      <p class="muted">hari beruntun · ${correct} dari ${total} benar · +${daily.xp} XP</p>
+    </div>
+    <div class="nav-row">
+      <button class="btn ghost" onclick="shareDaily(${streak}, ${correct}, ${total})">Bagikan</button>
+      <button class="btn" onclick="goHome()">Selesai</button>
+    </div>`;
+}
+
+function shareDaily(streak, correct, total) {
+  qzShareCard({
+    eyebrow: 'Streak belajar harian', title: home && home.class ? home.class.name : 'Quiztify',
+    big: `🔥 ${streak}`, sub: 'hari beruntun',
+    stats: [['Benar hari ini', `${correct}/${total}`], ['XP', `+${daily.xp}`], ['Divisi', home && home.league ? home.league.division_name : '-']],
+    filename: 'quiztify-streak', shareText: `Streak belajarku ${streak} hari di Quiztify`
+  });
+}
+
+// ---------- Liga ----------
+async function openLeague() {
+  show('league');
+  let lg;
+  try { lg = await api('/api/student/league'); } catch (e) { return qzToast(e.error || 'Gagal memuat liga', 'error'); }
+  $('lgv-week').textContent = 'Berakhir ' + relTime(lg.ends_at);
+  $('lgv-title').textContent = 'Divisi ' + lg.division_name;
+  $('lgv-rule').textContent = 'XP dari soal harian dan kuis kelas minggu ini. Peringkat teratas naik divisi, terbawah turun.';
+  let lastZone = undefined;
+  $('lgv-list').innerHTML = lg.members.map(m => {
+    let head = '';
+    if (m.zone !== lastZone) {
+      head = m.zone === 'up' ? '<div class="lg-zone up">Zona naik divisi</div>' : m.zone === 'down' ? '<div class="lg-zone down">Zona turun divisi</div>' : (lastZone ? '<div class="lg-zone">Zona aman</div>' : '');
+      lastZone = m.zone;
+    }
+    return `${head}<div class="lg-row ${m.is_me ? 'me' : ''}">
+      <div class="lg-rank">${m.rank}</div><div class="lg-av">${qzEsc(m.avatar)}</div>
+      <div class="lg-name">${qzEsc(m.nama)}${m.is_me ? ' (kamu)' : ''}</div><div class="lg-xp">${m.xp} XP</div></div>`;
+  }).join('');
+}
+
+// ---------- Kuis kelas (asinkron) ----------
+let quiz = null, qIdx = 0, qAnswers = {}, qStart = 0, tabSwitches = 0;
+async function startQuiz(id) {
+  try { quiz = await api('/api/student/quiz/' + id); } catch (e) { return qzToast(e.error || 'Gagal membuka kuis', 'error'); }
+  qIdx = 0; qAnswers = {}; qStart = Date.now(); tabSwitches = 0;
+  show('quiz');
+  renderQuizQ();
+}
+document.addEventListener('visibilitychange', () => { if (quiz && document.hidden) tabSwitches++; });
+
+function renderQuizQ() {
+  const q = quiz.questions[qIdx];
+  const last = qIdx === quiz.questions.length - 1;
+  $('quiz-card').innerHTML = `
+    <div class="play-top"><span>${qzEsc(quiz.title)}</span><span>Soal ${qIdx + 1} dari ${quiz.questions.length}</span></div>
+    <div class="dots">${quiz.questions.map((x, i) => `<i class="${qAnswers[x.id] !== undefined ? 'ok' : i === qIdx ? 'cur' : ''}"></i>`).join('')}</div>
+    <div class="q-text">${qzEsc(q.text)}</div>
+    <div class="opts">${q.options.map((o, i) => `<button class="opt ${qAnswers[q.id] === i ? 'sel' : ''}" onclick="pickQuiz(${i})">${qzEsc(o)}</button>`).join('')}</div>
+    <div class="nav-row">
+      <button class="btn ghost" onclick="moveQuiz(-1)" ${qIdx === 0 ? 'disabled' : ''}>Sebelumnya</button>
+      <button class="btn" onclick="${last ? 'submitQuiz()' : 'moveQuiz(1)'}">${last ? 'Kumpulkan' : 'Berikutnya'}</button>
+    </div>`;
+}
+function pickQuiz(i) { qAnswers[quiz.questions[qIdx].id] = i; renderQuizQ(); }
+function moveQuiz(d) { qIdx = Math.max(0, Math.min(quiz.questions.length - 1, qIdx + d)); renderQuizQ(); }
+function confirmLeaveQuiz() { if (!Object.keys(qAnswers).length || confirm('Keluar dari kuis? Jawabanmu belum dikumpulkan.')) { quiz = null; goHome(); } }
+
+async function submitQuiz() {
+  const missing = quiz.questions.length - Object.keys(qAnswers).length;
+  if (missing > 0 && !confirm(`${missing} soal belum dijawab. Tetap kumpulkan?`)) return;
+  let r;
+  try { r = await api(`/api/student/quiz/${quiz.id}/submit`, { answers: qAnswers, time_spent_sec: Math.round((Date.now() - qStart) / 1000), tab_switches: tabSwitches }); }
+  catch (e) { return qzToast(e.error || 'Gagal mengumpulkan', 'error'); }
+  sound(r.score >= 70 ? 'podium' : 'correct');
+  const quizId = quiz.id, title = quiz.title;
+  quiz = null;
+  $('quiz-card').innerHTML = `
+    <div class="done-hero">
+      <div class="eyebrow">${qzEsc(title)}</div>
+      <div class="big">${r.score}</div>
+      <p class="muted">${r.correct} dari ${r.total} benar${r.ngain !== null && r.ngain !== undefined ? ` · N-Gain ${Number(r.ngain).toFixed(2)}` : ''}</p>
+    </div>
+    <p class="muted" style="text-align:center">Soal yang salah akan muncul lagi di 5 soal harianmu sampai kamu menguasainya.</p>
+    <div class="nav-row">
+      <button class="btn ghost" onclick="duelFromQuiz(${quizId})">Tantang teman</button>
+      <button class="btn" onclick="goHome()">Selesai</button>
+    </div>`;
+}
+
+async function duelFromQuiz(quizId) {
+  try {
+    const d = await api('/api/duels', { quiz_id: quizId, name: home ? home.student.nama.split(' ')[0] : 'Mahasiswa', avatar: home ? home.student.avatar : '🦊' });
+    try { sessionStorage.setItem('qz_duel_' + d.code, d.token); localStorage.setItem('qz_duel_' + d.code, d.token); } catch (_) {}
+    location.href = '/duel.html?code=' + d.code;
+  } catch (e) { qzToast(e.error || 'Gagal membuat duel', 'error'); }
+}
+
+boot();
+</script>
+<script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.9.3/dist/confetti.browser.min.js" defer></script>
+</body>
+</html>

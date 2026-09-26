@@ -773,6 +773,7 @@
 </style>
 <link rel="stylesheet" href="/premium.css">
 <script src="/ui.js"></script>
+<script src="/material.js" defer></script>
 
 <style id="host-premium">
   .pin-display-banner {
@@ -1075,9 +1076,17 @@
             <i class="fa-solid fa-list-check"></i> <span id="class-hub-quizzes-count">0</span> Kuis aktif untuk penilaian akhir
           </p>
         </div>
-        <button class="btn btn-primary" onclick="exportClassGradebookCsv()">
-          <i class="fa-solid fa-file-excel"></i> <span>Unduh Rekap Nilai Akhir (CSV)</span>
-        </button>
+        <div style="display:flex;gap:10px;flex-wrap:wrap">
+          <button class="btn btn-ghost" onclick="copyClassInvite()" title="Mahasiswa daftar lewat link ini untuk soal harian, liga, dan kuis kelas">
+            <i class="fa-solid fa-link"></i> <span>Link undangan mahasiswa</span>
+          </button>
+          <button class="btn btn-ghost" onclick="openSemesterReport()">
+            <i class="fa-solid fa-file-contract"></i> <span>Rapor semester</span>
+          </button>
+          <button class="btn btn-primary" onclick="exportClassGradebookCsv()">
+            <i class="fa-solid fa-file-excel"></i> <span>Unduh rekap nilai (CSV)</span>
+          </button>
+        </div>
       </div>
 
       <!-- Class Sub Navigation Tabs -->
@@ -1254,6 +1263,7 @@
               <li><i class="fa-solid fa-check" style="color:var(--emerald);margin-right:8px"></i> <b>Generate AI tanpa batas</b></li>
                             <li><i class="fa-solid fa-check" style="color:var(--emerald);margin-right:8px"></i> <b>1-Click AI Auto-Remedial Generator</b></li>
               <li><i class="fa-solid fa-check" style="color:var(--emerald);margin-right:8px"></i> <b>Berita Acara Resmi &amp; QR Verifikasi</b></li>
+              <li><i class="fa-solid fa-check" style="color:var(--emerald);margin-right:8px"></i> <b>Rapor semester siap akreditasi</b></li>
               <li><i class="fa-solid fa-check" style="color:var(--emerald);margin-right:8px"></i> <b>Ekspor Nilai Format SIAKAD (CSV)</b></li>
             </ul>
             <button class="btn btn-emerald" style="width:100%;justify-content:center;padding:12px;font-weight:800" onclick="upgradeToPlan('pro')">
@@ -1322,6 +1332,8 @@
   </div>
 
   <!-- State 1: Host Lobby Screen -->
+  <div id="host-team-strip" class="host-team-strip hidden"></div>
+
   <div id="host-lobby-state" style="max-width:1000px;margin:0 auto;width:100%;text-align:center">
     <div class="pin-display-banner">
       <div style="text-align:left">
@@ -1345,9 +1357,18 @@
       <div style="font-size:18px;font-weight:800">
         <i class="fa-solid fa-users" style="color:var(--purple-light)"></i> <span id="host-player-count">0</span> peserta bergabung
       </div>
-      <button class="btn btn-emerald" style="padding:14px 32px;font-size:16px" onclick="hostStartGame()">
-        <i class="fa-solid fa-play"></i> <span>Mulai kuis</span>
-      </button>
+      <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap">
+        <div class="team-toggle" id="host-team-toggle" title="Bagi peserta ke tim. Skor tim = rata-rata anggota.">
+          <span>Mode tim</span>
+          <button data-n="0" class="active" onclick="hostSetTeams(0)">Off</button>
+          <button data-n="2" onclick="hostSetTeams(2)">2</button>
+          <button data-n="3" onclick="hostSetTeams(3)">3</button>
+          <button data-n="4" onclick="hostSetTeams(4)">4</button>
+        </div>
+        <button class="btn btn-emerald" style="padding:14px 32px;font-size:16px" onclick="hostStartGame()">
+          <i class="fa-solid fa-play"></i> <span>Mulai kuis</span>
+        </button>
+      </div>
     </div>
 
     <div class="player-lobby-chips" id="host-lobby-chips">
@@ -1456,6 +1477,16 @@
       <label style="font-size:12px;font-weight:700;color:var(--text-muted)">TOPIK ATAU MATERI KUIS</label>
       <input type="text" id="ai-topic" class="input" placeholder="Contoh: Algoritma & Struktur Data, Hukum Perdata, Biologi Molekuler">
     </div>
+
+    <label class="material-drop" id="material-drop">
+      <input type="file" id="ai-material-file" accept=".pdf,.pptx,.txt,.md" hidden onchange="onMaterialPicked(this.files[0])">
+      <i class="fa-solid fa-file-arrow-up"></i>
+      <div>
+        <b id="material-drop-title">Atau upload materi kuliah (PDF, PPTX, TXT)</b>
+        <span id="material-drop-sub">Soal dibuat dari isi materimu, lengkap dengan rujukan halaman.</span>
+      </div>
+      <button type="button" class="material-clear hidden" id="material-clear" onclick="event.preventDefault();clearMaterial()" aria-label="Hapus materi">×</button>
+    </label>
 
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:14px">
       <div>
@@ -1633,6 +1664,9 @@
           </p>
         </div>
       </div>
+
+      <!-- Peta Miskonsepsi -->
+      <div id="diag-misconceptions" class="miscon-card hidden"></div>
 
       <!-- Overview Stats -->
       <div class="metrics-grid" style="grid-template-columns:repeat(3,1fr);gap:14px;margin-bottom:20px">
@@ -2463,6 +2497,33 @@ async function checkActiveLiveRoom() {
   }
 }
 
+// ---------- Mode tim ----------
+async function hostSetTeams(n) {
+  if (!activeHostPin) return;
+  const res = await fetch(`/api/rooms/${activeHostPin}/control`, {
+    method: 'POST', headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ action: 'teams', count: n })
+  });
+  const data = await res.json();
+  if (!res.ok) return alert(data.error || 'Gagal mengatur mode tim');
+  document.querySelectorAll('#host-team-toggle button').forEach(b => b.classList.toggle('active', Number(b.dataset.n) === n));
+  qzToast(n ? `Peserta dibagi ke ${n} tim. Skor tim dihitung dari rata-rata anggota.` : 'Mode tim dimatikan.', 'info');
+}
+
+function renderHostTeams(data) {
+  const strip = document.getElementById('host-team-strip');
+  document.querySelectorAll('#host-team-toggle button').forEach(b => b.classList.toggle('active', Number(b.dataset.n) === (data.team_count || 0)));
+  if (!data.teams || !data.teams.length) { strip.classList.add('hidden'); return; }
+  const top = Math.max(1, ...data.teams.map(t => t.avg_score));
+  strip.innerHTML = data.teams.map((t, i) => `
+    <div class="host-team" style="--team:${t.color}">
+      <div class="host-team-head"><b>${i === 0 && data.status !== 'lobby' && t.avg_score > 0 ? '👑 ' : ''}${t.name}</b><span>${t.members} anggota</span></div>
+      <div class="host-team-bar"><i style="width:${Math.round((t.avg_score / top) * 100)}%"></i></div>
+      <div class="host-team-score">${t.avg_score.toLocaleString()} <small>rata-rata</small></div>
+    </div>`).join('');
+  strip.classList.remove('hidden');
+}
+
 async function hostLiveGame(quizId) {
   try {
     const res = await fetch('/api/rooms/create', {
@@ -2674,6 +2735,7 @@ async function pollHostState() {
     }
 
     document.getElementById('host-player-count').textContent = data.players_count;
+    renderHostTeams(data);
 
     if (data.status === 'lobby') {
       showHostState('lobby');
@@ -2681,8 +2743,9 @@ async function pollHostState() {
       if (data.players.length === 0) {
         chipsCont.innerHTML = `<div class="host-waiting"><span class="host-waiting-dots"><i></i><i></i><i></i></span>Menunggu peserta memasukkan PIN di perangkat mereka</div>`;
       } else {
+        const TEAM_COLORS = ['#8b5cf6', '#0ea5e9', '#10b981', '#f59e0b'];
         chipsCont.innerHTML = data.players.map(p => `
-          <div class="p-chip"><span>${p.avatar}</span> <span>${p.name}</span></div>
+          <div class="p-chip" ${p.team !== null && p.team !== undefined && data.team_count ? `style="border-color:${TEAM_COLORS[p.team]} !important"` : ''}><span>${qzEsc(p.avatar)}</span> <span>${qzEsc(p.name)}</span></div>
         `).join('');
       }
     } else if (data.status === 'question') {
@@ -2973,14 +3036,46 @@ function closeAiModal() {
   document.getElementById('modal-ai').classList.add('hidden');
 }
 
+let aiMaterial = null;
+let aiMaterialName = '';
+
+async function onMaterialPicked(file) {
+  if (!file) return;
+  const title = document.getElementById('material-drop-title');
+  const sub = document.getElementById('material-drop-sub');
+  title.textContent = 'Membaca ' + file.name + '...';
+  sub.textContent = 'Mengambil teks per halaman.';
+  try {
+    if (!window.extractMaterial) throw new Error('Pembaca file belum siap, coba lagi.');
+    aiMaterial = await window.extractMaterial(file);
+    aiMaterialName = file.name.replace(/\.[^.]+$/, '');
+    title.textContent = file.name;
+    sub.textContent = `${aiMaterial.length} halaman terbaca. Soal akan merujuk ke halaman sumber.`;
+    document.getElementById('material-drop').classList.add('ready');
+    document.getElementById('material-clear').classList.remove('hidden');
+  } catch (e) {
+    clearMaterial();
+    alert(e.message || 'Gagal membaca file');
+  }
+}
+
+function clearMaterial() {
+  aiMaterial = null; aiMaterialName = '';
+  document.getElementById('ai-material-file').value = '';
+  document.getElementById('material-drop-title').textContent = 'Atau upload materi kuliah (PDF, PPTX, TXT)';
+  document.getElementById('material-drop-sub').textContent = 'Soal dibuat dari isi materimu, lengkap dengan rujukan halaman.';
+  document.getElementById('material-drop').classList.remove('ready');
+  document.getElementById('material-clear').classList.add('hidden');
+}
+
 async function runAiGenerator() {
   const topic = document.getElementById('ai-topic').value.trim();
   const count = document.getElementById('ai-count').value;
   const difficulty = document.getElementById('ai-difficulty')?.value || 'Menengah / Analisis (C3-C4)';
   const btn = document.getElementById('btn-run-ai');
 
-  if (!topic) {
-    alert('Silakan masukkan topik atau materi kuis terlebih dahulu!');
+  if (!topic && !aiMaterial) {
+    alert('Masukkan topik atau upload materi kuliah terlebih dahulu.');
     document.getElementById('ai-topic').focus();
     return;
   }
@@ -2992,7 +3087,7 @@ async function runAiGenerator() {
     const res = await fetch('/api/quizzes/generate-ai', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ topic, count, difficulty })
+      body: JSON.stringify({ topic: topic || aiMaterialName, count, difficulty, material: aiMaterial || undefined })
     });
     const data = await res.json();
     if (!res.ok) throw data;
@@ -3111,6 +3206,77 @@ async function saveQuiz() {
 
 // ---------- CLASSES & GRADEBOOK HUB ----------
 let currentClassId = null;
+
+async function copyClassInvite() {
+  const code = document.getElementById('class-hub-code').textContent.trim();
+  const url = `${location.origin}/student.html?kelas=${encodeURIComponent(code)}`;
+  try { await navigator.clipboard.writeText(url); qzToast(`Link undangan disalin. Mahasiswa juga bisa daftar dengan kode ${code}.`, 'success'); }
+  catch (_) { prompt('Salin link undangan ini:', url); }
+}
+
+// Rapor semester siap cetak / simpan PDF untuk borang & akreditasi
+async function openSemesterReport() {
+  if (!currentClassId) return;
+  const win = window.open('', '_blank');
+  if (!win) return alert('Popup diblokir browser. Izinkan popup untuk membuka rapor.');
+  win.document.write('<p style="font-family:sans-serif;padding:40px">Menyusun rapor semester...</p>');
+  try {
+    const res = await fetch(`/api/classes/${currentClassId}/semester-report`);
+    const r = await res.json();
+    if (!res.ok) { win.close(); return alert(r.error || 'Gagal menyusun rapor'); }
+    const e = qzEsc;
+    const fmt = (v, d = 2) => v === null || v === undefined ? '-' : Number(v).toFixed(d);
+    const date = new Date(r.generated_at).toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' });
+    const maxG = Math.max(0.01, ...r.pairs.map(p => p.avg_ngain || 0));
+    win.document.open();
+    win.document.write(`<!DOCTYPE html><html lang="id"><head><meta charset="utf-8"><title>Rapor Semester - ${e(r.class.name)}</title>
+<style>
+  body { font-family: 'Plus Jakarta Sans', system-ui, sans-serif; color: #111827; margin: 0; padding: 40px; font-size: 13px; }
+  h1 { font-size: 22px; margin: 0 0 4px; } h2 { font-size: 15px; margin: 28px 0 10px; border-bottom: 2px solid #111827; padding-bottom: 6px; }
+  .meta { color: #4b5563; } .kpis { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; margin-top: 20px; }
+  .kpi { border: 1px solid #d1d5db; border-radius: 10px; padding: 12px; } .kpi b { display: block; font-size: 22px; } .kpi span { color: #6b7280; font-size: 11.5px; }
+  table { width: 100%; border-collapse: collapse; } th, td { border: 1px solid #d1d5db; padding: 7px 9px; text-align: left; } th { background: #f3f4f6; font-size: 11.5px; }
+  td.n { text-align: right; font-variant-numeric: tabular-nums; }
+  .bar { height: 10px; background: #e5e7eb; border-radius: 99px; overflow: hidden; } .bar i { display: block; height: 100%; background: #6d28d9; }
+  .sign { display: flex; justify-content: flex-end; margin-top: 50px; } .sign div { text-align: center; width: 240px; } .sign .line { margin-top: 70px; border-top: 1px solid #111827; padding-top: 4px; font-weight: 700; }
+  .actions { margin-bottom: 20px; } .actions button { padding: 10px 18px; border: 0; border-radius: 8px; background: #6d28d9; color: #fff; font-weight: 700; cursor: pointer; }
+  .note { color: #6b7280; font-size: 11.5px; margin-top: 8px; }
+  @media print { .actions { display: none; } body { padding: 0; } }
+</style></head><body>
+<div class="actions"><button onclick="print()">Cetak / simpan PDF</button></div>
+<h1>Rapor Efektivitas Pembelajaran Semester</h1>
+<div class="meta">${e(r.class.name)} · ${e(r.class.course || '')} · ${e(r.class.institution || '')}<br>Dosen pengampu: ${e(r.class.dosen)} · Disusun ${date}</div>
+
+<div class="kpis">
+  <div class="kpi"><b>${r.summary.n_students}</b><span>Mahasiswa</span></div>
+  <div class="kpi"><b>${r.summary.n_quizzes}</b><span>Asesmen</span></div>
+  <div class="kpi"><b>${r.summary.participation}%</b><span>Partisipasi</span></div>
+  <div class="kpi"><b>${fmt(r.summary.avg_ngain)}</b><span>Rata-rata N-Gain (${e(r.summary.category)})</span></div>
+</div>
+
+<h2>1. Peningkatan pemahaman per materi (Pre-Test ke Post-Test)</h2>
+${r.pairs.length ? `<table><tr><th>Materi</th><th>n</th><th>Rata-rata Pre</th><th>Rata-rata Post</th><th>N-Gain</th><th style="width:22%">Grafik</th><th>Kategori</th></tr>
+${r.pairs.map(p => `<tr><td>${e(p.title)}</td><td class="n">${p.n}</td><td class="n">${fmt(p.avg_pre, 1)}</td><td class="n">${fmt(p.avg_post, 1)}</td><td class="n"><b>${fmt(p.avg_ngain)}</b></td>
+<td><div class="bar"><i style="width:${Math.round(((p.avg_ngain || 0) / maxG) * 100)}%"></i></div></td><td>${e(p.category)}</td></tr>`).join('')}</table>
+<div class="note">N-Gain (Hake, 1998) = (Post - Pre) / (100 - Pre). Tinggi: g ≥ 0,7 · Sedang: 0,3 ≤ g &lt; 0,7 · Rendah: g &lt; 0,3.</div>`
+: '<p class="meta">Belum ada pasangan Pre-Test dan Post-Test di kelas ini.</p>'}
+
+<h2>2. Rekap asesmen</h2>
+<table><tr><th>Asesmen</th><th>Jenis</th><th>Capaian (kategori)</th><th>Peserta</th><th>Rata-rata</th><th>Indikasi pindah tab</th></tr>
+${r.quizzes.map(q => `<tr><td>${e(q.title)}</td><td>${q.type === 'pre' ? 'Pre-Test' : q.type === 'post' ? 'Post-Test' : 'Kuis'}</td><td>${e(q.category || '-')}</td><td class="n">${q.n}</td><td class="n">${fmt(q.avg_score, 1)}</td><td class="n">${q.tab_switches || 0}</td></tr>`).join('')}</table>
+
+<h2>3. Capaian per mahasiswa</h2>
+<table><tr><th>No</th><th>Nama</th><th>NIM</th><th>Asesmen diikuti</th><th>Rata-rata nilai</th><th>N-Gain</th><th>Kategori</th></tr>
+${r.students.map((s, i) => `<tr><td class="n">${i + 1}</td><td>${e(s.nama)}</td><td>${e(s.npm)}</td><td class="n">${s.n_quizzes}</td><td class="n">${fmt(s.avg_score, 1)}</td><td class="n">${fmt(s.avg_ngain)}</td><td>${e(s.category)}</td></tr>`).join('')}</table>
+
+<div class="sign"><div>Dosen Pengampu,<div class="line">${e(r.class.dosen)}</div></div></div>
+</body></html>`);
+    win.document.close();
+  } catch (err) {
+    win.close();
+    alert('Gagal menyusun rapor semester');
+  }
+}
 
 async function loadClasses() {
   try {
@@ -4057,6 +4223,26 @@ async function openDiagnosticModal(quizId) {
       summaryEl.innerHTML = data.diagnostic_summary.map(s => `• ${s}`).join('<br>');
     } else {
       summaryEl.textContent = 'Belum cukup data jawaban peserta untuk menganalisis miskonsepsi pembelajaran.';
+    }
+
+    const misEl = document.getElementById('diag-misconceptions');
+    if (data.misconceptions && data.misconceptions.length) {
+      misEl.innerHTML = `
+        <div class="miscon-head">
+          <b>Peta miskonsepsi kelas</b>
+          <span>Jawaban salah yang paling banyak dipilih. Bahas ini di awal pertemuan berikutnya.</span>
+        </div>
+        ${data.misconceptions.map(m => `
+          <div class="miscon-row">
+            <div class="miscon-pct">${m.pct}%</div>
+            <div class="miscon-body">
+              <div class="miscon-q">Soal ${m.question_index + 1}: ${qzEsc(m.question)}</div>
+              <div class="miscon-a">Memilih <s>${qzEsc(m.wrong_option)}</s> <i class="fa-solid fa-arrow-right"></i> seharusnya <b>${qzEsc(m.correct_answer)}</b></div>
+            </div>
+          </div>`).join('')}`;
+      misEl.classList.remove('hidden');
+    } else {
+      misEl.classList.add('hidden');
     }
 
     const qList = document.getElementById('diag-questions-list');

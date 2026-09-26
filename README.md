@@ -25,6 +25,17 @@
 - Klasifikasi efektivitas otomatis: **Tinggi (g ≥ 0.7)**, **Sedang (0.3 ≤ g < 0.7)**, dan **Rendah (g < 0.3)**.
 - **Ekspor Laporan CSV/Excel**: Unduh rekapitulasi nilai seluruh kelas dalam satu klik.
 
+### 🔥 Retensi & Pertumbuhan
+- **Portal mahasiswa** (`/student.html`): daftar dengan kode kelas, kerjakan kuis kelas, lihat nilai.
+- **5 soal harian + streak**: soal diambil dari kuis yang sudah dikerjakan; soal yang pernah salah diulang dengan jeda 1, 3, 7, 14 hari sampai dikuasai.
+- **Liga mingguan**: XP dari soal harian dan kuis kelas; divisi Perunggu, Perak, Emas, Berlian dengan zona naik/turun tiap Senin (WIB).
+- **Duel 1 lawan 1** (`/duel.html?code=`): tantang teman lewat link, 5 soal, poin dari ketepatan dan kecepatan.
+- **Kartu hasil**: gambar 1080x1350 siap dibagikan dari podium, duel, dan soal harian.
+- **Mode tim & taruhan soal terakhir** di kuis live; **rekap sesi** otomatis di layar akhir.
+- **Kuis dari materi kuliah**: upload PDF/PPTX/TXT, soal merujuk halaman sumber.
+- **Peta miskonsepsi**: jawaban salah terpopuler per soal di modal diagnostik.
+- **Rapor semester** (Pro): rekap N-Gain per materi, asesmen, dan capaian mahasiswa siap cetak.
+
 ### 🔊 4. Web Audio API Sound Synthesizer Bawaan
 - Efek suara audio synthesizer jernih langsung dari browser (tanpa aset file eksternal lambat): suara hitung mundur, nada jawaban benar, suara buzz salah, kombo streak, dan fanfare kemenangan podium. Dilengkapi tombol *Mute/Unmute*.
 
