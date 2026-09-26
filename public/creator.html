@@ -834,7 +834,7 @@
         <div class="profile-dropdown-avatar" id="popup-avatar">👨‍🏫</div>
         <div class="profile-dropdown-info">
           <div class="profile-dropdown-name" id="popup-name">Nama Creator</div>
-          <div class="profile-dropdown-email" id="popup-email">—</div>
+          <div class="profile-dropdown-email" id="popup-email">-</div>
           <div class="profile-dropdown-inst"><i class="fa-solid fa-building-columns"></i> <span id="popup-inst">Quiztify Academy</span></div>
         </div>
       </div>
@@ -936,7 +936,7 @@
           <div class="metric-icon" style="background:rgba(245,158,11,0.2);color:var(--amber)"><i class="fa-solid fa-graduation-cap"></i></div>
           <div>
             <div class="metric-lbl">Efektivitas N-Gain</div>
-            <div class="metric-val" id="metric-ngain">–</div>
+            <div class="metric-val" id="metric-ngain">-</div>
           </div>
         </div>
       </div>
@@ -2246,7 +2246,7 @@ function updateProfilePopup() {
   document.getElementById('popup-avatar').textContent = initials;
   document.getElementById('side-avatar').textContent = initials;
   document.getElementById('popup-name').textContent  = me.nama || 'Creator';
-  document.getElementById('popup-email').textContent = me.email || '—';
+  document.getElementById('popup-email').textContent = me.email || '-';
   document.getElementById('popup-inst').textContent  = me.institution || 'Quiztify Academy';
 }
 
@@ -2349,12 +2349,12 @@ async function loadDashboard() {
     });
 
     document.getElementById('metric-attempts').textContent = totalAttempts;
-    document.getElementById('metric-avg-score').textContent = totalAttempts ? `${Math.round(weightedScore / totalAttempts)}%` : '–';
+    document.getElementById('metric-avg-score').textContent = totalAttempts ? `${Math.round(weightedScore / totalAttempts)}%` : '-';
 
     fetch('/api/creator/ngain-summary').then(r => r.json()).then(ng => {
       const el = document.getElementById('metric-ngain');
       if (ng.avg_ngain === null || ng.avg_ngain === undefined) {
-        el.innerHTML = '–<small>Belum ada Pre/Post</small>';
+        el.innerHTML = '-<small>Belum ada Pre/Post</small>';
       } else {
         el.innerHTML = `${ng.avg_ngain.toFixed(2)}<small>${ng.category}</small>`;
       }

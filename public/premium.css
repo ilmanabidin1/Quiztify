@@ -3,7 +3,14 @@
    Shared polish loaded after each page's own styles: typography, focus,
    motion, toasts and the responsive creator shell.
    ========================================================================== */
-@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@600;700&display=swap');
+/* Font di-host sendiri (lebih cepat, tanpa request ke Google) */
+@font-face { font-family: 'Plus Jakarta Sans'; font-style: normal; font-weight: 400; font-display: swap; src: url('/fonts/plus-jakarta-sans-latin-400-normal.woff2') format('woff2'); }
+@font-face { font-family: 'Plus Jakarta Sans'; font-style: normal; font-weight: 500; font-display: swap; src: url('/fonts/plus-jakarta-sans-latin-500-normal.woff2') format('woff2'); }
+@font-face { font-family: 'Plus Jakarta Sans'; font-style: normal; font-weight: 600; font-display: swap; src: url('/fonts/plus-jakarta-sans-latin-600-normal.woff2') format('woff2'); }
+@font-face { font-family: 'Plus Jakarta Sans'; font-style: normal; font-weight: 700; font-display: swap; src: url('/fonts/plus-jakarta-sans-latin-700-normal.woff2') format('woff2'); }
+@font-face { font-family: 'Plus Jakarta Sans'; font-style: normal; font-weight: 800; font-display: swap; src: url('/fonts/plus-jakarta-sans-latin-800-normal.woff2') format('woff2'); }
+@font-face { font-family: 'JetBrains Mono'; font-style: normal; font-weight: 600; font-display: swap; src: url('/fonts/jetbrains-mono-latin-600-normal.woff2') format('woff2'); }
+@font-face { font-family: 'JetBrains Mono'; font-style: normal; font-weight: 700; font-display: swap; src: url('/fonts/jetbrains-mono-latin-700-normal.woff2') format('woff2'); }
 
 :root {
   --font-ui: 'Plus Jakarta Sans', 'Segoe UI', system-ui, -apple-system, sans-serif;
@@ -18,6 +25,8 @@
 /* `html *` beats the pages' `* {}` reset but loses to any class, so icon
    fonts, monospace PINs and the serif Berita Acara keep their own faces. */
 html * { font-family: var(--font-ui); }
+/* Spasi bawaan Plus Jakarta Sans sempit (0.17em); dilebarkan supaya kata tidak menempel */
+body { word-spacing: 0.07em; }
 html body.a11y-dyslexia *:not(i) { font-family: Arial, 'Helvetica Neue', system-ui, sans-serif; }
 body {
   -webkit-font-smoothing: antialiased;

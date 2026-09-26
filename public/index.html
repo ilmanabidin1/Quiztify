@@ -3,7 +3,14 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Quiztify.id - Platform Kuis Interaktif &amp; Gamifikasi Modern</title>
+<title>Quiztify - Kuis interaktif untuk kelas</title>
+<meta name="description" content="Kuis live, Pre/Post Test dengan N-Gain, dan analitik belajar untuk dosen dan guru Indonesia. Peserta cukup masukkan PIN.">
+<meta property="og:type" content="website">
+<meta property="og:title" content="Quiztify - Kuis interaktif yang bikin kelas hidup">
+<meta property="og:description" content="Kuis live, Pre/Post Test dengan N-Gain, dan analitik belajar dalam satu tempat.">
+<meta property="og:image" content="/img/host-live.jpg">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="theme-color" content="#0e0725">
 <link rel="icon" type="image/png" href="/logo.png">
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
 <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.9.3/dist/confetti.browser.min.js"></script>
@@ -955,107 +962,151 @@
 <script src="/ui.js"></script>
 <script src="/share-card.js" defer></script>
 <style id="landing-premium">
-  /* ----- Landing (premium pass) ----- */
+  /* ----- Landing (redesign: taste-skill, preserve brand) -----
+     Design read: landing platform kuis untuk dosen & guru Indonesia, premium tapi hangat,
+     tema gelap + aksen ungu brand. Dial: variance 6, motion 4, density 4. */
   #view-landing { position: relative; overflow: hidden; }
   header { padding: 12px clamp(16px, 4vw, 40px); background: rgba(14, 7, 37, .72); border-bottom-color: rgba(255,255,255,.06); }
-  .hero { position: relative; padding: clamp(56px, 10vw, 110px) 20px 40px; }
-  .hero-glow {
-    position: absolute; inset: -120px 0 auto; height: 620px; z-index: -1; pointer-events: none;
-    background:
-      radial-gradient(600px 300px at 50% 20%, rgba(124,58,237,.35), transparent 70%),
-      radial-gradient(420px 240px at 75% 45%, rgba(6,182,212,.16), transparent 70%),
-      radial-gradient(420px 240px at 25% 50%, rgba(118,216,58,.10), transparent 70%);
+  .skip-link { position: absolute; left: 12px; top: -60px; z-index: 1000; padding: 10px 14px; border-radius: 10px; background: var(--accent); color: #fff; font-weight: 700; text-decoration: none; }
+  .skip-link:focus { top: 12px; }
+
+  /* Tekstur halus supaya permukaan gelap tidak terasa steril */
+  #view-landing::before {
+    content: ''; position: fixed; inset: 0; z-index: 0; pointer-events: none; opacity: .05;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
   }
-  .badge-hero { background: rgba(255,255,255,.04); border-color: rgba(255,255,255,.1); color: #d8d4f5; font-weight: 600; }
-  .badge-dot { width: 7px; height: 7px; border-radius: 50%; background: #76d83a; box-shadow: 0 0 0 4px rgba(118,216,58,.18); }
-  .hero h1 { font-size: clamp(36px, 6.4vw, 72px); line-height: 1.04; letter-spacing: -0.035em; max-width: 900px; margin: 0 auto 22px; }
-  .hero p { color: #b3aed6; max-width: 620px; }
+  #view-landing > * { position: relative; z-index: 1; }
 
-  .pin-card-wrapper {
-    max-width: 520px; margin: 0 auto 26px; padding: 22px; border-radius: 22px; text-align: left;
-    background: linear-gradient(180deg, rgba(255,255,255,.06), rgba(255,255,255,.025));
-    border: 1px solid rgba(255,255,255,.1);
-    box-shadow: 0 30px 80px -30px rgba(124,58,237,.55), inset 0 1px 0 rgba(255,255,255,.08);
-    backdrop-filter: blur(10px);
+  .lp-wrap { max-width: 1200px; margin: 0 auto; padding: 0 clamp(16px, 4vw, 32px); }
+  .lp-h2 { font-size: clamp(28px, 3.4vw, 42px); line-height: 1.1; letter-spacing: -0.03em; font-weight: 800; text-wrap: balance; }
+  .lp-lead { color: #b3aed6; font-size: 16.5px; line-height: 1.65; max-width: 58ch; text-wrap: pretty; }
+
+  /* Hero: split, teks kiri, produk asli kanan */
+  .hero2 { display: grid; grid-template-columns: minmax(0, 1.15fr) minmax(0, 1fr); gap: clamp(32px, 5vw, 72px); align-items: center; padding-top: clamp(40px, 6vw, 88px); padding-bottom: clamp(40px, 5vw, 64px); }
+  .hero2::before { content: ''; position: absolute; inset: -140px -10% auto 30%; height: 720px; z-index: -1; pointer-events: none;
+    background: radial-gradient(520px 340px at 60% 40%, rgba(124,92,255,.22), transparent 70%); }
+  .hero2-eyebrow { font-size: 13px; font-weight: 600; color: #b8a6ff; margin-bottom: 18px; }
+  .hero2 h1 { font-size: clamp(38px, 4.4vw, 60px); line-height: 1.02; letter-spacing: -0.04em; font-weight: 800; text-wrap: balance; margin-bottom: 20px; }
+  .hero2 h1 em { font-style: normal; color: #b8a6ff; }
+  .hero2 .lp-lead { margin-bottom: 30px; }
+  .pin-form { display: flex; gap: 10px; max-width: 460px; padding: 6px; border-radius: 16px; background: rgba(255,255,255,.05); border: 1px solid rgba(255,255,255,.1); }
+  .pin-form input {
+    flex: 1; min-width: 0; border: 0; background: transparent; color: #fff; padding: 12px 14px;
+    font-family: var(--font-mono); font-size: 22px; font-weight: 700; letter-spacing: .28em; outline: none;
   }
-  .pin-card-wrapper::before { display: none; }
-  .pin-card-wrapper .pin-label { font-size: 12px; letter-spacing: .08em; color: #a39ec4; margin: 0 0 10px 4px; }
-  .pin-card-wrapper .pin-input-group { display: flex; gap: 10px; margin-bottom: 12px; }
-  .pin-card-wrapper .pin-input {
-    flex: 1; min-width: 0; font-family: var(--font-mono); font-size: 24px; letter-spacing: .3em; text-align: center;
-    padding: 14px 12px; border-radius: 14px; background: rgba(8,4,24,.7); border: 1px solid rgba(255,255,255,.1);
+  .pin-form input::placeholder { font-family: var(--font-ui); font-size: 16px; letter-spacing: 0; font-weight: 500; color: rgba(255,255,255,.4); }
+  .pin-form:focus-within { border-color: rgba(184,166,255,.6); box-shadow: 0 0 0 4px rgba(124,92,255,.18); }
+  .pin-form button { border: 0; border-radius: 11px; padding: 0 24px; background: var(--accent); color: #fff; font-weight: 700; font-size: 15px; display: inline-flex; align-items: center; gap: 8px; transition: background .2s, transform .2s var(--ease-out); }
+  .pin-form button:hover { background: var(--accent-hover); }
+  .hero2-alt { margin-top: 16px; font-size: 14px; color: var(--text-muted); }
+  .hero2-alt a { color: #d6ccff; font-weight: 600; text-decoration: underline; text-underline-offset: 3px; text-decoration-color: rgba(214,204,255,.35); cursor: pointer; }
+  .hero2-alt a:hover { text-decoration-color: currentColor; }
+
+  .hero2-visual { position: relative; padding-bottom: 8%; }
+  .shot { display: block; width: 100%; height: auto; border-radius: 18px; border: 1px solid rgba(255,255,255,.1);
+    box-shadow: 0 40px 90px -40px rgba(20, 8, 60, .9), 0 0 0 1px rgba(124,92,255,.08); background: #120b2c; }
+  .hero2-host { width: 100%; }
+  .hero2-phone { position: absolute; left: -9%; bottom: -2%; width: 36%; border-radius: 26px; border: 6px solid #1c1440;
+    box-shadow: 0 30px 60px -20px rgba(8, 4, 24, .95); }
+
+  /* Cara kerja: judul menempel kiri, langkah bertumpuk kanan */
+  .how { display: grid; grid-template-columns: 5fr 7fr; gap: clamp(32px, 6vw, 96px); padding-top: clamp(40px, 6vw, 80px); }
+  .how-head { position: sticky; top: 110px; align-self: start; }
+  .how-head .lp-lead { margin-top: 16px; }
+  .how-facts { margin-top: 26px; display: grid; gap: 10px; color: #cfc9ec; font-size: 14.5px; }
+  .how-facts i { color: #b8a6ff; width: 20px; }
+  .how-steps { list-style: none; display: grid; gap: 0; }
+  .how-steps li { display: grid; grid-template-columns: 48px 1fr; gap: 20px; padding: 28px 0; border-top: 1px solid rgba(255,255,255,.08); }
+  .how-steps li:first-child { border-top: 0; padding-top: 4px; }
+  .how-ic { width: 48px; height: 48px; border-radius: 14px; display: grid; place-items: center; background: rgba(124,92,255,.14); color: #c4b5fd; font-size: 19px; }
+  .how-steps h3 { font-size: 21px; letter-spacing: -0.02em; margin-bottom: 6px; }
+  .how-steps p { color: var(--text-muted); font-size: 15px; line-height: 1.65; max-width: 52ch; }
+
+  /* Bento fitur: 8 item, 8 sel */
+  .bento-sec { padding-top: clamp(64px, 9vw, 120px); }
+  .bento-sec .lp-h2 { max-width: 20ch; margin-bottom: 36px; }
+  .bento {
+    display: grid; gap: 14px; grid-template-columns: repeat(4, minmax(0, 1fr));
+    grid-template-areas: "a a b d" "c e b f" "g g h h";
   }
-  .pin-card-wrapper .pin-input::placeholder { font-family: var(--font-ui); font-size: 17px; letter-spacing: .02em; font-weight: 600; }
-  .pin-card-wrapper .pin-input:focus { border-color: #a78bfa; box-shadow: 0 0 0 4px rgba(167,139,250,.2); }
-  .pin-card-wrapper .btn-join {
-    width: auto; padding: 0 26px; border-radius: 14px; font-size: 15px; letter-spacing: 0;
-    background: linear-gradient(135deg, #10b981, #059669); box-shadow: 0 10px 24px -8px rgba(16,185,129,.6);
-  }
-  .quick-demo { margin: 0 0 0 4px; text-align: left; }
-  .quick-demo a { color: #c4b5fd; }
-  .hero-trust { list-style: none; display: flex; flex-wrap: wrap; justify-content: center; gap: 8px 22px; color: #8f89b8; font-size: 13px; font-weight: 500; }
-  .hero-trust i { color: #76d83a; margin-right: 6px; }
+  .bx { position: relative; overflow: hidden; border-radius: 20px; padding: 24px; background: rgba(255,255,255,.035); border: 1px solid rgba(255,255,255,.07); display: flex; flex-direction: column; min-height: 220px; }
+  .bx h3 { font-size: 18px; letter-spacing: -0.02em; margin-bottom: 6px; }
+  .bx p { color: var(--text-muted); font-size: 14px; line-height: 1.6; max-width: 46ch; }
+  .bx .bx-ic { font-size: 18px; color: #c4b5fd; margin-bottom: 14px; }
+  .bx-img { margin: 20px -24px -24px; flex: 1; min-height: 160px; overflow: hidden; border-top: 1px solid rgba(255,255,255,.07); }
+  .bx-img img { width: 100%; height: 100%; object-fit: cover; object-position: top center; display: block; transition: transform .6s var(--ease-out); }
+  .bx:hover .bx-img img { transform: scale(1.025); }
+  .b-a { grid-area: a; } .b-b { grid-area: b; } .b-c { grid-area: c; } .b-d { grid-area: d; }
+  .b-e { grid-area: e; } .b-f { grid-area: f; } .b-g { grid-area: g; } .b-h { grid-area: h; }
+  .b-b { background: linear-gradient(180deg, rgba(124,92,255,.16), rgba(255,255,255,.03)); }
+  .b-d { background: radial-gradient(260px 160px at 100% 0%, rgba(124,92,255,.22), transparent 70%), rgba(255,255,255,.035); }
+  .b-g { flex-direction: row; gap: 24px; align-items: stretch; }
+  .b-g > div:first-child { flex: 1; }
+  .b-g .bx-img { margin: -24px -24px -24px 0; border-top: 0; border-left: 1px solid rgba(255,255,255,.07); flex: 1.3; min-height: 200px; }
+  .b-g .bx-img img { object-position: left top; }
 
-  .lp-section { max-width: 1120px; margin: 0 auto; padding: clamp(56px, 8vw, 96px) 20px 0; }
-  .features-section, .pricing-section { margin-bottom: 0; }
-  .section-title { margin-bottom: 44px; }
-  .section-title .eyebrow { display: inline-block; font-size: 12px; font-weight: 700; letter-spacing: .12em; text-transform: uppercase; color: #a78bfa; margin-bottom: 12px; }
-  .section-title h2 { font-size: clamp(26px, 3.6vw, 40px); line-height: 1.15; max-width: 720px; margin: 0 auto 12px; }
-
-  .steps-grid { list-style: none; display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 16px; counter-reset: none; }
-  .step-card { padding: 28px; border-radius: 20px; background: rgba(255,255,255,.03); border: 1px solid rgba(255,255,255,.07); }
-  .step-num { font-family: var(--font-mono); font-size: 13px; color: #a78bfa; background: rgba(124,58,237,.14); padding: 4px 10px; border-radius: 8px; }
-  .step-card h3 { font-size: 19px; margin: 18px 0 8px; }
-  .step-card p { color: var(--text-muted); font-size: 14.5px; line-height: 1.6; }
-
-  .features-grid { grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 16px; }
-  .f-card { background: rgba(255,255,255,.03); border-color: rgba(255,255,255,.07); padding: 26px; }
-  .f-card:hover { border-color: rgba(167,139,250,.45); transform: translateY(-3px); }
-  .f-card-wide { grid-column: span 2; }
-  .f-card-full { grid-column: 1 / -1; }
-  body:has(#view-landing.hidden) .btn-student { display: none; }
-  .f-icon { width: 44px; height: 44px; font-size: 19px; border-radius: 12px; }
-  .f-card p { font-size: 14px; line-height: 1.6; }
-  @media (max-width: 900px) { .features-grid { grid-template-columns: repeat(2, minmax(0,1fr)); } }
-  @media (max-width: 560px) { .features-grid { grid-template-columns: 1fr; } .f-card-wide { grid-column: auto; } }
-
-  .pricing-grid { gap: 16px; }
-  .p-card { background: rgba(255,255,255,.03); border-color: rgba(255,255,255,.08); padding: 30px 26px; display: flex; flex-direction: column; justify-content: space-between; }
-  .p-card.featured { background: linear-gradient(180deg, rgba(124,58,237,.18), rgba(255,255,255,.03)); border-color: rgba(167,139,250,.55); }
+  /* Harga */
+  .pricing-section { max-width: 1200px; margin: 0 auto; padding: clamp(64px, 9vw, 120px) clamp(16px, 4vw, 32px) 0; }
+  .pricing-section .lp-h2 { margin-bottom: 10px; }
+  .pricing-section .lp-lead { margin-bottom: 36px; }
+  .pricing-grid { gap: 14px; }
+  .p-card { background: rgba(255,255,255,.035); border-color: rgba(255,255,255,.08); padding: 30px 26px; display: flex; flex-direction: column; justify-content: space-between; }
+  .p-card.featured { background: linear-gradient(180deg, rgba(124,92,255,.18), rgba(255,255,255,.03)); border-color: rgba(184,166,255,.5); }
   .p-badge { text-transform: none; letter-spacing: 0; }
-  .p-desc { color: var(--text-muted); font-size: 13.5px; margin-top: 4px; }
+  .p-desc { color: var(--text-muted); font-size: 14px; margin-top: 4px; }
   .p-price { font-size: 38px; letter-spacing: -0.03em; }
   .p-features li { color: #d6d3ea; }
-  .p-cta { justify-content: center; padding: 12px 18px; }
+  .p-features li i { color: #b8a6ff; }
+  .p-cta { justify-content: center; padding: 12px 18px; white-space: nowrap; }
 
-  .cta-band {
-    display: flex; align-items: center; justify-content: space-between; gap: 24px; flex-wrap: wrap;
-    padding: clamp(28px, 5vw, 48px); border-radius: 26px;
-    background: radial-gradient(500px 200px at 10% 0%, rgba(124,58,237,.45), transparent 70%), linear-gradient(135deg, #1d1250, #140b38);
-    border: 1px solid rgba(167,139,250,.3);
-  }
-  .cta-band h2 { font-size: clamp(22px, 3vw, 32px); margin-bottom: 6px; }
-  .cta-band p { color: #b3aed6; }
-  .cta-band .btn-nav { padding: 14px 22px; font-size: 15px; }
+  /* Ajakan penutup */
+  .cta2 { margin-top: clamp(64px, 9vw, 120px); display: grid; grid-template-columns: 1fr; gap: 32px; align-items: center; padding: clamp(28px, 4vw, 48px); border-radius: 26px;
+    background: radial-gradient(520px 260px at 0% 0%, rgba(124,92,255,.35), transparent 70%), #160d3a; border: 1px solid rgba(184,166,255,.22); overflow: hidden; }
+  .cta2 .lp-lead { margin: 12px 0 24px; }
+  .cta2 .btn-nav { padding: 14px 22px; font-size: 15px; }
+  .cta2 img { width: 100%; border-radius: 16px; border: 1px solid rgba(255,255,255,.1); margin-bottom: -80px; box-shadow: 0 30px 60px -30px rgba(0,0,0,.8); }
 
-  footer { margin-top: clamp(56px, 8vw, 96px); padding: 36px 20px 28px; border-top: 1px solid rgba(255,255,255,.06); text-align: left; }
-  .footer-inner { max-width: 1120px; margin: 0 auto; display: flex; justify-content: space-between; gap: 24px; flex-wrap: wrap; align-items: center; }
+  footer { margin-top: clamp(64px, 9vw, 110px); padding: 36px clamp(16px, 4vw, 32px) 28px; border-top: 1px solid rgba(255,255,255,.06); text-align: left; }
+  .footer-inner { max-width: 1200px; margin: 0 auto; display: flex; justify-content: space-between; gap: 24px; flex-wrap: wrap; align-items: center; }
   .footer-brand p { color: var(--text-muted); font-size: 13px; margin-top: 10px; }
-  .footer-links { display: flex; gap: 22px; }
+  .footer-links { display: flex; gap: 22px; flex-wrap: wrap; }
   .footer-links a { color: #c9c5e6; text-decoration: none; font-size: 14px; font-weight: 500; }
   .footer-links a:hover { color: #fff; }
-  .footer-copy { max-width: 1120px; margin: 24px auto 0; font-size: 12.5px; color: #6f6a96; }
+  .footer-copy { max-width: 1200px; margin: 24px auto 0; font-size: 12.5px; color: #7b76a3; }
 
-  @media (max-width: 560px) {
+  /* Muncul saat masuk layar: menandai urutan membaca, bukan hiasan */
+  @media (prefers-reduced-motion: no-preference) {
+    .rv { opacity: 0; transform: translateY(18px); transition: opacity .7s var(--ease-out), transform .7s var(--ease-out); transition-delay: calc(var(--i, 0) * 70ms); }
+    .rv.in { opacity: 1; transform: none; }
+  }
+
+  body:has(#view-landing.hidden) .btn-student { display: none; }
+
+  @media (max-width: 960px) {
+    .hero2 { grid-template-columns: minmax(0, 1fr); }
+    .hero2-visual { max-width: 560px; }
+    .how { grid-template-columns: minmax(0, 1fr); }
+    .how-head { position: static; }
+    .bento { grid-template-columns: repeat(2, minmax(0, 1fr)); grid-template-areas: "a a" "b d" "b e" "c f" "g g" "h h"; }
+    .cta2 { grid-template-columns: 1fr; }
+    .cta2 img { margin-bottom: -60px; }
+  }
+  @media (max-width: 600px) {
+    .hero2-host { display: none; }
+    .hero2-visual { padding-bottom: 0; }
+    .hero2-phone { position: static; width: 62%; max-width: 250px; margin: 0 auto; display: block; }
+    .bento { grid-template-columns: 1fr; grid-template-areas: "a" "b" "c" "d" "e" "f" "g" "h"; }
+    .b-g { flex-direction: column; }
+    .b-g .bx-img { margin: 20px -24px -24px; border-left: 0; border-top: 1px solid rgba(255,255,255,.07); }
+    .b-b .bx-img { max-height: 360px; }
     .nav-actions { gap: 8px; }
     .btn-studio span { display: none; }
+    .btn-studio { width: 40px; height: 40px; padding: 0; justify-content: center; }
     .btn-student { padding: 0 12px; height: 40px; }
     #header-a11y-btn { display: none; }
-    .btn-studio { width: 40px; height: 40px; padding: 0; justify-content: center; }
-    .pin-card-wrapper { padding: 16px; }
-    .pin-card-wrapper .pin-input-group { flex-direction: column; }
-    .pin-card-wrapper .btn-join { padding: 15px; justify-content: center; }
     .brand-badge-id { display: none; }
+    .pin-form input { font-size: 19px; letter-spacing: .2em; }
+    .pin-form button { padding: 0 16px; }
   }
 
   /* ----- Arena (premium pass) ----- */
@@ -1093,6 +1144,7 @@
 </style>
 </head>
 <body>
+<a class="skip-link" href="#main">Lewati ke konten</a>
 
 <!-- Header -->
 <header>
@@ -1119,144 +1171,120 @@
 
 <!-- MAIN LANDING VIEW -->
 <div id="view-landing">
-  <section class="hero">
-    <div class="hero-glow" aria-hidden="true"></div>
-    <div class="badge-hero">
-      <span class="badge-dot"></span> Platform kuis interaktif untuk pendidik Indonesia
-    </div>
-    <h1>Kuis interaktif yang bikin <span class="hero-accent">kelas hidup.</span></h1>
-    <p>
-      Kuis live multiplayer, asesmen Pre/Post Test dengan N-Gain, dan analitik diagnostik
-      dalam satu platform. Peserta cukup masukkan PIN, tanpa perlu akun.
-    </p>
+  <main id="main">
+  <section class="lp-wrap hero2" aria-labelledby="hero-title">
+    <div>
+      <div class="hero2-eyebrow">Untuk dosen, guru, dan trainer</div>
+      <h1 id="hero-title">Kuis interaktif yang bikin <em>kelas hidup.</em></h1>
+      <p class="lp-lead">Kuis live, Pre/Post Test dengan N-Gain, dan analitik belajar dalam satu tempat. Peserta cukup masukkan PIN.</p>
 
-    <!-- Game PIN Box -->
-    <div class="pin-card-wrapper">
-      <label class="pin-label" for="game-pin-input">Gabung ke kuis</label>
-      <div class="pin-input-group">
-        <input type="text" id="game-pin-input" class="pin-input" maxlength="6" inputmode="numeric" autocomplete="off" placeholder="Game PIN" aria-label="Game PIN 6 digit" oninput="this.value=this.value.replace(/\D/g,'')" onkeyup="if(event.key==='Enter')openJoinModal()">
-        <button class="btn-join" onclick="openJoinModal()">
-          <span>Gabung</span> <i class="fa-solid fa-arrow-right"></i>
-        </button>
-      </div>
-      <div class="quick-demo">
-        Belum punya PIN? <a onclick="tryAutoDemo()" role="button" tabindex="0">Coba kuis demo</a>
-      </div>
+      <form class="pin-form" onsubmit="event.preventDefault();openJoinModal()">
+        <input type="text" id="game-pin-input" maxlength="6" inputmode="numeric" autocomplete="off" placeholder="Masukkan Game PIN" aria-label="Game PIN 6 digit" oninput="this.value=this.value.replace(/\D/g,'')">
+        <button type="submit">Gabung <i class="fa-solid fa-arrow-right"></i></button>
+      </form>
+      <p class="hero2-alt">Belum punya PIN? <a onclick="tryAutoDemo()" role="button" tabindex="0" onkeydown="if(event.key==='Enter')tryAutoDemo()">Coba kuis demo</a></p>
     </div>
 
-    <ul class="hero-trust">
-      <li><i class="fa-solid fa-circle-check"></i> Tanpa akun untuk peserta</li>
-      <li><i class="fa-solid fa-circle-check"></i> Gratis hingga 30 peserta</li>
-      <li><i class="fa-solid fa-circle-check"></i> Jalan di browser apa pun</li>
-    </ul>
+    <div class="hero2-visual">
+      <img class="shot hero2-host" src="/img/host-live.jpg" width="2160" height="1400" alt="Layar host Quiztify: distribusi jawaban per soal dan klasemen tiga tim" fetchpriority="high">
+      <img class="shot hero2-phone" src="/img/player-question.jpg" width="780" height="1556" alt="Tampilan peserta di HP dengan empat pilihan jawaban berwarna">
+    </div>
   </section>
 
-  <!-- How it works -->
-  <section class="lp-section">
-    <div class="section-title">
-      <span class="eyebrow">Cara kerja</span>
-      <h2>Dari materi ke kuis live dalam 3 langkah</h2>
+  <section class="lp-wrap how" aria-labelledby="how-title">
+    <div class="how-head rv">
+      <h2 class="lp-h2" id="how-title">Dari materi ke kuis live dalam tiga langkah</h2>
+      <p class="lp-lead">Tidak ada aplikasi untuk dipasang. Semua jalan di browser, termasuk di HP peserta.</p>
+      <div class="how-facts">
+        <div><i class="fa-solid fa-user-check"></i> Peserta tidak perlu membuat akun</div>
+        <div><i class="fa-solid fa-users"></i> Gratis hingga 30 peserta per sesi</div>
+        <div><i class="fa-solid fa-qrcode"></i> Gabung lewat PIN atau scan QR</div>
+      </div>
     </div>
-    <ol class="steps-grid">
-      <li class="step-card">
-        <span class="step-num">01</span>
-        <h3>Susun kuis</h3>
-        <p>Tulis soal sendiri atau ketik topik dan biarkan Quiztify AI menyusun soal, kunci, dan pembahasan.</p>
+    <ol class="how-steps">
+      <li class="rv" style="--i:0">
+        <div class="how-ic"><i class="fa-solid fa-file-arrow-up"></i></div>
+        <div><h3>Susun kuis</h3><p>Tulis soal sendiri, ketik topik, atau upload slide kuliah. Quiztify AI menyusun soal, kunci, dan pembahasan dengan rujukan halaman.</p></div>
       </li>
-      <li class="step-card">
-        <span class="step-num">02</span>
-        <h3>Host live atau asinkron</h3>
-        <p>Tampilkan PIN dan QR Code di proyektor. Peserta bergabung dari HP dalam hitungan detik.</p>
+      <li class="rv" style="--i:1">
+        <div class="how-ic"><i class="fa-solid fa-display"></i></div>
+        <div><h3>Host di depan kelas</h3><p>Tampilkan PIN dan QR di proyektor. Aktifkan mode tim kalau kelasnya besar, atau bagikan sebagai tugas asinkron.</p></div>
       </li>
-      <li class="step-card">
-        <span class="step-num">03</span>
-        <h3>Baca hasilnya</h3>
-        <p>Leaderboard real-time, analisis butir soal, N-Gain, dan ekspor CSV siap untuk laporan.</p>
+      <li class="rv" style="--i:2">
+        <div class="how-ic"><i class="fa-solid fa-chart-column"></i></div>
+        <div><h3>Baca hasilnya</h3><p>Lihat jawaban salah yang paling banyak dipilih, N-Gain per mahasiswa, dan rapor semester yang siap dicetak.</p></div>
       </li>
     </ol>
   </section>
 
-  <!-- Feature Highlights -->
-  <section class="lp-section features-section">
-    <div class="section-title">
-      <span class="eyebrow">Fitur</span>
-      <h2>Semua yang dibutuhkan guru, dosen, dan trainer</h2>
-      <p>Seru untuk peserta, berbobot untuk evaluasi akademik.</p>
-    </div>
-    <div class="features-grid">
-      <div class="f-card f-card-wide">
-        <div class="f-icon" style="background:rgba(124,58,237,0.18);color:#c4b5fd"><i class="fa-solid fa-users"></i></div>
-        <h3>Multiplayer real-time</h3>
-        <p>Game PIN 6 digit, QR Code, poin berbasis kecepatan, streak, power-up, reaksi, dan podium juara beranimasi.</p>
-      </div>
-      <div class="f-card">
-        <div class="f-icon" style="background:rgba(6,182,212,0.18);color:#67e8f9"><i class="fa-solid fa-wand-magic-sparkles"></i></div>
-        <h3>AI Quiz Builder</h3>
-        <p>Paket soal lengkap dengan pembahasan dari satu topik.</p>
-      </div>
-      <div class="f-card">
-        <div class="f-icon" style="background:rgba(16,185,129,0.18);color:#6ee7b7"><i class="fa-solid fa-chart-line"></i></div>
-        <h3>N-Gain Pre/Post</h3>
-        <p>Efektivitas pembelajaran terukur dengan Hake's Normalized Gain.</p>
-      </div>
-      <div class="f-card">
-        <div class="f-icon" style="background:rgba(245,158,11,0.18);color:#fcd34d"><i class="fa-solid fa-stethoscope"></i></div>
-        <h3>Diagnostik &amp; remedial</h3>
-        <p>Peta miskonsepsi kelas: jawaban salah yang paling banyak dipilih, plus remedial otomatis.</p>
-      </div>
-      <div class="f-card">
-        <div class="f-icon" style="background:rgba(244,63,94,0.18);color:#fda4af"><i class="fa-solid fa-shield-halved"></i></div>
+  <section class="lp-wrap bento-sec" aria-labelledby="bento-title">
+    <h2 class="lp-h2 rv" id="bento-title">Seru untuk mahasiswa, berbobot untuk dosen</h2>
+    <div class="bento">
+      <article class="bx b-a rv" style="--i:0">
+        <h3>Kuis live dengan mode tim</h3>
+        <p>Poin kecepatan, streak, power-up, dan taruhan di soal terakhir. Skor tim dihitung dari rata-rata anggota.</p>
+        <div class="bx-img"><img src="/img/host-lobby.jpg" loading="lazy" alt="Lobby host dengan PIN, QR Code, dan peserta yang terbagi ke tiga tim"></div>
+      </article>
+      <article class="bx b-b rv" style="--i:1">
+        <h3>Streak harian dan liga mingguan</h3>
+        <p>Lima soal sehari dari materi kelas. Soal yang pernah salah muncul lagi sampai dikuasai.</p>
+        <div class="bx-img"><img src="/img/liga.jpg" loading="lazy" alt="Klasemen liga mingguan divisi Perunggu dengan zona naik divisi"></div>
+      </article>
+      <article class="bx b-d rv" style="--i:2">
+        <div class="bx-ic"><i class="fa-solid fa-file-pdf"></i></div>
+        <h3>Soal dari slide kuliah</h3>
+        <p>Upload PDF atau PPTX. Setiap soal merujuk ke halaman sumbernya.</p>
+      </article>
+      <article class="bx b-c rv" style="--i:0">
+        <h3>Duel lewat WhatsApp</h3>
+        <p>Lima soal, satu link. Yang paling cepat dan tepat menang.</p>
+        <div class="bx-img"><img src="/img/duel.jpg" loading="lazy" alt="Hasil duel kuis antara dua mahasiswa"></div>
+      </article>
+      <article class="bx b-e rv" style="--i:1">
+        <div class="bx-ic"><i class="fa-solid fa-arrow-trend-up"></i></div>
+        <h3>N-Gain dan rapor semester</h3>
+        <p>Pre-Test ke Post-Test dihitung otomatis, lalu dirangkum jadi rapor siap akreditasi.</p>
+      </article>
+      <article class="bx b-f rv" style="--i:2">
+        <div class="bx-ic"><i class="fa-solid fa-shield-halved"></i></div>
         <h3>Integritas ujian</h3>
-        <p>Deteksi pindah tab dan salin soal, plus Berita Acara siap cetak.</p>
-      </div>
-      <div class="f-card f-card-wide">
-        <div class="f-icon"><i class="fa-solid fa-fire-flame-curved"></i></div>
-        <h3>Streak harian &amp; liga mingguan</h3>
-        <p>Mahasiswa dapat 5 soal sehari dari materi kelasnya. Soal yang pernah salah muncul lagi sampai dikuasai, dan XP-nya menentukan naik-turun divisi liga tiap minggu.</p>
-      </div>
-      <div class="f-card">
-        <div class="f-icon"><i class="fa-solid fa-bolt"></i></div>
-        <h3>Duel 1 lawan 1</h3>
-        <p>Tantang teman lewat link WhatsApp. 5 soal, siapa cepat dan tepat menang.</p>
-      </div>
-      <div class="f-card">
-        <div class="f-icon"><i class="fa-solid fa-file-arrow-up"></i></div>
-        <h3>Kuis dari materi kuliah</h3>
-        <p>Upload PDF atau PPTX, soal dibuat dari isinya lengkap dengan rujukan halaman.</p>
-      </div>
-      <div class="f-card f-card-full">
-        <div class="f-icon" style="background:rgba(148,163,184,0.18);color:#e2e8f0"><i class="fa-solid fa-universal-access"></i></div>
-        <h3>Inklusif untuk semua peserta</h3>
-        <p>Mode kontras tinggi, font ramah disleksia, ukuran teks, text-to-speech, dan navigasi keyboard penuh.</p>
-      </div>
+        <p>Deteksi pindah tab selama kuis, lengkap dengan Berita Acara ber-QR.</p>
+      </article>
+      <article class="bx b-g rv" style="--i:0">
+        <div>
+          <h3>Tahu persis bagian mana yang belum dipahami</h3>
+          <p>Peta miskonsepsi menunjukkan jawaban salah yang paling banyak dipilih kelas. Bahas di awal pertemuan berikutnya, atau buat kuis remedial otomatis.</p>
+        </div>
+        <div class="bx-img"><img src="/img/miskonsepsi.jpg" loading="lazy" alt="Peta miskonsepsi kelas berisi persentase jawaban salah per soal"></div>
+      </article>
+      <article class="bx b-h rv" style="--i:1">
+        <div class="bx-ic"><i class="fa-solid fa-universal-access"></i></div>
+        <h3>Nyaman untuk semua peserta</h3>
+        <p>Mode kontras tinggi, font ramah disleksia, ukuran teks, text-to-speech, dan kontrol penuh lewat keyboard.</p>
+      </article>
     </div>
   </section>
 
-  <!-- Pricing Tiers -->
-  <section class="lp-section pricing-section">
-    <div class="section-title">
-      <span class="eyebrow">Harga</span>
-      <h2>Mulai gratis, upgrade saat kelas bertumbuh</h2>
-      <p>Daftar gratis tanpa kartu kredit.</p>
-    </div>
+  <section class="pricing-section" aria-labelledby="price-title">
+    <h2 class="lp-h2 rv" id="price-title">Mulai gratis, upgrade saat kelas bertumbuh</h2>
+    <p class="lp-lead rv">Daftar tanpa kartu kredit.</p>
     <div class="pricing-grid">
-      <div class="p-card">
+      <div class="p-card rv" style="--i:0">
         <div>
           <h3>Starter</h3>
-          <p class="p-desc">Untuk eksplorasi dan kelas kecil</p>
+          <p class="p-desc">Untuk mencoba dan kelas kecil</p>
           <div class="p-price">Rp 0 <span>/ selamanya</span></div>
           <ul class="p-features">
-            <li><i class="fa-solid fa-check"></i> Hingga 30 peserta per game</li>
+            <li><i class="fa-solid fa-check"></i> Hingga 30 peserta per sesi</li>
             <li><i class="fa-solid fa-check"></i> Kuis live &amp; asinkron</li>
             <li><i class="fa-solid fa-check"></i> 10 generate AI per bulan</li>
             <li><i class="fa-solid fa-check"></i> Analisis N-Gain &amp; diagnostik</li>
-            <li><i class="fa-solid fa-check"></i> Game PIN &amp; QR Code</li>
           </ul>
         </div>
-        <a href="/login.html?mode=register" class="btn-nav btn-nav-ghost p-cta">Mulai gratis</a>
+        <a href="/login.html?mode=register" class="btn-nav btn-nav-ghost p-cta">Daftar gratis</a>
       </div>
 
-      <div class="p-card featured">
+      <div class="p-card featured rv" style="--i:1">
         <div class="p-badge">Paling populer</div>
         <div>
           <h3>Pro Creator</h3>
@@ -1270,18 +1298,18 @@
             <li><i class="fa-solid fa-check"></i> Rapor semester siap akreditasi</li>
           </ul>
         </div>
-        <a href="/login.html?mode=register" class="btn-nav btn-nav-primary p-cta">Mulai gratis</a>
+        <a href="/login.html?mode=register" class="btn-nav btn-nav-primary p-cta">Daftar gratis</a>
       </div>
 
-      <div class="p-card">
+      <div class="p-card rv" style="--i:2">
         <div>
           <h3>Campus</h3>
-          <p class="p-desc">Untuk sekolah, universitas &amp; korporasi</p>
+          <p class="p-desc">Untuk fakultas &amp; universitas</p>
           <div class="p-price">Rp 490.000 <span>/ bulan</span></div>
           <ul class="p-features">
-            <li><i class="fa-solid fa-check"></i> Multi-dosen &amp; multi-departemen</li>
-            <li><i class="fa-solid fa-check"></i> Integrasi LMS &amp; SSO</li>
-            <li><i class="fa-solid fa-check"></i> Domain kustom &amp; SLA</li>
+            <li><i class="fa-solid fa-check"></i> Akun untuk semua dosen pengampu</li>
+            <li><i class="fa-solid fa-check"></i> Integrasi SIAKAD &amp; LMS kampus</li>
+            <li><i class="fa-solid fa-check"></i> Subdomain kampus sendiri</li>
           </ul>
         </div>
         <a href="mailto:contact@quiztify.id" class="btn-nav btn-nav-ghost p-cta">Hubungi tim sales</a>
@@ -1289,15 +1317,16 @@
     </div>
   </section>
 
-  <section class="lp-section">
-    <div class="cta-band">
+  <section class="lp-wrap" aria-labelledby="cta-title">
+    <div class="cta2 rv">
       <div>
-        <h2>Siap bikin kuis pertama?</h2>
-        <p>Buat akun gratis dan host kuis live dalam kurang dari 5 menit.</p>
+        <h2 class="lp-h2" id="cta-title">Siap memulai pertemuan berikutnya?</h2>
+        <p class="lp-lead">Buat akun, susun kuis pertama, dan host di depan kelas dalam lima menit.</p>
+        <a href="/login.html?mode=register" class="btn-nav btn-nav-primary">Daftar gratis <i class="fa-solid fa-arrow-right"></i></a>
       </div>
-      <a href="/login.html?mode=register" class="btn-nav btn-nav-primary">Buat akun gratis <i class="fa-solid fa-arrow-right"></i></a>
     </div>
   </section>
+  </main>
 
   <footer>
     <div class="footer-inner">
@@ -1307,8 +1336,8 @@
       </div>
       <nav class="footer-links" aria-label="Tautan footer">
         <a href="/student.html">Portal mahasiswa</a>
-        <a href="/login.html">Masuk Creator</a>
-        <a href="/login.html?mode=register">Daftar</a>
+        <a href="/login.html">Masuk creator</a>
+        <a href="/login.html?mode=register">Daftar gratis</a>
         <a href="mailto:contact@quiztify.id">Kontak</a>
       </nav>
     </div>
@@ -3994,6 +4023,19 @@ document.addEventListener('DOMContentLoaded', () => {
 });
 // Fallback jika DOMContentLoaded sudah lewat
 loadA11yPreferences();
+</script>
+<script>
+// Muncul saat masuk layar (landing saja); tanpa animasi jika reduced motion
+(function () {
+  const els = document.querySelectorAll('#view-landing .rv');
+  if (!('IntersectionObserver' in window) || matchMedia('(prefers-reduced-motion: reduce)').matches) {
+    els.forEach(e => e.classList.add('in')); return;
+  }
+  const io = new IntersectionObserver((entries) => entries.forEach(en => {
+    if (en.isIntersecting) { en.target.classList.add('in'); io.unobserve(en.target); }
+  }), { rootMargin: '0px 0px -8% 0px' });
+  els.forEach(e => io.observe(e));
+})();
 </script>
 </body>
 </html>
