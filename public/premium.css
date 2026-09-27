@@ -390,3 +390,90 @@ body > .sidebar .brand-area { height: var(--topbar-h); padding: 0 20px; box-sizi
 .active-live-banner { margin: 24px 32px 0 !important; }
 .active-live-banner + .content-area { padding-top: 24px; }
 @media (max-width: 960px) { .active-live-banner { margin: 16px 16px 0 !important; } }
+
+/* ==========================================================================
+   Studio Creator: redesign-existing-projects pass
+   Satu aksen (ungu), huruf kalimat, radius konsisten, permukaan bertekstur halus.
+   Radius: kontainer 16px, tombol & input 10px, label 6px.
+   ========================================================================== */
+body.studio {
+  --cyan: #b8a6ff;           /* dulu aksen kedua; kini turunan ungu */
+  --gold: #ece8ff;           /* angka nilai tampil netral, bukan emas */
+  --purple-light: #b8a6ff;
+  --surface: rgba(255,255,255,.03);
+  --line: rgba(255,255,255,.08);
+}
+/* Tekstur grain tipis di seluruh studio (fixed, tidak ikut scroll) */
+body.studio::after {
+  content: ''; position: fixed; inset: 0; z-index: 60; pointer-events: none; opacity: .035;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+}
+
+/* Huruf kalimat, bukan KAPITAL (dokumen Berita Acara resmi dikecualikan) */
+.studio th, .studio label, .studio .nav-heading, .studio .metric-lbl, .studio .q-badge,
+.studio [style*="text-transform:uppercase"]:not(.berita-acara-paper *) {
+  text-transform: none !important; letter-spacing: 0 !important;
+}
+.studio .nav-heading { font-size: 12px !important; font-weight: 600 !important; color: rgba(255,255,255,.4) !important; padding: 18px 14px 6px !important; }
+.studio label { font-size: 13px !important; font-weight: 600 !important; color: #cfc9ec !important; }
+.studio .brand-studio-badge { text-transform: none; letter-spacing: 0; font-weight: 700; font-size: 11px; }
+.studio th { font-size: 12.5px !important; font-weight: 600 !important; white-space: nowrap; background: transparent !important; color: rgba(255,255,255,.5) !important; }
+.studio td { border-bottom-color: var(--line) !important; }
+.studio .table-card, .studio .modal-box table { border-radius: 16px; }
+
+/* Lebar konten dibatasi supaya tidak melar di layar lebar */
+.studio .content-area > * { max-width: 1240px; margin-left: auto; margin-right: auto; }
+.studio .active-live-banner { max-width: 1240px; width: calc(100% - 64px); margin: 24px auto 0 !important; }
+
+/* Input & tombol: radius dan permukaan seragam */
+.studio .input, .studio select, .studio textarea { border-radius: 10px !important; background: rgba(8,4,24,.55) !important; border: 1px solid var(--line) !important; }
+.studio .input:focus, .studio select:focus, .studio textarea:focus { border-color: rgba(184,166,255,.6) !important; box-shadow: 0 0 0 3px rgba(124,92,255,.18) !important; }
+.studio .btn { border-radius: 10px; }
+.studio .modal-box { border-radius: 20px !important; border: 1px solid var(--line) !important; background: #150d35 !important; }
+
+/* Banner sesi live: permukaan netral, satu titik hijau sebagai status */
+.studio .active-live-banner {
+  background: var(--surface) !important; border: 1px solid var(--line) !important; border-radius: 16px !important; padding: 14px 20px !important;
+}
+.studio .active-live-banner::after { display: none !important; }
+.studio .pin-pill { background: rgba(255,255,255,.05) !important; border: 1px solid var(--line) !important; color: #fff !important; font-family: var(--font-mono); }
+.studio .pin-pill b { color: #fff !important; }
+.studio .pin-pill i { display: none; }
+.studio .live-radar-indicator { background: rgba(16,185,129,.1) !important; border-color: rgba(16,185,129,.3) !important; }
+
+/* Header kelas: tanpa gradien & border tebal */
+.hub-hero { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 20px; padding: 4px 0 24px; margin-bottom: 8px; }
+.hub-hero h2 { font-size: 28px !important; letter-spacing: -0.03em; }
+.hub-hero .q-badge { background: rgba(255,255,255,.06) !important; color: #e9e6f8 !important; font-family: var(--font-mono); border-radius: 6px; }
+
+/* Tab kelas: garis bawah, bukan pil */
+.hub-tabs { display: flex; gap: 4px; border-bottom: 1px solid var(--line); margin-bottom: 24px; }
+.hub-tab { position: relative; background: none; border: 0; color: var(--text-muted); font-weight: 600; font-size: 14px; padding: 12px 14px; display: inline-flex; align-items: center; gap: 8px; }
+.hub-tab i { font-size: 13px; opacity: .8; }
+.hub-tab:hover { color: #fff; }
+.hub-tab.active { color: #fff; }
+.hub-tab.active::after { content: ''; position: absolute; left: 10px; right: 10px; bottom: -1px; height: 2px; border-radius: 2px; background: var(--accent); }
+
+/* Tautan di kartu kuis kelas */
+.qc-link { margin-top: 10px; padding-left: 0 !important; font-size: 13.5px; }
+
+/* Metric-card di dalam view/modal: tanpa ikon berwarna, angka netral */
+.studio .metric-card { background: var(--surface) !important; border: 1px solid var(--line) !important; border-radius: 14px !important; }
+.studio .metric-card .metric-icon { display: none !important; }
+.studio .metric-val { color: #fff !important; }
+
+/* Paket langganan di dalam studio: satu aksen */
+.studio #view-pricing [style*="linear-gradient(90deg, #7c3aed, #06b6d4)"] { background: var(--accent) !important; }
+.studio #view-pricing [style*="border:1px solid rgba(6,182,212,0.4)"] { border-color: var(--line) !important; }
+.studio #view-pricing [style*="border:2px solid var(--purple)"] { border-width: 1px !important; border-color: rgba(184,166,255,.5) !important; box-shadow: none !important; }
+.studio #view-pricing [style*="color:var(--gold)"], .studio #view-pricing [style*="color:var(--cyan)"] { color: #fff !important; }
+.studio #view-pricing [style*="letter-spacing:1px;text-transform:uppercase"] { color: var(--text-muted) !important; font-size: 13px !important; font-weight: 600 !important; }
+
+@media (max-width: 960px) {
+  .studio .active-live-banner { width: calc(100% - 32px); }
+  .hub-tabs { overflow-x: auto; }
+  .hub-tab { white-space: nowrap; }
+}
+/* Tabel nilai di modal: sel data tidak terbungkus, nama boleh */
+.studio .modal-box td { white-space: nowrap; }
+.studio .modal-box td:first-child { white-space: normal; min-width: 150px; }
