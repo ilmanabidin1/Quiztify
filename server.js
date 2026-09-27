@@ -1157,6 +1157,12 @@ app.get('/api/rooms/:pin/my-review', (req, res) => {
   const questions = db.prepare('SELECT * FROM questions WHERE quiz_id = ? ORDER BY position ASC').all(room.quiz_id);
   const answersMap = JSON.parse(player.answers_json || '{}');
 
+  // Kunci jawaban baru boleh dilihat setelah peserta menyelesaikan semua soal atau host menutup sesi
+  const playerDone = player.finished || Object.keys(answersMap).length >= questions.length;
+  if (!playerDone && room.status !== 'finished') {
+    return res.status(403).json({ error: 'Pembahasan tersedia setelah kamu menyelesaikan semua soal' });
+  }
+
   let correctCount = 0;
   let mistakesCount = 0;
 
@@ -1217,7 +1223,7 @@ app.get('/api/rooms/:pin/my-review', (req, res) => {
 });
 
 // 5e. Full Quiz Study Guide for printing & revision
-app.get('/api/quizzes/:id/study-guide', (req, res) => {
+app.get('/api/quizzes/:id/study-guide', requireRole('creator', 'dosen'), (req, res) => {
   const quizId = Number(req.params.id);
   const quiz = db.prepare('SELECT q.*, c.name as class_name FROM quizzes q LEFT JOIN classes c ON c.id = q.class_id WHERE q.id = ?').get(quizId);
   if (!quiz) {
