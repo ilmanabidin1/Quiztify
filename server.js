@@ -114,6 +114,48 @@ function requireRole(...roles) {
   };
 }
 
+// ---------- Foto profil ----------
+const PHOTO_MAX_BYTES = 200 * 1024;
+function photoUrl(key) { return key ? `/photo/${key}.jpg` : null; }
+function parsePhoto(dataUrl) {
+  const m = /^data:image\/(jpeg|png|webp);base64,([A-Za-z0-9+/=]+)$/.exec(String(dataUrl || ''));
+  if (!m) return { error: 'Format foto harus JPG, PNG, atau WebP' };
+  const buf = Buffer.from(m[2], 'base64');
+  if (buf.length > PHOTO_MAX_BYTES) return { error: 'Ukuran foto maksimal 200 KB' };
+  // Cek tanda tangan file, bukan hanya label MIME
+  const sig = buf.subarray(0, 12);
+  const ok = (sig[0] === 0xff && sig[1] === 0xd8) || sig.subarray(1, 4).toString() === 'PNG' || sig.subarray(8, 12).toString() === 'WEBP';
+  if (!ok) return { error: 'File bukan gambar yang valid' };
+  return { dataUrl: `data:image/${m[1]};base64,${m[2]}` };
+}
+function savePhoto(table, id, dataUrl) {
+  const key = crypto.randomBytes(12).toString('hex');
+  db.prepare(`UPDATE ${table} SET photo = ?, photo_key = ? WHERE id = ?`).run(dataUrl, key, id);
+  return photoUrl(key);
+}
+
+app.get('/photo/:key.jpg', (req, res) => {
+  const key = String(req.params.key);
+  if (!/^[a-f0-9]{24}$/.test(key)) return res.status(404).end();
+  const row = db.prepare('SELECT photo FROM dosen WHERE photo_key = ?').get(key) || db.prepare('SELECT photo FROM students WHERE photo_key = ?').get(key);
+  if (!row || !row.photo) return res.status(404).end();
+  const m = /^data:(image\/\w+);base64,(.+)$/.exec(row.photo);
+  res.setHeader('Content-Type', m[1]);
+  res.setHeader('Cache-Control', 'public, max-age=31536000, immutable'); // kunci berubah setiap upload
+  res.setHeader('X-Content-Type-Options', 'nosniff');
+  res.end(Buffer.from(m[2], 'base64'));
+});
+
+app.post('/api/creator/photo', requireRole('creator', 'dosen'), (req, res) => {
+  const p = parsePhoto(req.body && req.body.image);
+  if (p.error) return res.status(400).json({ error: p.error });
+  res.json({ ok: true, photo_url: savePhoto('dosen', req.auth.user_id, p.dataUrl) });
+});
+app.delete('/api/creator/photo', requireRole('creator', 'dosen'), (req, res) => {
+  db.prepare('UPDATE dosen SET photo = NULL, photo_key = NULL WHERE id = ?').run(req.auth.user_id);
+  res.json({ ok: true });
+});
+
 // ---------- Mode tim ----------
 const TEAMS = [
   { name: 'Tim Ungu', color: '#8b5cf6' },
@@ -449,13 +491,15 @@ app.get('/api/me', (req, res) => {
   const a = auth(req);
   if (!a) return res.json({ role: null });
   if (a.role === 'creator' || a.role === 'dosen') {
-    const d = db.prepare('SELECT id, nama, email, plan, institution, plan_expires_at FROM dosen WHERE id = ?').get(a.user_id);
+    const d = db.prepare('SELECT id, nama, email, plan, institution, plan_expires_at, photo_key FROM dosen WHERE id = ?').get(a.user_id);
     const usage = d ? aiUsage(d.id) : null;
-    return res.json({ role: 'creator', ...d, ai_quota: usage });
+    const { photo_key, ...rest } = d || {};
+    return res.json({ role: 'creator', ...rest, photo_url: photoUrl(photo_key), ai_quota: usage });
   }
-  const s = db.prepare(`SELECT s.id, s.nama, s.npm, s.avatar, s.points, c.id AS class_id, c.name AS class_name, c.course
+  const s = db.prepare(`SELECT s.id, s.nama, s.npm, s.avatar, s.points, s.photo_key, c.id AS class_id, c.name AS class_name, c.course
     FROM students s LEFT JOIN classes c ON c.id = s.class_id WHERE s.id = ?`).get(a.user_id);
-  res.json({ role: 'student', ...s });
+  const { photo_key, ...rest } = s || {};
+  res.json({ role: 'student', ...rest, photo_url: photoUrl(photo_key) });
 });
 
 // Update Creator Profile
@@ -678,9 +722,16 @@ app.post('/api/rooms/join', (req, res) => {
         db.prepare('SELECT COUNT(*) AS c FROM room_players WHERE pin = ? AND team = ?').get(room.pin, i).c);
       team = counts.indexOf(Math.min(...counts));
     }
-    db.prepare(`INSERT INTO room_players (pin, player_token, name, avatar, score, streak, current_q_idx, finished, tab_switches, updated_at, team)
-      VALUES (?, ?, ?, ?, 0, 0, 0, 0, 0, ?, ?)`).run(
-        room.pin, playerToken, name, chosenAvatar, Date.now(), team
+    // Mahasiswa yang sedang login ikut membawa foto profilnya ke kuis live
+    const who = auth(req);
+    let photo = null;
+    if (who && (who.role === 'student' || who.role === 'mahasiswa')) {
+      const st = db.prepare('SELECT photo_key FROM students WHERE id = ?').get(who.user_id);
+      photo = st ? photoUrl(st.photo_key) : null;
+    }
+    db.prepare(`INSERT INTO room_players (pin, player_token, name, avatar, score, streak, current_q_idx, finished, tab_switches, updated_at, team, photo)
+      VALUES (?, ?, ?, ?, 0, 0, 0, 0, 0, ?, ?, ?)`).run(
+        room.pin, playerToken, name, chosenAvatar, Date.now(), team, photo
       );
   }
 
@@ -778,6 +829,7 @@ app.get('/api/rooms/:pin/state', (req, res) => {
       rank: idx + 1,
       name: p.name,
       avatar: p.avatar,
+      photo: p.photo || null,
       score: p.score,
       streak: p.streak,
       last_correct: p.last_correct,
@@ -820,6 +872,10 @@ app.get('/api/rooms/:pin/state', (req, res) => {
     }
   }
 
+  // Dosen host tampil sebagai maskot yang memberi komentar di layar peserta
+  const hostRow = db.prepare('SELECT nama, photo_key FROM dosen WHERE id = ?').get(room.host_id);
+  const hostInfo = hostRow ? { name: hostRow.nama, photo_url: photoUrl(hostRow.photo_key) } : null;
+
   const viewer = auth(req);
   const isHostViewer = Boolean(viewer && (viewer.role === 'creator' || viewer.role === 'dosen') && viewer.user_id === room.host_id);
 
@@ -858,6 +914,8 @@ app.get('/api/rooms/:pin/state', (req, res) => {
     game_mode: room.game_mode || 'self_paced',
     quiz_id: room.quiz_id,
     quiz_title: quiz.title,
+    host: hostInfo,
+    my_photo: myInfo ? myInfo.photo || null : null,
     cover_emoji: quiz.cover_emoji || '⚡',
     quiz_theme: quiz.theme || quizSettings.theme || 'cyberpunk',
     break_time_sec: quiz.break_time_sec ?? quizSettings.break_time_sec ?? 5,
@@ -871,7 +929,7 @@ app.get('/api/rooms/:pin/state', (req, res) => {
     my_streak: myInfo ? myInfo.streak : 0,
     // Informasi untuk Host
     players_count: players.length,
-    players: players.map(p => ({ name: p.name, avatar: p.avatar, score: p.score, streak: p.streak, team: p.team })),
+    players: players.map(p => ({ name: p.name, avatar: p.avatar, photo: p.photo || null, score: p.score, streak: p.streak, team: p.team })),
     team_count: room.team_count || 0,
     teams: teamStandings(players, room.team_count || 0),
     my_team: myInfo && room.team_count > 0 && myInfo.team !== null ? { id: myInfo.team, ...TEAMS[myInfo.team] } : null,
@@ -2078,9 +2136,9 @@ app.get('/api/quizzes/:id/attempts-detail', requireRole('creator', 'dosen'), (re
 
   let students = [];
   if (quiz.class_id) {
-    students = db.prepare('SELECT id, nama, npm, avatar FROM students WHERE class_id = ? ORDER BY nama ASC').all(quiz.class_id);
+    students = db.prepare('SELECT id, nama, npm, avatar, photo_key FROM students WHERE class_id = ? ORDER BY nama ASC').all(quiz.class_id);
   } else {
-    students = db.prepare(`SELECT DISTINCT s.id, s.nama, s.npm, s.avatar 
+    students = db.prepare(`SELECT DISTINCT s.id, s.nama, s.npm, s.avatar, s.photo_key
       FROM attempts a JOIN students s ON s.id = a.student_id WHERE a.quiz_id = ? ORDER BY s.nama ASC`).all(quiz.id);
   }
 
@@ -2095,6 +2153,7 @@ app.get('/api/quizzes/:id/attempts-detail', requireRole('creator', 'dosen'), (re
       nama: s.nama,
       npm: s.npm,
       avatar: s.avatar,
+      photo: photoUrl(s.photo_key),
       status: a ? 'completed' : 'pending',
       score: a ? a.score : null,
       correct_count: a ? a.correct_count : 0,
@@ -2818,8 +2877,18 @@ app.get('/api/classes/public', (req, res) => {
     FROM classes c LEFT JOIN students s ON s.class_id = c.id GROUP BY c.id ORDER BY c.created_at DESC`).all());
 });
 
+app.post('/api/student/photo', requireStudent, (req, res) => {
+  const p = parsePhoto(req.body && req.body.image);
+  if (p.error) return res.status(400).json({ error: p.error });
+  res.json({ ok: true, photo_url: savePhoto('students', req.student.id, p.dataUrl) });
+});
+app.delete('/api/student/photo', requireStudent, (req, res) => {
+  db.prepare('UPDATE students SET photo = NULL, photo_key = NULL WHERE id = ?').run(req.student.id);
+  res.json({ ok: true });
+});
+
 // Fitur retensi: rapor semester, soal harian, liga, duel
-require('./features')(app, { db, auth, requireRole, requireStudent, requirePaid, ngain });
+require('./features')(app, { db, auth, requireRole, requireStudent, requirePaid, ngain, photoUrl });
 
 // Default Fallback
 const PORT = process.env.PORT || 3000;

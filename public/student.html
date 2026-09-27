@@ -98,6 +98,11 @@
   .back { background: none; border: 0; color: var(--text-muted); font-size: 14px; font-weight: 600; margin-bottom: 14px; }
 
   @media (max-width: 560px) { .grid2 { grid-template-columns: 1fr; } }
+  .av-btn { background: none; border: 0; padding: 0; font-size: 22px; line-height: 1; display: inline-flex; border-radius: 10px; }
+  .av-btn .qz-av { width: 32px; height: 32px; border-radius: 10px; }
+  .av-btn:hover { outline: 2px solid rgba(184,166,255,.5); outline-offset: 2px; }
+  .photo-nudge { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 12px 14px; margin-bottom: 18px; border-radius: 14px; background: rgba(124,92,255,.1); border: 1px solid rgba(184,166,255,.22); font-size: 13.5px; color: #d6d3ea; }
+  .lg-av .qz-av { width: 28px; height: 28px; border-radius: 9px; }
 </style>
 <link rel="stylesheet" href="/premium.css">
 <script src="/ui.js"></script>
@@ -107,7 +112,7 @@
 <header>
   <a href="/"><img src="/logo.png" alt="Quiztify"></a>
   <div class="who hidden" id="who">
-    <span class="av" id="who-av"></span><span id="who-name"></span>
+    <button class="av-btn" id="who-av" onclick="changeMyPhoto()" title="Ganti foto profil" aria-label="Ganti foto profil"></button><span id="who-name"></span>
     <button class="icon-btn" onclick="logout()">Keluar</button>
   </div>
 </header>
@@ -147,6 +152,10 @@
 
   <!-- HOME -->
   <section id="v-home" class="hidden">
+    <div class="photo-nudge hidden" id="photo-nudge">
+      <span>Pasang foto profil supaya teman sekelas mengenalimu di liga dan duel.</span>
+      <button class="photo-btn primary" onclick="changeMyPhoto()">Pasang foto</button>
+    </div>
     <div class="hello">
       <div class="eyebrow" id="home-class"></div>
       <h1 id="home-hello">Halo</h1>
@@ -245,6 +254,25 @@ async function doRegister() {
 async function logout() { await fetch('/api/auth/logout', { method: 'POST' }); location.reload(); }
 
 // ---------- Home ----------
+let myPhoto = null;
+function renderMyFace(photo, avatar) {
+  myPhoto = photo || null;
+  $('who-av').innerHTML = qzAvatar(photo, avatar || '🦊');
+  const n = document.getElementById('photo-nudge');
+  if (n) n.classList.toggle('hidden', Boolean(photo));
+}
+async function changeMyPhoto() {
+  try {
+    const image = await qzPickPhoto();
+    const data = await api('/api/student/photo', { image });
+    renderMyFace(data.photo_url);
+    qzToast('Foto profil diperbarui.', 'success');
+  } catch (e) {
+    if (e && e.message === 'Tidak ada file dipilih') return;
+    qzToast((e && (e.error || e.message)) || 'Gagal mengunggah foto', 'error');
+  }
+}
+
 async function boot() {
   const me = await api('/api/me').catch(() => ({}));
   if (me.role !== 'student') {
@@ -254,7 +282,7 @@ async function boot() {
     return show('auth');
   }
   $('who').classList.remove('hidden');
-  $('who-av').textContent = me.avatar || '🦊';
+  renderMyFace(me.photo_url, me.avatar);
   $('who-name').textContent = me.nama;
   goHome();
 }
@@ -395,7 +423,7 @@ async function openLeague() {
       lastZone = m.zone;
     }
     return `${head}<div class="lg-row ${m.is_me ? 'me' : ''}">
-      <div class="lg-rank">${m.rank}</div><div class="lg-av">${qzEsc(m.avatar)}</div>
+      <div class="lg-rank">${m.rank}</div><div class="lg-av">${qzAvatar(m.photo, m.avatar)}</div>
       <div class="lg-name">${qzEsc(m.nama)}${m.is_me ? ' (kamu)' : ''}</div><div class="lg-xp">${m.xp} XP</div></div>`;
   }).join('');
 }

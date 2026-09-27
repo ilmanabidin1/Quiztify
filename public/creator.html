@@ -2085,7 +2085,7 @@
     <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:22px">
       <div>
         <h2 style="font-size:19px;font-weight:800">Pengaturan Profil</h2>
-        <p style="font-size:12px;color:var(--text-muted);margin-top:3px">Perbarui nama, institusi, atau password</p>
+        <p style="font-size:12px;color:var(--text-muted);margin-top:3px">Perbarui foto, nama, institusi, atau password</p>
       </div>
       <button class="btn btn-ghost" style="padding:8px" onclick="closeProfileSettings()"><i class="fa-solid fa-xmark"></i></button>
     </div>
@@ -2093,6 +2093,17 @@
     <!-- Alert -->
     <div class="alert-banner" id="ps-msg" style="margin-bottom:16px">
       <i class="fa-solid fa-circle-check"></i><span></span>
+    </div>
+
+    <div class="photo-edit">
+      <div class="photo-edit-preview" id="ps-photo-preview"></div>
+      <div class="photo-edit-actions">
+        <div class="photo-edit-buttons">
+          <button type="button" class="photo-btn primary" onclick="uploadCreatorPhoto()">Ganti foto</button>
+          <button type="button" class="photo-btn danger hidden" id="ps-photo-remove" onclick="removeCreatorPhoto()">Hapus</button>
+        </div>
+        <p>Fotomu tampil sebagai maskot yang menyemangati peserta di kuis live.</p>
+      </div>
     </div>
 
     <form onsubmit="saveProfileSettings(event)" style="display:flex;flex-direction:column;gap:16px">
@@ -2215,8 +2226,13 @@ document.addEventListener('click', (e) => {
 function updateProfilePopup() {
   if (!me) return;
   const initials = (me.nama || 'C').charAt(0).toUpperCase();
-  document.getElementById('popup-avatar').textContent = initials;
-  document.getElementById('side-avatar').textContent = initials;
+  const face = me.photo_url ? `<img src="${qzEsc(me.photo_url)}" alt="" style="width:100%;height:100%;object-fit:cover;border-radius:inherit">` : qzEsc(initials);
+  document.getElementById('popup-avatar').innerHTML = face;
+  document.getElementById('side-avatar').innerHTML = face;
+  const prev = document.getElementById('ps-photo-preview');
+  if (prev) prev.innerHTML = face;
+  const rm = document.getElementById('ps-photo-remove');
+  if (rm) rm.classList.toggle('hidden', !me.photo_url);
   document.getElementById('popup-name').textContent  = me.nama || 'Creator';
   document.getElementById('popup-email').textContent = me.email || '-';
   document.getElementById('popup-inst').textContent  = me.institution || 'Quiztify Academy';
@@ -2234,7 +2250,27 @@ function openProfileSettings() {
   document.getElementById('ps-pw').value = '';
   document.getElementById('ps-pw-confirm').value = '';
   document.getElementById('ps-msg').className = 'alert-banner';
+  updateProfilePopup();
   modal.classList.remove('hidden');
+}
+async function uploadCreatorPhoto() {
+  try {
+    const image = await qzPickPhoto();
+    const res = await fetch('/api/creator/photo', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ image }) });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || 'Gagal mengunggah foto');
+    me.photo_url = data.photo_url;
+    updateProfilePopup();
+    qzToast('Foto profil diperbarui. Peserta akan melihatnya di kuis live berikutnya.', 'success');
+  } catch (e) {
+    if (e.message !== 'Tidak ada file dipilih') qzToast(e.message, 'error');
+  }
+}
+async function removeCreatorPhoto() {
+  await fetch('/api/creator/photo', { method: 'DELETE' });
+  me.photo_url = null;
+  updateProfilePopup();
+  qzToast('Foto profil dihapus.', 'info');
 }
 function closeProfileSettings() {
   document.getElementById('modal-profile-settings').classList.add('hidden');
@@ -2719,7 +2755,7 @@ async function pollHostState() {
       } else {
         const TEAM_COLORS = ['#8b5cf6', '#0ea5e9', '#10b981', '#f59e0b'];
         chipsCont.innerHTML = data.players.map(p => `
-          <div class="p-chip" ${p.team !== null && p.team !== undefined && data.team_count ? `style="border-color:${TEAM_COLORS[p.team]} !important"` : ''}><span>${qzEsc(p.avatar)}</span> <span>${qzEsc(p.name)}</span></div>
+          <div class="p-chip" ${p.team !== null && p.team !== undefined && data.team_count ? `style="border-color:${TEAM_COLORS[p.team]} !important"` : ''}><span>${qzAvatar(p.photo, p.avatar)}</span> <span>${qzEsc(p.name)}</span></div>
         `).join('');
       }
     } else if (data.status === 'question') {
@@ -2920,7 +2956,7 @@ function renderHostProgress(data) {
               <td><b style="color:var(--gold);font-size:15px">#${p.rank}</b></td>
               <td>
                 <div style="display:flex;align-items:center;gap:10px">
-                  <span style="font-size:22px">${p.avatar}</span>
+                  <span style="font-size:22px">${qzAvatar(p.photo, p.avatar)}</span>
                   <b style="font-size:15px">${p.name}</b>
                 </div>
               </td>
@@ -2959,7 +2995,7 @@ function renderHostLeaderboard(board) {
         ${board.map(p => `
           <tr>
             <td><b style="color:var(--gold);font-size:16px">#${p.rank}</b></td>
-            <td><span style="font-size:20px">${p.avatar}</span> <b>${p.name}</b></td>
+            <td><span style="font-size:20px">${qzAvatar(p.photo, p.avatar)}</span> <b>${p.name}</b></td>
             <td><span style="color:var(--amber);font-weight:700">🔥 x${p.streak}</span></td>
             <td><b style="color:var(--cyan);font-size:16px">${p.score.toLocaleString()} PTS</b></td>
           </tr>
@@ -2982,19 +3018,19 @@ function renderHostPodium(board) {
 
   document.getElementById('host-podium-container').innerHTML = `
     <div class="podium-pillar podium-2">
-      <div class="podium-avatar">${p2.avatar}</div>
+      <div class="podium-avatar">${qzAvatar(p2.photo, p2.avatar)}</div>
       <div style="font-size:14px">${p2.name}</div>
       <div style="font-size:12px;opacity:0.8">${p2.score} pts</div>
       <div style="font-size:28px;margin-top:auto">2</div>
     </div>
     <div class="podium-pillar podium-1">
-      <div class="podium-avatar">${p1.avatar}</div>
+      <div class="podium-avatar">${qzAvatar(p1.photo, p1.avatar)}</div>
       <div style="font-size:16px">${p1.name}</div>
       <div style="font-size:13px;color:var(--gold)">${p1.score} pts</div>
       <div style="font-size:36px;margin-top:auto">1</div>
     </div>
     <div class="podium-pillar podium-3">
-      <div class="podium-avatar">${p3.avatar}</div>
+      <div class="podium-avatar">${qzAvatar(p3.photo, p3.avatar)}</div>
       <div style="font-size:14px">${p3.name}</div>
       <div style="font-size:12px;opacity:0.8">${p3.score} pts</div>
       <div style="font-size:24px;margin-top:auto">3</div>
@@ -3429,7 +3465,7 @@ async function loadClassHubData(classId) {
         return `
           <tr>
             <td>${idx + 1}</td>
-            <td><span style="margin-right:6px">${s.avatar || '🦁'}</span> <b>${s.nama}</b></td>
+            <td><span style="margin-right:6px">${qzAvatar(s.photo, s.avatar || '🦁')}</span> <b>${qzEsc(s.nama)}</b></td>
             <td>${s.npm}</td>
             ${dataGB.quizzes.map(q => {
               const val = s.quiz_scores[q.id];
@@ -3455,7 +3491,7 @@ async function loadClassHubData(classId) {
     const sTbody = document.getElementById('class-students-tbody');
     sTbody.innerHTML = students.map(s => `
       <tr>
-        <td><span style="margin-right:6px">${s.avatar || '🦁'}</span> <b>${s.nama}</b></td>
+        <td><span style="margin-right:6px">${qzAvatar(s.photo, s.avatar || '🦁')}</span> <b>${qzEsc(s.nama)}</b></td>
         <td>${s.npm}</td>
         <td><b style="color:var(--gold)">${(s.points || 0).toLocaleString()} PTS</b></td>
         <td>${s.created_at || '-'}</td>
@@ -3505,7 +3541,7 @@ async function openQuizAttemptsDetail(quizId) {
 
       return `
         <tr>
-          <td><span style="margin-right:6px">${s.avatar || '🦁'}</span> <b>${s.nama}</b></td>
+          <td><span style="margin-right:6px">${qzAvatar(s.photo, s.avatar || '🦁')}</span> <b>${qzEsc(s.nama)}</b></td>
           <td>${s.npm}</td>
           <td>
             ${isDone 
@@ -3684,7 +3720,7 @@ async function viewClassStudents(classId) {
     const tbody = document.getElementById('modal-cs-tbody');
     tbody.innerHTML = students.map(s => `
       <tr>
-        <td><span style="margin-right:6px">${s.avatar || '🦁'}</span> <b>${s.nama}</b></td>
+        <td><span style="margin-right:6px">${qzAvatar(s.photo, s.avatar || '🦁')}</span> <b>${qzEsc(s.nama)}</b></td>
         <td>${s.npm}</td>
         <td><b style="color:var(--gold)">${(s.points || 0).toLocaleString()} PTS</b></td>
         <td>${s.created_at || '-'}</td>

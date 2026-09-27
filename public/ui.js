@@ -63,6 +63,43 @@
   // the same message without freezing the page behind a browser dialog.
   window.alert = function (msg) { toast(msg); };
 
+  /* ---------- Foto profil ---------- */
+  // Pilih gambar, potong tengah jadi persegi 256px, kompres JPEG. Hasil: data URL (~20 KB).
+  window.qzPickPhoto = function () {
+    return new Promise((resolve, reject) => {
+      const input = document.createElement('input');
+      input.type = 'file';
+      input.accept = 'image/jpeg,image/png,image/webp';
+      input.onchange = () => {
+        const file = input.files && input.files[0];
+        if (!file) return reject(new Error('Tidak ada file dipilih'));
+        if (!/^image\/(jpeg|png|webp)$/.test(file.type)) return reject(new Error('Pilih foto JPG, PNG, atau WebP'));
+        if (file.size > 15 * 1024 * 1024) return reject(new Error('Ukuran foto maksimal 15 MB'));
+        const url = URL.createObjectURL(file);
+        const img = new Image();
+        img.onload = () => {
+          const side = Math.min(img.naturalWidth, img.naturalHeight);
+          const c = document.createElement('canvas');
+          c.width = c.height = 256;
+          c.getContext('2d').drawImage(img, (img.naturalWidth - side) / 2, (img.naturalHeight - side) / 2, side, side, 0, 0, 256, 256);
+          URL.revokeObjectURL(url);
+          resolve(c.toDataURL('image/jpeg', 0.85));
+        };
+        img.onerror = () => { URL.revokeObjectURL(url); reject(new Error('Foto tidak bisa dibaca')); };
+        img.src = url;
+      };
+      input.click();
+    });
+  };
+
+  // Avatar: foto kalau ada, emoji kalau tidak
+  window.qzAvatar = function (photo, emoji, cls) {
+    const safe = (v) => window.qzEsc(v);
+    return photo
+      ? `<img class="qz-av ${cls || ''}" src="${safe(photo)}" alt="" loading="lazy">`
+      : `<span class="qz-av-emoji ${cls || ''}">${safe(emoji || '🦊')}</span>`;
+  };
+
   /* ---------- Creator sidebar drawer (mobile) ---------- */
   function setupDrawer() {
     const sidebar = document.querySelector('body > .sidebar');

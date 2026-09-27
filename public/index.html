@@ -1109,6 +1109,11 @@
     .pin-form button { padding: 0 16px; }
   }
 
+  /* Maskot memakai foto dosen */
+  .mascot-avatar-anim.is-host img { width: 56px; height: 56px; border-radius: 18px; object-fit: cover; display: block; border: 2px solid rgba(255,255,255,.25); }
+  .podium-avatar .qz-av { width: 44px; height: 44px; border-radius: 14px; }
+  #player-avatar-badge .qz-av { width: 28px; height: 28px; border-radius: 9px; }
+
   /* ----- Arena (premium pass) ----- */
   .arena-wrapper { padding-bottom: 96px; }
   .arena-topbar { gap: 12px; flex-wrap: wrap; padding: 10px 14px; background: rgba(255,255,255,.04); border-color: rgba(255,255,255,.08); }
@@ -2382,6 +2387,10 @@ async function pollRoomState() {
 
     renderTeamBadge(state.my_team);
     latestPlayerState = state;
+    if (state.my_photo) {
+      const b = document.getElementById('player-avatar-badge');
+      if (b && !b.querySelector('img')) b.innerHTML = qzAvatar(state.my_photo, playerAvatar);
+    }
 
     // Handle State Transitions
     if (state.status === 'lobby') {
@@ -2713,7 +2722,12 @@ function updateMascotReaction(isCorrect, streak, isTimedOut) {
   const subEl = document.getElementById('mascot-sub');
   if (!avatarEl || !quoteEl || !subEl) return;
 
-  avatarEl.textContent = playerAvatar || '🦁';
+  // Maskot = dosen host jika punya foto profil; kalau tidak, avatar peserta sendiri
+  const host = latestPlayerState && latestPlayerState.host;
+  const hostFace = host && host.photo_url;
+  avatarEl.classList.toggle('is-host', Boolean(hostFace));
+  if (hostFace) avatarEl.innerHTML = `<img src="${qzEsc(host.photo_url)}" alt="${qzEsc(host.name)}">`;
+  else avatarEl.textContent = playerAvatar || '🦁';
 
   if (isCorrect) {
     const item = correctMemeQuotes[Math.floor(Math.random() * correctMemeQuotes.length)];
@@ -2724,6 +2738,7 @@ function updateMascotReaction(isCorrect, streak, isTimedOut) {
     quoteEl.textContent = isTimedOut ? `"Waktu habis! Jangan overthinking, klik lebih lincah lagi! ⏱️"` : `"${item.quote}"`;
     subEl.textContent = item.sub;
   }
+  if (hostFace) subEl.textContent = host.name;
 }
 
 function showFeedbackBanner(data, isTimedOut = false) {
@@ -2974,7 +2989,7 @@ function renderWaitingState(state) {
       <div style="display:flex;align-items:center;justify-content:space-between;padding:8px 12px;border-radius:10px;margin-bottom:6px;background:${p.is_me ? 'rgba(124,58,237,0.25)' : 'rgba(255,255,255,0.04)'};border:${p.is_me ? '1px solid var(--purple)' : '1px solid transparent'}">
         <div style="display:flex;align-items:center;gap:8px;font-size:13px">
           <b style="color:var(--gold);width:20px">#${p.rank}</b>
-          <span>${p.avatar}</span>
+          <span>${qzAvatar(p.photo, p.avatar)}</span>
           <b>${p.name} ${p.is_me ? '(Kamu)' : ''}</b>
         </div>
         <b style="color:var(--gold);font-size:13px">${p.score.toLocaleString()} PTS</b>
@@ -2993,7 +3008,7 @@ function renderLeaderboard(state) {
     <div style="display:flex;align-items:center;justify-content:space-between;padding:10px 14px;border-radius:12px;margin-bottom:8px;background:${p.is_me ? 'rgba(124,58,237,0.3)' : 'rgba(255,255,255,0.05)'};border:${p.is_me ? '1px solid var(--purple)' : '1px solid transparent'}">
       <div style="display:flex;align-items:center;gap:10px">
         <b style="width:20px;color:var(--text-muted)">#${p.rank}</b>
-        <span>${p.avatar}</span>
+        <span>${qzAvatar(p.photo, p.avatar)}</span>
         <b>${p.name} ${p.is_me ? '(Kamu)' : ''}</b>
       </div>
       <b style="color:var(--gold)">${p.score.toLocaleString()} PTS</b>
@@ -3085,19 +3100,19 @@ function renderPodium(state) {
 
   pContainer.innerHTML = `
     <div class="podium-pillar podium-2">
-      <div class="podium-avatar">${p2.avatar}</div>
+      <div class="podium-avatar">${qzAvatar(p2.photo, p2.avatar)}</div>
       <div style="font-size:12px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:90px">${p2.name}</div>
       <div style="font-size:11px;opacity:0.8">${p2.score} pts</div>
       <div style="font-size:24px;margin-top:auto">2</div>
     </div>
     <div class="podium-pillar podium-1">
-      <div class="podium-avatar">${p1.avatar}</div>
+      <div class="podium-avatar">${qzAvatar(p1.photo, p1.avatar)}</div>
       <div style="font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100px">${p1.name}</div>
       <div style="font-size:11.5px;color:var(--gold)">${p1.score} pts</div>
       <div style="font-size:32px;margin-top:auto">1</div>
     </div>
     <div class="podium-pillar podium-3">
-      <div class="podium-avatar">${p3.avatar}</div>
+      <div class="podium-avatar">${qzAvatar(p3.photo, p3.avatar)}</div>
       <div style="font-size:12px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:90px">${p3.name}</div>
       <div style="font-size:11px;opacity:0.8">${p3.score} pts</div>
       <div style="font-size:20px;margin-top:auto">3</div>

@@ -25,7 +25,7 @@ function weekStart(dateStr = wibDate()) {
 const cleanName = (v) => String(v || '').trim().replace(/[<>"'`&]/g, '').slice(0, 24);
 const cleanAvatar = (v) => (typeof v === 'string' && v && !/[<>"'`&]/.test(v)) ? v.slice(0, 8) : '🦊';
 
-module.exports = function registerFeatures(app, { db, auth, requireRole, requireStudent, requirePaid, ngain }) {
+module.exports = function registerFeatures(app, { db, auth, requireRole, requireStudent, requirePaid, ngain, photoUrl }) {
   // ---------- Skema ----------
   db.exec(`
     CREATE TABLE IF NOT EXISTS daily_sessions (
@@ -72,6 +72,7 @@ module.exports = function registerFeatures(app, { db, auth, requireRole, require
   addCol('students', 'last_daily_date TEXT');
   addCol('students', 'division INTEGER DEFAULT 0');
   addCol('classes', 'league_week TEXT');
+  addCol('duel_entries', 'photo TEXT');
 
   // ---------- Rapor semester (akreditasi) ----------
   app.get('/api/classes/:id/semester-report', requireRole('creator', 'dosen'), requirePaid('Rapor semester'), (req, res) => {
@@ -175,10 +176,10 @@ module.exports = function registerFeatures(app, { db, auth, requireRole, require
     rolloverLeague(student.class_id);
     const me = db.prepare('SELECT division FROM students WHERE id = ?').get(student.id);
     const division = me ? me.division || 0 : 0;
-    const members = db.prepare('SELECT id, nama, avatar FROM students WHERE class_id = ? AND COALESCE(division, 0) = ?').all(student.class_id, division);
+    const members = db.prepare('SELECT id, nama, avatar, photo_key FROM students WHERE class_id = ? AND COALESCE(division, 0) = ?').all(student.class_id, division);
     const week = weekStart();
     const xp = weeklyXp(members.map(m => m.id), week);
-    const ranked = members.map(m => ({ id: m.id, nama: m.nama, avatar: m.avatar, xp: xp[m.id] || 0, is_me: m.id === student.id }))
+    const ranked = members.map(m => ({ id: m.id, nama: m.nama, avatar: m.avatar, photo: photoUrl(m.photo_key), xp: xp[m.id] || 0, is_me: m.id === student.id }))
       .sort((a, b) => b.xp - a.xp || a.nama.localeCompare(b.nama))
       .map((m, i) => ({ ...m, rank: i + 1 }));
     const zone = ranked.length >= 6 ? 3 : 1;
@@ -314,7 +315,7 @@ module.exports = function registerFeatures(app, { db, auth, requireRole, require
     const me = league ? league.members.find(m => m.is_me) : null;
     const reviewDue = db.prepare('SELECT COUNT(*) AS n FROM question_mistakes WHERE student_id = ? AND next_due <= ?').get(s.id, wibDate()).n;
     res.json({
-      student: { id: s.id, nama: s.nama, npm: s.npm, avatar: s.avatar, points: s.points },
+      student: { id: s.id, nama: s.nama, npm: s.npm, avatar: s.avatar, points: s.points, photo_url: photoUrl(s.photo_key) },
       class: cls, pending_quizzes: pending, streak: streakInfo(s.id), review_due: reviewDue,
       league: league ? { division_name: league.division_name, rank: me ? me.rank : null, size: league.members.length, xp: me ? me.xp : 0, ends_at: league.ends_at } : null
     });
@@ -327,6 +328,14 @@ module.exports = function registerFeatures(app, { db, auth, requireRole, require
       if (code.length === 6 && !db.prepare('SELECT 1 FROM duels WHERE code = ?').get(code)) return code;
     }
     throw new Error('Gagal membuat kode duel');
+  }
+
+  // Mahasiswa yang login membawa foto profilnya ke duel
+  function studentPhoto(req) {
+    const a = auth(req);
+    if (!a || (a.role !== 'student' && a.role !== 'mahasiswa')) return null;
+    const st = db.prepare('SELECT photo_key FROM students WHERE id = ?').get(a.user_id);
+    return st ? photoUrl(st.photo_key) : null;
   }
 
   app.post('/api/duels', (req, res) => {
@@ -355,7 +364,7 @@ module.exports = function registerFeatures(app, { db, auth, requireRole, require
     const nm = cleanName(name);
     if (nm.length >= 2) {
       token = 'd_' + crypto.randomBytes(12).toString('hex');
-      db.prepare('INSERT INTO duel_entries (code, token, name, avatar) VALUES (?, ?, ?, ?)').run(code, token, nm, cleanAvatar(avatar));
+      db.prepare('INSERT INTO duel_entries (code, token, name, avatar, photo) VALUES (?, ?, ?, ?, ?)').run(code, token, nm, cleanAvatar(avatar), studentPhoto(req));
     }
     res.json({ code, token });
   });
@@ -366,8 +375,8 @@ module.exports = function registerFeatures(app, { db, auth, requireRole, require
     const ids = JSON.parse(d.question_ids);
     const questions = ids.map(id => db.prepare('SELECT id, text, options FROM questions WHERE id = ?').get(id)).filter(Boolean)
       .map(q => ({ text: q.text, options: JSON.parse(q.options || '[]') }));
-    const entries = db.prepare('SELECT token, name, avatar, correct, score, time_ms, finished, answers FROM duel_entries WHERE code = ? ORDER BY score DESC, time_ms ASC').all(d.code)
-      .map(e => ({ name: e.name, avatar: e.avatar, correct: e.correct, score: e.score, time_ms: e.time_ms, finished: Boolean(e.finished), progress: JSON.parse(e.answers || '[]').length, is_me: Boolean(token) && e.token === String(token) }));
+    const entries = db.prepare('SELECT token, name, avatar, photo, correct, score, time_ms, finished, answers FROM duel_entries WHERE code = ? ORDER BY score DESC, time_ms ASC').all(d.code)
+      .map(e => ({ name: e.name, avatar: e.avatar, photo: e.photo || null, correct: e.correct, score: e.score, time_ms: e.time_ms, finished: Boolean(e.finished), progress: JSON.parse(e.answers || '[]').length, is_me: Boolean(token) && e.token === String(token) }));
     const mine = token ? db.prepare('SELECT name, avatar, answers FROM duel_entries WHERE code = ? AND token = ?').get(d.code, String(token)) : null;
     const me = mine ? { name: mine.name, avatar: mine.avatar, progress: JSON.parse(mine.answers || '[]').length } : null;
     return { code: d.code, quiz_title: d.title, questions, total: questions.length, time_limit_ms: DUEL_TIME_MS, entries, me };
@@ -387,7 +396,7 @@ module.exports = function registerFeatures(app, { db, auth, requireRole, require
     const count = db.prepare('SELECT COUNT(*) AS n FROM duel_entries WHERE code = ?').get(d.code).n;
     if (count >= 10) return res.status(403).json({ error: 'Duel ini sudah penuh' });
     const token = 'd_' + crypto.randomBytes(12).toString('hex');
-    db.prepare('INSERT INTO duel_entries (code, token, name, avatar) VALUES (?, ?, ?, ?)').run(d.code, token, nm, cleanAvatar(req.body.avatar));
+    db.prepare('INSERT INTO duel_entries (code, token, name, avatar, photo) VALUES (?, ?, ?, ?, ?)').run(d.code, token, nm, cleanAvatar(req.body.avatar), studentPhoto(req));
     res.json({ token });
   });
 

@@ -177,6 +177,13 @@ safeAddColumn('dosen', 'plan_expires_at TEXT');
 safeAddColumn('dosen', 'quota_ai_gen INTEGER DEFAULT 50');
 safeAddColumn('dosen', 'ai_used_month TEXT');
 safeAddColumn('game_rooms', 'team_count INTEGER DEFAULT 0');
+// Foto profil disimpan di database (folder server di hosting bisa hilang saat deploy).
+// photo_key acak dipakai di URL supaya foto tidak bisa dikumpulkan dengan menebak ID.
+safeAddColumn('dosen', 'photo TEXT');
+safeAddColumn('dosen', 'photo_key TEXT');
+safeAddColumn('students', 'photo TEXT');
+safeAddColumn('students', 'photo_key TEXT');
+safeAddColumn('room_players', 'photo TEXT');
 safeAddColumn('room_players', 'team INTEGER');
 safeAddColumn('dosen', 'ai_used_count INTEGER DEFAULT 0');
 

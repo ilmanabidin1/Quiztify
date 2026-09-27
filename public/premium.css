@@ -477,3 +477,24 @@ body.studio::after {
 /* Tabel nilai di modal: sel data tidak terbungkus, nama boleh */
 .studio .modal-box td { white-space: nowrap; }
 .studio .modal-box td:first-child { white-space: normal; min-width: 150px; }
+
+/* ---------- Foto profil ---------- */
+.qz-av { width: 1.6em; height: 1.6em; border-radius: 30%; object-fit: cover; vertical-align: middle; display: inline-block; background: rgba(255,255,255,.08); }
+.qz-av-emoji { display: inline-block; line-height: 1; }
+.photo-edit { display: flex; align-items: center; gap: 16px; margin-bottom: 18px; }
+.photo-edit-preview { width: 72px; height: 72px; border-radius: 22px; overflow: hidden; flex: 0 0 72px; display: grid; place-items: center; font-size: 28px; font-weight: 800; color: #fff; background: var(--accent); }
+.photo-edit-preview img { width: 100%; height: 100%; object-fit: cover; }
+.photo-edit-actions { display: flex; flex-direction: column; gap: 6px; align-items: flex-start; }
+.photo-edit-actions p { font-size: 12.5px; color: var(--text-muted, #a39ec4); line-height: 1.5; }
+.photo-edit-buttons { display: flex; gap: 8px; }
+.photo-btn { border: 1px solid rgba(255,255,255,.14); background: transparent; color: #fff; font-weight: 600; font-size: 13px; padding: 8px 14px; border-radius: 10px; }
+.photo-btn.primary { background: var(--accent); border-color: var(--accent); }
+.photo-btn.danger { color: #fda4af; }
+.studio .user-avatar, .studio .profile-dropdown-avatar { overflow: hidden; }
+.p-chip .qz-av { width: 26px; height: 26px; border-radius: 8px; }
+.studio .podium-avatar .qz-av { width: 52px; height: 52px; border-radius: 16px; }
+.board-av .qz-av { width: 30px; height: 30px; border-radius: 9px; }
+/* Banner pesan di modal profil: sembunyi sampai ada pesan */
+.studio .alert-banner { display: none; align-items: center; gap: 10px; padding: 10px 14px; border-radius: 10px; font-size: 13.5px; }
+.studio .alert-banner.success { display: flex; background: rgba(16,185,129,.1); border: 1px solid rgba(16,185,129,.3); color: #6ee7b7; }
+.studio .alert-banner.error { display: flex; background: rgba(244,63,94,.1); border: 1px solid rgba(244,63,94,.3); color: #fda4af; }

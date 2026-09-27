@@ -250,7 +250,7 @@ async function showResult() {
   $('board').innerHTML = board.map((e, i) => `
     <div class="board-row">
       <div class="board-rank">${i + 1}</div>
-      <div class="board-av">${qzEsc(e.avatar)}</div>
+      <div class="board-av">${qzAvatar(e.photo, e.avatar)}</div>
       <div class="board-name ${e.is_me ? 'me' : ''}">${qzEsc(e.name)}${e.is_me ? ' (kamu)' : ''}
         <div class="board-meta">${e.finished ? `${e.correct}/${duel.total} benar · ${(e.time_ms / 1000).toFixed(1)} dtk` : `sedang main (${e.progress}/${duel.total})`}</div>
       </div>
