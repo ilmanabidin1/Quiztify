@@ -875,9 +875,6 @@
       <button class="btn btn-emerald" onclick="openCreateModal()">
         <i class="fa-solid fa-plus"></i> <span>Kuis baru</span>
       </button>
-      <a href="/" target="_blank" class="btn btn-ghost" title="Lihat Portal Publik">
-        <i class="fa-solid fa-arrow-up-right-from-square"></i> <span>Quiztify.id</span>
-      </a>
     </div>
   </div>
 
@@ -910,47 +907,23 @@
   <div class="content-area">
     <!-- VIEW 1: DASHBOARD OVERVIEW -->
     <div id="view-dash">
-      <div class="metrics-grid">
-        <div class="metric-card">
-          <div class="metric-icon" style="background:rgba(124,58,237,0.2);color:var(--purple-light)"><i class="fa-solid fa-file-lines"></i></div>
-          <div>
-            <div class="metric-lbl">Total Kuis Dibuat</div>
-            <div class="metric-val" id="metric-quizzes">0</div>
-          </div>
-        </div>
-        <div class="metric-card">
-          <div class="metric-icon" style="background:rgba(6,182,212,0.2);color:var(--cyan)"><i class="fa-solid fa-gamepad"></i></div>
-          <div>
-            <div class="metric-lbl">Total Sesi Dimainkan</div>
-            <div class="metric-val" id="metric-attempts">0</div>
-          </div>
-        </div>
-        <div class="metric-card">
-          <div class="metric-icon" style="background:rgba(16,185,129,0.2);color:var(--emerald)"><i class="fa-solid fa-bullseye"></i></div>
-          <div>
-            <div class="metric-lbl">Rata-Rata Nilai</div>
-            <div class="metric-val" id="metric-avg-score">0%</div>
-          </div>
-        </div>
-        <div class="metric-card">
-          <div class="metric-icon" style="background:rgba(245,158,11,0.2);color:var(--amber)"><i class="fa-solid fa-graduation-cap"></i></div>
-          <div>
-            <div class="metric-lbl">Efektivitas N-Gain</div>
-            <div class="metric-val" id="metric-ngain">-</div>
-          </div>
-        </div>
+      <div class="dash-stats">
+        <div class="dash-stat"><span>Kuis dibuat</span><b id="metric-quizzes">0</b></div>
+        <div class="dash-stat"><span>Sesi dikerjakan</span><b id="metric-attempts">0</b></div>
+        <div class="dash-stat"><span>Rata-rata nilai</span><b id="metric-avg-score">-</b></div>
+        <div class="dash-stat"><span>Efektivitas N-Gain</span><b id="metric-ngain">-</b></div>
       </div>
 
-      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px">
-        <h2 style="font-size:18px;font-weight:800">Kuis terbaru</h2>
-        <button class="btn btn-ghost" onclick="switchNav('library')">Lihat semua</button>
+      <div class="dash-section-head">
+        <h2>Kuis terbaru</h2>
+        <button class="link-btn" onclick="switchNav('library')">Lihat semua <i class="fa-solid fa-arrow-right"></i></button>
       </div>
       <div class="quizzes-grid" id="dash-quizzes-grid"><div class="qz-skeleton"></div><div class="qz-skeleton"></div><div class="qz-skeleton"></div></div>
     </div>
 
     <!-- VIEW 2: QUIZ LIBRARY -->
     <div id="view-library" class="hidden">
-      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px">
+      <div class="view-head view-head-library" style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px">
         <div>
           <h2 style="font-size:20px;font-weight:800">Perpustakaan Kuis</h2>
           <p style="color:var(--text-muted);font-size:13px">Kelola dan luncurkan kuis interaktif ke proyektor kelas atau bagikan link kuis mandiri.</p>
@@ -1021,7 +994,7 @@
 
     <!-- VIEW 4: CLASSES & STUDENTS -->
     <div id="view-classes" class="hidden">
-      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px">
+      <div class="view-head view-head-classes" style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px">
         <div>
           <h2 style="font-size:20px;font-weight:800">Manajemen Kelas &amp; Siswa</h2>
           <p style="color:var(--text-muted);font-size:13px">Daftar kelas yang terdaftar di bawah bimbingan Anda.</p>
@@ -1175,7 +1148,7 @@
 
     <!-- VIEW 5: N-GAIN ACADEMIC REPORTS -->
     <div id="view-reports" class="hidden">
-      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px">
+      <div class="view-head view-head-reports" style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px">
         <div>
           <h2 style="font-size:20px;font-weight:800">Laporan &amp; Analisis Efektivitas (N-Gain)</h2>
           <p style="color:var(--text-muted);font-size:13px">Metrik ilmiah Hake's Normalized Gain untuk mengukur peningkatan pemahaman siswa.</p>
@@ -2335,7 +2308,17 @@ function switchNav(tab) {
 }
 
 // ---------- DASHBOARD & LIBRARY ----------
+function dashGreeting() {
+  const h = new Date(Date.now() + 7 * 3600e3).getUTCHours();
+  const part = h < 11 ? 'Selamat pagi' : h < 15 ? 'Selamat siang' : h < 18 ? 'Selamat sore' : 'Selamat malam';
+  const name = ((me && me.nama) || '').split(/\s+/).find(w => w.replace(/\W/g, '').length > 2) || '';
+  return name ? `${part}, ${name}` : part;
+}
+
 async function loadDashboard() {
+  if (document.getElementById('btn-nav-dash').classList.contains('active')) {
+    document.getElementById('page-title-text').textContent = dashGreeting();
+  }
   try {
     const res = await fetch('/api/creator/quizzes');
     const quizzes = await res.json();
@@ -2405,42 +2388,34 @@ function formatThemeBadge(theme) {
 }
 
 function renderQuizCardHtml(q) {
-  const badgeClass = q.type === 'pre' ? 'q-badge-pre' : (q.type === 'post' ? 'q-badge-post' : 'q-badge-standard');
-  const badgeText = q.type === 'pre' ? 'PRE-TEST' : (q.type === 'post' ? 'POST-TEST' : 'STANDAR');
-  const remedialBadge = q.is_remedial_for 
-    ? `<span class="q-badge" style="background:rgba(245,158,11,0.25);color:var(--amber);border:1px solid rgba(245,158,11,0.5)">REMEDIAL AI</span>` 
-    : '';
+  const typeLabel = q.is_remedial_for ? 'Remedial' : q.type === 'pre' ? 'Pre-Test' : q.type === 'post' ? 'Post-Test' : '';
   const safeTitle = (q.title || '').replace(/'/g, "\\'").replace(/"/g, '&quot;');
+  // Judul dari generator AI diawali "Kuis: "; di kartu cukup nama materinya
+  const title = qzEsc((q.title || 'Tanpa judul').replace(/^kuis\s*:\s*/i, ''));
+  const meta = [
+    `${q.question_count || 0} soal`,
+    q.attempt_count ? `${q.attempt_count} kali dikerjakan` : 'Belum dikerjakan',
+    q.class_name ? qzEsc(q.class_name) : null
+  ].filter(Boolean);
 
   return `
     <div class="quiz-item-card" id="quiz-card-${q.id}">
-      <div>
-        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
-          <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap">
-            <span class="q-badge ${badgeClass}">${badgeText}</span>
-            ${remedialBadge}
-            ${formatThemeBadge(q.theme || 'cyberpunk')}
-          </div>
-          <span style="font-size:26px">${q.cover_emoji || '⚡'}</span>
-        </div>
-        <h3 style="font-size:16px;font-weight:700;margin-bottom:6px">${q.title}</h3>
-        <p style="color:var(--text-muted);font-size:12.5px;line-height:1.4;margin-bottom:14px">${q.description || 'Tidak ada deskripsi'}</p>
-        <div style="font-size:12px;color:var(--cyan);font-weight:600;margin-bottom:14px;display:flex;align-items:center;gap:12px;flex-wrap:wrap">
-          <span><i class="fa-solid fa-list-check"></i> ${q.question_count || 0} Pertanyaan</span>
-          <span><i class="fa-solid fa-users"></i> ${q.attempt_count || 0} dimainkan</span>
-          <span style="color:var(--text-muted)"><i class="fa-solid fa-hourglass-half"></i> Jeda: ${q.break_time_sec ?? 5}s</span>
-        </div>
+      <div class="qc-body">
+        ${typeLabel ? `<span class="qc-type qc-type-${q.is_remedial_for ? 'remedial' : q.type}">${typeLabel}</span>` : ''}
+        <h3 class="qc-title">${title}</h3>
+        ${q.description ? `<p class="qc-desc">${qzEsc(q.description)}</p>` : ''}
+        <div class="qc-meta">${meta.map(m => `<span>${m}</span>`).join('')}</div>
       </div>
 
-      <div style="display:flex;align-items:center;gap:6px;border-top:1px solid var(--border);padding-top:14px">
-        <button class="btn btn-emerald" style="flex:1;justify-content:center;padding:10px 14px;font-weight:800" onclick="hostLiveGame(${q.id})" title="Mulai Sesi Host Live">
-          <i class="fa-solid fa-gamepad"></i> <span>Host live</span>
+      <div class="qc-actions">
+        <button class="btn btn-primary qc-host" onclick="hostLiveGame(${q.id})">
+          <i class="fa-solid fa-play"></i> <span>Host live</span>
         </button>
-        <button class="btn btn-ghost" style="padding:10px 14px;justify-content:center" onclick="showQrModal(${q.id})" title="Tampilkan Foto QR Code Kuis">
+        <button class="btn btn-ghost qc-icon" onclick="showQrModal(${q.id})" title="QR Code kuis" aria-label="QR Code kuis">
           <i class="fa-solid fa-qrcode"></i>
         </button>
         <div class="card-more-container">
-          <button class="btn btn-ghost btn-more-toggle" style="padding:10px 13px;justify-content:center" onclick="toggleQuizCardMenu(event, ${q.id})" title="Opsi Lainnya">
+          <button class="btn btn-ghost btn-more-toggle qc-icon" aria-label="Opsi lainnya"  onclick="toggleQuizCardMenu(event, ${q.id})" title="Opsi Lainnya">
             <i class="fa-solid fa-ellipsis-vertical"></i>
           </button>
           <div id="quiz-card-menu-${q.id}" class="quiz-card-dropdown hidden">
