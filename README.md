@@ -71,3 +71,31 @@ Akses di browser:
 ---
 
 © 2026 Quiztify.id — Interactive Learning & Gamified Assessment Platform.
+
+## Pembayaran DOKU Checkout
+
+Paket Pro Creator Rp49.000 berlaku 30 hari. Pembayaran dilakukan di halaman
+DOKU; aktivasi hanya terjadi setelah notifikasi bertanda tangan valid atau
+konfirmasi Check Status API dengan invoice dan nominal yang cocok.
+
+Atur environment server (jangan commit kredensial):
+
+- `DOKU_ENV`: `sandbox` untuk pengujian, `production` untuk pembayaran live.
+- `DOKU_CLIENT_ID` dan `DOKU_SECRET_KEY`: pasangan kredensial dari dashboard DOKU
+  pada environment yang dipilih.
+- `PUBLIC_BASE_URL`: `https://www.quiztify.id` untuk production; URL publik
+  server pengujian untuk sandbox. Production wajib HTTPS.
+
+Di dashboard DOKU, arahkan HTTP Notification ke
+`https://www.quiztify.id/api/payments/doku/notify`. Request Checkout juga
+menyertakan override URL ini. Endpoint harus bisa menerima POST JSON tanpa
+login atau redirect. Callback pelanggan kembali ke `/creator.html?payment=...`.
+Pastikan metode pembayaran merchant sudah aktif sebelum menerima pembayaran.
+
+Jalankan `npm test` untuk tes lokal menggunakan SQLite sementara dan respons
+DOKU simulasi. Sebelum live, uji checkout serta notifikasi sandbox dari DOKU,
+termasuk percobaan gagal lalu berhasil dan notifikasi berulang. Tes lokal tidak
+membuktikan kredensial production, aktivasi kanal, atau keterjangkauan webhook.
+
+Referensi: [Backend Checkout](https://developers.doku.com/accept-payments/doku-checkout/integration-guide/backend-integration),
+[HTTP Notification](https://developers.doku.com/get-started-with-doku-api/notification/best-practice).

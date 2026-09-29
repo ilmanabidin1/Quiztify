@@ -26,7 +26,16 @@ module.exports = function registerPayments(app, { db, requireRole }) {
     secret: process.env.DOKU_SECRET_KEY,
     host: process.env.DOKU_ENV === 'production' ? 'https://api.doku.com' : 'https://api-sandbox.doku.com'
   });
-  const configured = () => { const c = cfg(); return !!(c.clientId && c.secret); };
+  const configured = () => {
+    const c = cfg();
+    try {
+      const base = new URL(process.env.PUBLIC_BASE_URL);
+      return !!(c.clientId && c.secret) &&
+        ['sandbox', 'production'].includes(process.env.DOKU_ENV || 'sandbox') &&
+        ['http:', 'https:'].includes(base.protocol) && !base.username && !base.password &&
+        (process.env.DOKU_ENV !== 'production' || base.protocol === 'https:');
+    } catch { return false; }
+  };
 
   const digestOf = (raw) => crypto.createHash('sha256').update(raw).digest('base64');
   function signature({ clientId, requestId, timestamp, target, digest }, secret) {
@@ -52,35 +61,35 @@ module.exports = function registerPayments(app, { db, requireRole }) {
       target, digest: body ? digestOf(raw) : null
     }, c.secret);
     if (body) headers['Content-Type'] = 'application/json';
-    const res = await fetch(c.host + target, { method, headers, body: body ? raw : undefined });
+    const res = await fetch(c.host + target, { method, headers, body: body ? raw : undefined, signal: AbortSignal.timeout(15000) });
     const data = await res.json().catch(() => ({}));
     return { ok: res.ok, status: res.status, data };
   }
 
-  // Idempotent: hanya invoice PENDING yang bisa diaktifkan, masa aktif ditambahkan dari sisa paket.
+  // Satu invoice hanya memberi masa aktif sekali, termasuk notifikasi ulang/terlambat.
   function markPaid(invoice, paidAmount) {
-    const p = db.prepare('SELECT * FROM payments WHERE invoice = ?').get(invoice);
-    if (!p || p.status === 'SUCCESS') return p;
-    if (Math.round(Number(paidAmount)) !== p.amount) {
-      console.warn(`[DOKU] Nominal tidak cocok untuk ${invoice}: ${paidAmount} vs ${p.amount}`);
-      return p;
-    }
-    const d = db.prepare('SELECT plan, plan_expires_at FROM dosen WHERE id = ?').get(p.dosen_id);
-    const now = Date.now();
-    const current = d && d.plan === p.plan && d.plan_expires_at ? Date.parse(d.plan_expires_at) : 0;
-    const expires = new Date(Math.max(now, current || 0) + p.days * 86400000).toISOString();
-    db.exec('BEGIN');
+    db.exec('BEGIN IMMEDIATE');
     try {
-      db.prepare(`UPDATE payments SET status='SUCCESS', paid_at=datetime('now') WHERE invoice=? AND status='PENDING'`).run(invoice);
+      const p = db.prepare('SELECT * FROM payments WHERE invoice = ?').get(invoice);
+      if (!p || p.status === 'SUCCESS') { db.exec('COMMIT'); return p; }
+      if (!['number', 'string'].includes(typeof paidAmount) ||
+          !Number.isSafeInteger(Number(paidAmount)) || Number(paidAmount) !== p.amount) {
+        throw new Error('Payment amount mismatch');
+      }
+      const d = db.prepare('SELECT plan, plan_expires_at FROM dosen WHERE id = ?').get(p.dosen_id);
+      if (!d) throw new Error('Payment account missing');
+      const current = d.plan === p.plan && d.plan_expires_at ? Date.parse(d.plan_expires_at) : 0;
+      const expires = new Date(Math.max(Date.now(), current || 0) + p.days * 86400000).toISOString();
+      db.prepare("UPDATE payments SET status='SUCCESS', paid_at=datetime('now') WHERE invoice=?").run(invoice);
       db.prepare('UPDATE dosen SET plan = ?, plan_expires_at = ? WHERE id = ?').run(p.plan, expires, p.dosen_id);
       db.exec('COMMIT');
+      return db.prepare('SELECT * FROM payments WHERE invoice = ?').get(invoice);
     } catch (e) { db.exec('ROLLBACK'); throw e; }
-    return db.prepare('SELECT * FROM payments WHERE invoice = ?').get(invoice);
   }
 
   app.post('/api/billing/checkout', requireRole('creator', 'dosen'), async (req, res) => {
     const plan = (req.body || {}).plan;
-    const price = PRICES[plan];
+    const price = Object.hasOwn(PRICES, plan) ? PRICES[plan] : null;
     if (!price) return res.status(400).json({ error: 'Paket tidak tersedia untuk pembelian online. Untuk paket Campus, hubungi contact@quiztify.id.' });
     if (!configured()) return res.status(503).json({ error: 'Pembayaran belum aktif. Coba lagi nanti.' });
 
@@ -88,8 +97,8 @@ module.exports = function registerPayments(app, { db, requireRole }) {
     if (!dosen) return res.status(404).json({ error: 'Akun tidak ditemukan.' });
 
     // Tanpa simbol, maksimal 30 karakter supaya aman untuk semua kanal (kartu kredit, KKI).
-    const invoice = `QZ${dosen.id}T${Date.now()}`.slice(0, 30);
-    const base = (process.env.PUBLIC_BASE_URL || req.headers.origin || `${req.protocol}://${req.get('host')}`).replace(/\/$/, '');
+    const invoice = 'QZ' + crypto.randomBytes(14).toString('hex');
+    const base = new URL(process.env.PUBLIC_BASE_URL).origin;
     const back = `${base}/creator.html?payment=${invoice}`;
 
     const body = {
@@ -109,26 +118,31 @@ module.exports = function registerPayments(app, { db, requireRole }) {
     if (process.env.PUBLIC_BASE_URL) body.additional_info = { override_notification_url: `${base}${NOTIFY_PATH}` };
 
     try {
+      // Simpan sebelum API dipanggil agar notifikasi yang cepat tidak hilang.
+      db.prepare('INSERT INTO payments (invoice, dosen_id, plan, amount, days) VALUES (?, ?, ?, ?, ?)')
+        .run(invoice, dosen.id, plan, price.amount, price.days);
       const r = await dokuRequest('POST', '/checkout/v1/payment', body);
       const url = r.data && r.data.response && r.data.response.payment && r.data.response.payment.url;
       if (!r.ok || !url) {
-        console.error('[DOKU] Gagal membuat checkout', r.status, JSON.stringify(r.data));
+        console.error('[DOKU] Gagal membuat checkout', r.status, invoice);
         return res.status(502).json({ error: 'Halaman pembayaran gagal dibuat. Coba lagi beberapa saat lagi.' });
       }
-      db.prepare('INSERT INTO payments (invoice, dosen_id, plan, amount, days, payment_url) VALUES (?, ?, ?, ?, ?, ?)')
-        .run(invoice, dosen.id, plan, price.amount, price.days, url);
+      db.prepare('UPDATE payments SET payment_url = ? WHERE invoice = ?').run(url, invoice);
       res.json({ invoice, payment_url: url });
     } catch (e) {
-      console.error('[DOKU] Error checkout', e);
+      console.error('[DOKU] Error checkout', e.name, invoice);
       res.status(502).json({ error: 'Tidak bisa terhubung ke DOKU. Coba lagi beberapa saat lagi.' });
     }
   });
 
-  // HTTP Notification dari DOKU. Wajib balas 200 supaya DOKU tidak mengirim ulang.
+  // Balas 200 setelah diproses; error harus tetap bisa dikirim ulang oleh DOKU.
   app.post(NOTIFY_PATH, (req, res) => {
     const c = cfg();
     if (!configured()) return res.status(503).end();
-    const raw = req.rawBody ? req.rawBody.toString('utf8') : JSON.stringify(req.body || {});
+    if (!req.rawBody || !req.get('Request-Id') || !req.get('Request-Timestamp')) {
+      return res.status(400).json({ error: 'missing notification headers or body' });
+    }
+    const raw = req.rawBody;
     const expected = signature({
       clientId: req.get('Client-Id'), requestId: req.get('Request-Id'),
       timestamp: req.get('Request-Timestamp'), target: NOTIFY_PATH, digest: digestOf(raw)
@@ -140,8 +154,17 @@ module.exports = function registerPayments(app, { db, requireRole }) {
     const b = req.body || {};
     const invoice = b.order && b.order.invoice_number;
     const status = b.transaction && b.transaction.status;
-    if (invoice && status === 'SUCCESS') markPaid(invoice, b.order.amount);
-    else if (invoice && status === 'FAILED') db.prepare(`UPDATE payments SET status='FAILED' WHERE invoice=? AND status='PENDING'`).run(invoice);
+    if (typeof invoice !== 'string' || !status) return res.status(400).json({ error: 'invalid notification' });
+    try {
+      if (status === 'SUCCESS') {
+        if (b.order.currency && b.order.currency !== 'IDR') return res.status(400).json({ error: 'invalid currency' });
+        if (!markPaid(invoice, b.order.amount)) return res.status(404).json({ error: 'invoice not found' });
+      }
+      // Checkout dapat dicoba ulang dengan metode lain; FAILED bukan status akhir invoice.
+    } catch (e) {
+      console.error('[DOKU] Notifikasi belum diproses', invoice, e.message);
+      return res.status(500).json({ error: 'notification not processed' });
+    }
     res.status(200).json({ ok: true });
   });
 
@@ -149,11 +172,13 @@ module.exports = function registerPayments(app, { db, requireRole }) {
   app.get('/api/billing/status/:invoice', requireRole('creator', 'dosen'), async (req, res) => {
     let p = db.prepare('SELECT * FROM payments WHERE invoice = ? AND dosen_id = ?').get(req.params.invoice, req.auth.user_id);
     if (!p) return res.status(404).json({ error: 'Transaksi tidak ditemukan.' });
-    if (p.status === 'PENDING' && configured()) {
+    if (['PENDING', 'FAILED'].includes(p.status) && configured()) {
       try {
         const r = await dokuRequest('GET', `/orders/v1/status/${encodeURIComponent(p.invoice)}`);
         const t = r.ok && r.data && r.data.transaction;
-        if (t && t.status === 'SUCCESS') p = markPaid(p.invoice, (r.data.order && r.data.order.amount) ?? p.amount);
+        const order = r.data && r.data.order;
+        if (t && t.status === 'SUCCESS' && order && order.invoice_number === p.invoice &&
+            (!order.currency || order.currency === 'IDR')) p = markPaid(p.invoice, order.amount);
       } catch (e) { console.error('[DOKU] Error cek status', e.message); }
     }
     const d = db.prepare('SELECT plan, plan_expires_at FROM dosen WHERE id = ?').get(req.auth.user_id);
