@@ -27,7 +27,7 @@ if (fs.existsSync(envFile)) {
 }
 
 const app = express();
-app.use(express.json({ limit: '5mb' }));
+app.use(express.json({ limit: '5mb', verify: (req, res, buf) => { req.rawBody = buf; } }));
 app.use(express.static(path.join(__dirname, 'public')));
 
 // ---------- Kepemilikan data dosen ----------
@@ -520,14 +520,6 @@ app.put('/api/creator/profile', requireRole('creator', 'dosen'), (req, res) => {
   res.json({ ok: true, ...updated });
 });
 
-// Mock Upgrade Subscription
-app.post('/api/subscription/upgrade', requireRole('creator', 'dosen'), (req, res) => {
-  return res.status(501).json({ error: 'Fitur langganan masih dalam tahap pengembangan. Pembayaran akan segera tersedia.' });
-  const { plan } = req.body || {};
-  const targetPlan = ['pro', 'enterprise'].includes(plan) ? plan : 'pro';
-  db.prepare('UPDATE dosen SET plan = ? WHERE id = ?').run(targetPlan, req.auth.user_id);
-  res.json({ ok: true, plan: targetPlan, message: `Selamat! Akun Quiztify Anda kini berstatus ${targetPlan.toUpperCase()}` });
-});
 
 // ---------- LIVE GAME MULTIPLAYER ENGINE (QUIZIZZ-STYLE) ----------
 
@@ -2603,27 +2595,6 @@ app.get('/api/quizzes/:id/export-csv', requireRole('creator', 'dosen'), requireP
 });
 
 // Upgrade Subscription Tier (Commercial Monetization)
-app.post('/api/creator/upgrade-plan', requireRole('creator', 'dosen'), (req, res) => {
-  return res.status(501).json({ error: 'Fitur langganan masih dalam tahap pengembangan. Pembayaran akan segera tersedia.' });
-  const { plan, billing_cycle } = req.body || {};
-  const targetPlan = (plan === 'campus_enterprise' || plan === 'pro') ? plan : 'pro';
-  const days = (billing_cycle === 'yearly') ? 365 : 30;
-  const expiresAt = new Date(Date.now() + days * 24 * 60 * 60 * 1000).toISOString();
-  const quota = targetPlan === 'campus_enterprise' ? 9999 : 500;
-
-  db.prepare(`UPDATE dosen SET plan = ?, plan_expires_at = ?, quota_ai_gen = ? WHERE id = ?`).run(
-    targetPlan, expiresAt, quota, req.auth.user_id
-  );
-
-  res.json({
-    ok: true,
-    plan: targetPlan,
-    plan_display: targetPlan === 'campus_enterprise' ? 'CAMPUS ENTERPRISE' : 'PRO CREATOR',
-    plan_expires_at: expiresAt,
-    quota_ai_gen: quota,
-    message: `Selamat! Akun Anda berhasil diaktifkan ke paket ${targetPlan.toUpperCase()}.`
-  });
-});
 
 // Rekap Buku Nilai Akhir Kelas (Gradebook Mata Kuliah)
 app.get('/api/classes/:id/gradebook', requireRole('creator', 'dosen'), (req, res) => {
@@ -2889,6 +2860,7 @@ app.delete('/api/student/photo', requireStudent, (req, res) => {
 
 // Fitur retensi: rapor semester, soal harian, liga, duel
 require('./features')(app, { db, auth, requireRole, requireStudent, requirePaid, ngain, photoUrl });
+require('./payments')(app, { db, requireRole });
 
 // Default Fallback
 const PORT = process.env.PORT || 3000;

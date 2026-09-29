@@ -1258,7 +1258,7 @@
               <li><i class="fa-solid fa-check" style="color:var(--emerald);margin-right:8px"></i> Dedicated DB &amp; Support Prioritas 24/7</li>
             </ul>
             <button class="btn btn-primary" style="width:100%;justify-content:center;padding:12px;font-weight:800" onclick="upgradeToPlan('campus_enterprise')">
-              <i class="fa-solid fa-building-columns"></i> Pilih Campus
+              <i class="fa-solid fa-building-columns"></i> Hubungi kami
             </button>
           </div>
         </div>
@@ -4414,14 +4414,51 @@ function exportBeritaAcaraCsv() {
 }
 
 // ---------- SAAS COMMERCIAL TIERS & UPGRADE SYSTEM ----------
-// Pembayaran belum tersedia: jelaskan ke pengguna, jangan ubah paket.
-function upgradeToPlan(planName) {
+// Pro dibayar lewat DOKU Checkout; Campus lewat kontak langsung.
+async function upgradeToPlan(planName) {
   if (planName === 'free') {
     qzToast(me && me.plan === 'free' ? 'Kamu sedang memakai paket Starter.' : 'Paket Starter selalu tersedia gratis.', 'info');
     return;
   }
-  qzToast('Fitur langganan masih dalam tahap pengembangan. Pembayaran akan segera tersedia, terima kasih sudah menunggu.', 'info', 6000);
+  if (planName === 'campus_enterprise') {
+    window.location.href = 'mailto:contact@quiztify.id?subject=' + encodeURIComponent('Paket Campus Quiztify');
+    return;
+  }
+  try {
+    qzToast('Menyiapkan halaman pembayaran...', 'info', 4000);
+    const res = await fetch('/api/billing/checkout', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ plan: planName })
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || 'Halaman pembayaran gagal dibuat.');
+    window.location.href = data.payment_url;
+  } catch (e) {
+    qzToast(e.message, 'error');
+  }
 }
+
+// Kembali dari DOKU: ?payment=INVOICE. Cek status beberapa kali karena notifikasi bisa telat.
+async function checkReturnedPayment() {
+  const invoice = new URLSearchParams(location.search).get('payment');
+  if (!invoice) return;
+  history.replaceState(null, '', location.pathname + location.hash);
+  for (let i = 0; i < 6; i++) {
+    try {
+      const res = await fetch('/api/billing/status/' + encodeURIComponent(invoice));
+      const data = await res.json();
+      if (res.ok && data.status === 'SUCCESS') {
+        const until = data.plan_expires_at ? new Date(data.plan_expires_at).toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' }) : '';
+        qzToast('Pembayaran berhasil. Paket Pro aktif' + (until ? ' sampai ' + until : '') + '.', 'success', 8000);
+        setTimeout(() => location.reload(), 2500);
+        return;
+      }
+      if (res.ok && data.status === 'FAILED') { qzToast('Pembayaran gagal. Silakan coba lagi.', 'error'); return; }
+    } catch (e) { /* coba lagi */ }
+    await new Promise(r => setTimeout(r, 4000));
+  }
+  qzToast('Pembayaran belum terkonfirmasi. Kalau kamu sudah membayar, paket akan aktif otomatis dalam beberapa menit.', 'info', 9000);
+}
+document.addEventListener('DOMContentLoaded', checkReturnedPayment);
 
 // Unduh CSV lewat fetch supaya pesan error (mis. fitur khusus Pro) tampil sebagai toast, bukan halaman JSON.
 async function downloadCsv(url) {
