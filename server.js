@@ -442,8 +442,16 @@ app.post('/api/auth/student/register', (req, res) => {
     const firstClass = db.prepare('SELECT id FROM classes LIMIT 1').get();
     classId = firstClass ? firstClass.id : null;
   }
-  if (db.prepare('SELECT id FROM students WHERE npm = ?').get(m)) {
-    return res.status(409).json({ error: 'NPM/NISN ini sudah terdaftar, silakan login' });
+  const existing = db.prepare('SELECT id, class_id, avatar FROM students WHERE npm = ?').get(m);
+  if (existing) {
+    // Akun otomatis dari kuis kelas (belum punya password) boleh diklaim dengan mendaftar memakai NPM yang sama
+    const row = db.prepare('SELECT password_hash FROM students WHERE id = ?').get(existing.id);
+    if (row.password_hash !== '!unclaimed') {
+      return res.status(409).json({ error: 'NPM/NISN ini sudah terdaftar, silakan login' });
+    }
+    db.prepare('UPDATE students SET nama = ?, password_hash = ? WHERE id = ?').run(n, hashPassword(password), existing.id);
+    setSession(res, 'student', existing.id);
+    return res.json({ id: existing.id, nama: n, npm: m, class_id: existing.class_id, avatar: existing.avatar });
   }
   // Tanpa pilihan avatar, beri avatar berbeda per mahasiswa (stabil dari NIM) supaya daftar nilai tidak seragam
   const AVATARS = ['🦊', '🦁', '🐼', '🐯', '🐨', '🦉', '🐙', '🦄', '🐸', '🐧', '🐬', '🦋'];
@@ -672,11 +680,49 @@ app.post('/api/rooms/:pin/end', requireRole('creator', 'dosen'), (req, res) => {
   const room = db.prepare('SELECT * FROM game_rooms WHERE pin = ? AND host_id = ?').get(pin, req.auth.user_id);
   if (!room) return res.status(403).json({ error: 'Bukan host room ini' });
 
-  db.prepare("UPDATE game_rooms SET status = 'finished' WHERE pin = ?").run(pin);
+  finishRoom(room);
   res.json({ ok: true, status: 'finished' });
 });
 
 // 2. Player Join Room
+// Hubungkan peserta kuis kelas ke data mahasiswa: cari berdasarkan NPM, buat baru kalau belum ada.
+// Akun yang dibuat dari kuis belum punya password; mahasiswa bisa mengklaimnya lewat halaman daftar.
+function linkClassStudent(classId, npm, nama) {
+  let st = db.prepare('SELECT id, class_id FROM students WHERE npm = ?').get(npm);
+  if (st) {
+    if (!st.class_id) db.prepare('UPDATE students SET class_id = ? WHERE id = ?').run(classId, st.id);
+    return st;
+  }
+  const info = db.prepare('INSERT INTO students (class_id, nama, npm, password_hash) VALUES (?, ?, ?, ?)').run(classId, nama, npm, '!unclaimed');
+  return { id: info.lastInsertRowid, class_id: classId };
+}
+
+// Nilai kuis live (skala 0-100) disimpan sebagai attempt supaya muncul di nilai kelas, rapor, dan N-Gain.
+function recordLiveAttempt(quizId, studentId, answersMap, total, tabSwitches) {
+  const correct = Object.values(answersMap).filter(a => a && a.is_correct).length;
+  const score = total ? Math.round((correct / total) * 100) : 0;
+  const r = db.prepare(`INSERT OR IGNORE INTO attempts (quiz_id, student_id, score, correct_count, total_count, answers, tab_switches)
+    VALUES (?, ?, ?, ?, ?, ?, ?)`).run(quizId, studentId, score, correct, total, JSON.stringify(answersMap), Number(tabSwitches) || 0);
+  if (r.changes) db.prepare('UPDATE students SET points = points + ? WHERE id = ?').run(score * 10, studentId);
+}
+
+// Tutup sesi. Mahasiswa kelas yang belum selesai tetap tercatat; soal yang belum dijawab dihitung salah.
+function finishRoom(room) {
+  db.prepare(`UPDATE game_rooms SET status = 'finished' WHERE pin = ?`).run(room.pin);
+  const total = db.prepare('SELECT COUNT(*) AS c FROM questions WHERE quiz_id = ?').get(room.quiz_id).c;
+  for (const pl of db.prepare('SELECT * FROM room_players WHERE pin = ? AND student_id IS NOT NULL AND finished = 0').all(room.pin)) {
+    recordLiveAttempt(room.quiz_id, pl.student_id, JSON.parse(pl.answers_json || '{}'), total, pl.tab_switches);
+  }
+}
+
+// Info singkat sebelum gabung: apakah kuis ini milik kelas (perlu NPM)
+app.get('/api/rooms/:pin/info', (req, res) => {
+  const r = db.prepare(`SELECT q.title, c.name AS class_name, c.course FROM game_rooms g JOIN quizzes q ON q.id = g.quiz_id
+    LEFT JOIN classes c ON c.id = q.class_id WHERE g.pin = ? AND g.status != 'finished'`).get(req.params.pin);
+  if (!r) return res.status(404).json({ error: 'PIN kuis tidak ditemukan atau permainan telah selesai' });
+  res.json({ quiz_title: r.title, requires_npm: !!r.class_name, class_name: r.class_name ? [r.course, r.class_name].filter(Boolean).join(' · ') : null });
+});
+
 app.post('/api/rooms/join', (req, res) => {
   const { pin, nickname, name: directName, avatar } = req.body || {};
   const p = norm(pin);
@@ -688,13 +734,23 @@ app.post('/api/rooms/join', (req, res) => {
   const room = db.prepare("SELECT * FROM game_rooms WHERE pin = ? AND status != 'finished'").get(p);
   if (!room) return res.status(404).json({ error: 'PIN kuis tidak ditemukan atau permainan telah selesai' });
 
-  const quiz = db.prepare('SELECT id, title, cover_emoji, exam_mode FROM quizzes WHERE id = ?').get(room.quiz_id);
+  const quiz = db.prepare('SELECT id, title, cover_emoji, exam_mode, class_id FROM quizzes WHERE id = ?').get(room.quiz_id);
   const questionsCount = db.prepare('SELECT COUNT(*) as count FROM questions WHERE quiz_id = ?').get(room.quiz_id).count;
+
+  // Kuis di dalam kelas: peserta wajib isi NPM supaya nilainya masuk ke daftar nilai kelas
+  let classStudent = null;
+  if (quiz && quiz.class_id) {
+    const npmVal = norm((req.body || {}).npm).replace(/[^0-9A-Za-z.\-]/g, '').slice(0, 30);
+    if (npmVal.length < 3) return res.status(400).json({ error: 'NPM/NIM wajib diisi untuk kuis kelas ini', requires_npm: true });
+    classStudent = linkClassStudent(quiz.class_id, npmVal, name);
+  }
 
   // Cek apakah player dengan nama ini sudah bergabung di room ini
   let playerToken = '';
   let chosenAvatar = (typeof avatar === 'string' && avatar && !/[<>"'`&]/.test(avatar)) ? avatar.slice(0, 8) : '🦊';
-  const existingPlayer = db.prepare('SELECT * FROM room_players WHERE pin = ? AND name = ?').get(room.pin, name);
+  const existingPlayer = classStudent
+    ? db.prepare('SELECT * FROM room_players WHERE pin = ? AND student_id = ?').get(room.pin, classStudent.id)
+    : db.prepare('SELECT * FROM room_players WHERE pin = ? AND name = ?').get(room.pin, name);
 
   if (!existingPlayer && !isPaidPlan(planOf(room.host_id))) {
     const joined = db.prepare('SELECT COUNT(*) AS c FROM room_players WHERE pin = ?').get(room.pin).c;
@@ -721,9 +777,13 @@ app.post('/api/rooms/join', (req, res) => {
       const st = db.prepare('SELECT photo_key FROM students WHERE id = ?').get(who.user_id);
       photo = st ? photoUrl(st.photo_key) : null;
     }
-    db.prepare(`INSERT INTO room_players (pin, player_token, name, avatar, score, streak, current_q_idx, finished, tab_switches, updated_at, team, photo)
-      VALUES (?, ?, ?, ?, 0, 0, 0, 0, 0, ?, ?, ?)`).run(
-        room.pin, playerToken, name, chosenAvatar, Date.now(), team, photo
+    if (classStudent && !photo) {
+      const st = db.prepare('SELECT photo_key FROM students WHERE id = ?').get(classStudent.id);
+      photo = st ? photoUrl(st.photo_key) : null;
+    }
+    db.prepare(`INSERT INTO room_players (pin, player_token, name, avatar, score, streak, current_q_idx, finished, tab_switches, updated_at, team, photo, student_id)
+      VALUES (?, ?, ?, ?, 0, 0, 0, 0, 0, ?, ?, ?, ?)`).run(
+        room.pin, playerToken, name, chosenAvatar, Date.now(), team, photo, classStudent ? classStudent.id : null
       );
   }
 
@@ -951,7 +1011,7 @@ app.post('/api/rooms/:pin/control', requireRole('creator', 'dosen'), (req, res) 
   } else if (action === 'leaderboard') {
     db.prepare(`UPDATE game_rooms SET status = 'leaderboard' WHERE pin = ?`).run(pin);
   } else if (action === 'finish') {
-    db.prepare(`UPDATE game_rooms SET status = 'finished' WHERE pin = ?`).run(pin);
+    finishRoom(room);
   } else if (action === 'teams') {
     if (room.status !== 'lobby') return res.status(400).json({ error: 'Mode tim hanya bisa diatur sebelum kuis dimulai' });
     const count = [0, 2, 3, 4].includes(Number(req.body.count)) ? Number(req.body.count) : 0;
@@ -1051,6 +1111,7 @@ app.post('/api/rooms/:pin/answer', (req, res) => {
     WHERE pin = ? AND player_token = ?`).run(
       newScore, newStreak, isCorrect ? 1 : 0, pointsEarned, JSON.stringify(answersMap), nextQIdx, isFinished, Date.now(), pin, player_token
     );
+  if (isFinished && player.student_id) recordLiveAttempt(room.quiz_id, player.student_id, answersMap, totalQuestions, player.tab_switches);
 
   // Trigger Real-Time Social Hype Events
   // 1. Leaderboard Overtake #1

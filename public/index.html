@@ -1365,8 +1365,13 @@
         <!-- avatars injected here -->
       </div>
 
-      <label style="font-size:12px;font-weight:700;color:var(--text-muted)">NAMA PANGGILAN / NICKNAME</label>
+      <div id="join-class-note" class="hidden" style="font-size:13px;color:var(--cyan);background:rgba(6,182,212,0.1);border:1px solid rgba(6,182,212,0.25);border-radius:12px;padding:10px 12px;margin-bottom:12px"></div>
+      <label id="player-name-label" style="font-size:12px;font-weight:700;color:var(--text-muted)">NAMA PANGGILAN / NICKNAME</label>
       <input type="text" id="player-name-input" class="pin-input" style="font-size:16px;letter-spacing:normal;text-align:left;margin-top:6px;padding:12px 14px" placeholder="Ketik nama kamu...">
+      <div id="player-npm-wrap" class="hidden" style="margin-top:12px">
+        <label style="font-size:12px;font-weight:700;color:var(--text-muted)">NPM / NIM</label>
+        <input type="text" id="player-npm-input" class="pin-input" inputmode="numeric" autocomplete="off" style="font-size:16px;letter-spacing:normal;text-align:left;margin-top:6px;padding:12px 14px" placeholder="Contoh: 10090121001">
+      </div>
     </div>
 
     <div style="display:flex;gap:10px;margin-top:24px">
@@ -2245,6 +2250,11 @@ function openJoinModal() {
   document.getElementById('display-pin-target').textContent = pin;
   document.getElementById('modal-join').classList.remove('hidden');
   document.getElementById('join-error').classList.add('hidden');
+  setJoinRequiresNpm(false, null);
+  // Kuis di dalam kelas meminta nama lengkap + NPM agar nilai masuk ke daftar kelas
+  fetch('/api/rooms/' + pin + '/info').then(r => r.ok ? r.json() : null).then(info => {
+    if (info && currentPin === pin) setJoinRequiresNpm(info.requires_npm, info.class_name);
+  }).catch(() => {});
   soundEngine.play('click');
 }
 
@@ -2252,11 +2262,28 @@ function closeJoinModal() {
   document.getElementById('modal-join').classList.add('hidden');
 }
 
+let joinRequiresNpm = false;
+function setJoinRequiresNpm(on, className) {
+  joinRequiresNpm = !!on;
+  document.getElementById('player-npm-wrap').classList.toggle('hidden', !on);
+  document.getElementById('player-name-label').textContent = on ? 'NAMA LENGKAP' : 'NAMA PANGGILAN / NICKNAME';
+  document.getElementById('player-name-input').placeholder = on ? 'Sesuai data kampus' : 'Ketik nama kamu...';
+  const note = document.getElementById('join-class-note');
+  note.classList.toggle('hidden', !on);
+  if (on) note.textContent = 'Kuis ini bagian dari kelas ' + (className || '') + '. Isi nama lengkap dan NPM supaya nilaimu tercatat.';
+}
+
 async function submitJoinGame() {
   const name = document.getElementById('player-name-input').value.trim();
+  const npm = document.getElementById('player-npm-input').value.trim();
   const errEl = document.getElementById('join-error');
   if (!name || name.length < 2) {
-    errEl.textContent = 'Masukkan nama panggilan minimal 2 huruf!';
+    errEl.textContent = joinRequiresNpm ? 'Masukkan nama lengkap kamu.' : 'Masukkan nama panggilan minimal 2 huruf!';
+    errEl.classList.remove('hidden');
+    return;
+  }
+  if (joinRequiresNpm && npm.length < 3) {
+    errEl.textContent = 'Masukkan NPM/NIM kamu.';
     errEl.classList.remove('hidden');
     return;
   }
@@ -2265,10 +2292,11 @@ async function submitJoinGame() {
     const res = await fetch('/api/rooms/join', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ pin: currentPin, nickname: name, avatar: playerAvatar })
+      body: JSON.stringify({ pin: currentPin, nickname: name, npm: npm || undefined, avatar: playerAvatar })
     });
     const data = await res.json();
     if (!res.ok) {
+      if (data.requires_npm) setJoinRequiresNpm(true, null);
       errEl.textContent = data.error || 'Gagal bergabung ke room';
       errEl.classList.remove('hidden');
       soundEngine.play('wrong');

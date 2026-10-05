@@ -185,6 +185,7 @@ safeAddColumn('students', 'photo TEXT');
 safeAddColumn('students', 'photo_key TEXT');
 safeAddColumn('room_players', 'photo TEXT');
 safeAddColumn('room_players', 'team INTEGER');
+safeAddColumn('room_players', 'student_id INTEGER');
 safeAddColumn('dosen', 'ai_used_count INTEGER DEFAULT 0');
 
 db.exec(`PRAGMA user_version = ${SCHEMA_VERSION}`);
