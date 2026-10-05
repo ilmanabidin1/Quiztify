@@ -425,23 +425,19 @@ app.post('/api/auth/creator/register', (req, res) => {
 });
 
 app.post('/api/auth/student/register', (req, res) => {
-  const { nama, npm, password, class_id, avatar } = req.body || {};
+  const { nama, npm, password, avatar } = req.body || {};
   const n = norm(nama), m = norm(npm);
   if (!n || n.length < 2) return res.status(400).json({ error: 'Nama lengkap wajib diisi' });
   if (!m || m.length < 3) return res.status(400).json({ error: 'ID/NIM/NISN minimal 3 karakter' });
   if (!password || password.length < 6) return res.status(400).json({ error: 'Password minimal 6 karakter' });
   
-  let classId = Number(class_id) || null;
+  // Kelas hanya bisa dipilih lewat kode kelas dari dosen. Tanpa kode, akun dibuat tanpa kelas.
+  let classId = null;
   const classCode = norm(req.body.class_code);
   if (classCode) {
     const byCode = db.prepare('SELECT id FROM classes WHERE upper(code) = upper(?)').get(classCode);
     if (!byCode) return res.status(404).json({ error: 'Kode kelas tidak ditemukan. Tanyakan kode kelas ke dosenmu.' });
     classId = byCode.id;
-  }
-  const explicitClassId = classId;
-  if (!classId) {
-    const firstClass = db.prepare('SELECT id FROM classes LIMIT 1').get();
-    classId = firstClass ? firstClass.id : null;
   }
   const existing = db.prepare('SELECT id, class_id, avatar FROM students WHERE npm = ?').get(m);
   if (existing) {
@@ -451,7 +447,10 @@ app.post('/api/auth/student/register', (req, res) => {
       return res.status(409).json({ error: 'NPM/NISN ini sudah terdaftar, silakan login' });
     }
     db.prepare('UPDATE students SET nama = ?, password_hash = ? WHERE id = ?').run(n, hashPassword(password), existing.id);
-    if (explicitClassId) db.prepare('INSERT OR IGNORE INTO class_members (class_id, student_id) VALUES (?, ?)').run(classId, existing.id);
+    if (classId) {
+      db.prepare('INSERT OR IGNORE INTO class_members (class_id, student_id) VALUES (?, ?)').run(classId, existing.id);
+      if (!existing.class_id) db.prepare('UPDATE students SET class_id = ? WHERE id = ?').run(classId, existing.id);
+    }
     setSession(res, 'student', existing.id);
     return res.json({ id: existing.id, nama: n, npm: m, class_id: existing.class_id, avatar: existing.avatar });
   }
