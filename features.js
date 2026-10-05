@@ -80,7 +80,7 @@ module.exports = function registerFeatures(app, { db, auth, requireRole, require
       WHERE c.id = ? AND c.dosen_id = ?`).get(req.params.id, req.auth.user_id);
     if (!c) return res.status(404).json({ error: 'Kelas tidak ditemukan' });
 
-    const students = db.prepare('SELECT id, nama, npm FROM students WHERE class_id = ? ORDER BY nama').all(c.id);
+    const students = db.prepare('SELECT id, nama, npm FROM students WHERE id IN (SELECT student_id FROM class_members WHERE class_id = ?) ORDER BY nama').all(c.id);
     const quizzes = db.prepare(`SELECT q.id, q.title, q.type, q.pair_key, q.category, q.created_at,
         COUNT(a.id) AS n, ROUND(AVG(a.score), 1) AS avg_score, SUM(COALESCE(a.tab_switches, 0)) AS tab_switches
       FROM quizzes q LEFT JOIN attempts a ON a.quiz_id = q.id
@@ -305,18 +305,31 @@ module.exports = function registerFeatures(app, { db, auth, requireRole, require
     res.json({ correct: ok, correct_idx: q.correct_idx, explanation: q.explanation, finished, total_correct: correct, xp, streak });
   });
 
+  // Mahasiswa yang sudah punya akun bisa bergabung ke kelas lain dengan kode kelas
+  app.post('/api/student/classes/join', requireStudent, (req, res) => {
+    const code = String((req.body || {}).code || '').trim().toUpperCase();
+    const c = code && db.prepare('SELECT id, name, course FROM classes WHERE UPPER(code) = ?').get(code);
+    if (!c) return res.status(404).json({ error: 'Kode kelas tidak ditemukan. Tanyakan kode kelas ke dosenmu.' });
+    const r = db.prepare('INSERT OR IGNORE INTO class_members (class_id, student_id) VALUES (?, ?)').run(c.id, req.student.id);
+    if (!req.student.class_id) db.prepare('UPDATE students SET class_id = ? WHERE id = ?').run(c.id, req.student.id);
+    res.json({ ok: true, already: !r.changes, class: c });
+  });
+
   // Ringkasan beranda mahasiswa
   app.get('/api/student/home', requireStudent, (req, res) => {
     const s = req.student;
     const cls = s.class_id ? db.prepare('SELECT id, name, course, code FROM classes WHERE id = ?').get(s.class_id) : null;
-    const pending = s.class_id ? db.prepare(`SELECT COUNT(*) AS n FROM quizzes q WHERE q.class_id = ? AND q.active = 1
-      AND NOT EXISTS (SELECT 1 FROM attempts a WHERE a.quiz_id = q.id AND a.student_id = ?)`).get(s.class_id, s.id).n : 0;
+    const classes = db.prepare(`SELECT c.id, c.name, c.course FROM class_members m JOIN classes c ON c.id = m.class_id
+      WHERE m.student_id = ? ORDER BY m.joined_at`).all(s.id);
+    const pending = db.prepare(`SELECT COUNT(*) AS n FROM quizzes q WHERE q.active = 1
+      AND q.class_id IN (SELECT class_id FROM class_members WHERE student_id = ?)
+      AND NOT EXISTS (SELECT 1 FROM attempts a WHERE a.quiz_id = q.id AND a.student_id = ?)`).get(s.id, s.id).n;
     const league = leagueFor(s);
     const me = league ? league.members.find(m => m.is_me) : null;
     const reviewDue = db.prepare('SELECT COUNT(*) AS n FROM question_mistakes WHERE student_id = ? AND next_due <= ?').get(s.id, wibDate()).n;
     res.json({
       student: { id: s.id, nama: s.nama, npm: s.npm, avatar: s.avatar, points: s.points, photo_url: photoUrl(s.photo_key) },
-      class: cls, pending_quizzes: pending, streak: streakInfo(s.id), review_due: reviewDue,
+      class: cls, classes, pending_quizzes: pending, streak: streakInfo(s.id), review_due: reviewDue,
       league: league ? { division_name: league.division_name, rank: me ? me.rank : null, size: league.members.length, xp: me ? me.xp : 0, ends_at: league.ends_at } : null
     });
   });

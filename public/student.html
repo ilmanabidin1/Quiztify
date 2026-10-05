@@ -183,6 +183,15 @@
       <h2>Kuis kelas</h2>
       <div id="quiz-list"></div>
     </div>
+
+    <div class="card">
+      <h2>Kelas saya</h2>
+      <div id="class-list" class="muted" style="font-size:14px"></div>
+      <form id="join-class-form" style="display:flex;gap:8px;margin-top:14px" onsubmit="joinClass(event)">
+        <input id="join-class-code" class="input" placeholder="Kode kelas" autocomplete="off" style="flex:1">
+        <button class="btn" type="submit">Gabung</button>
+      </form>
+    </div>
   </section>
 
   <!-- DAILY -->
@@ -294,7 +303,12 @@ async function goHome() {
     home = await api('/api/student/home');
   } catch (e) { return qzToast(e.error || 'Gagal memuat beranda', 'error'); }
   const s = home.streak;
-  $('home-class').textContent = home.class ? `${home.class.name}${home.class.course ? ' · ' + home.class.course : ''}` : 'Belum tergabung di kelas';
+  const classes = home.classes || [];
+  $('home-class').textContent = classes.length > 1 ? `${classes.length} kelas`
+    : home.class ? `${home.class.name}${home.class.course ? ' · ' + home.class.course : ''}` : 'Belum tergabung di kelas';
+  $('class-list').innerHTML = classes.length
+    ? classes.map(c => `<div style="padding:8px 0;border-bottom:1px solid var(--line, rgba(255,255,255,.08))"><b style="color:var(--text, inherit)">${qzEsc(c.name)}</b>${c.course ? ' · ' + qzEsc(c.course) : ''}</div>`).join('')
+    : 'Belum tergabung di kelas mana pun.';
   $('home-hello').textContent = `Halo, ${home.student.nama.split(' ')[0]}`;
   $('streak-days').textContent = s.streak;
   $('streak-card').classList.toggle('off', !s.done_today);
@@ -312,6 +326,18 @@ async function goHome() {
     $('lg-ends').textContent = 'Berakhir ' + relTime(home.league.ends_at);
   }
   loadQuizzes();
+}
+
+async function joinClass(e) {
+  e.preventDefault();
+  const code = $('join-class-code').value.trim();
+  if (!code) return qzToast('Masukkan kode kelas dari dosenmu.', 'error');
+  try {
+    const r = await api('/api/student/classes/join', { code });
+    qzToast(r.already ? `Kamu sudah terdaftar di ${r.class.name}.` : `Berhasil bergabung ke ${r.class.name}.`, r.already ? 'info' : 'success');
+    $('join-class-code').value = '';
+    goHome();
+  } catch (err) { qzToast(err.error || 'Gagal bergabung ke kelas', 'error'); }
 }
 
 function relTime(iso) {

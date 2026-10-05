@@ -340,7 +340,7 @@ function seedInitialData() {
   }
 
   // 4. Sample Siswa & Attempts untuk Kelas
-  const studentCount = db.prepare('SELECT COUNT(*) as c FROM students WHERE class_id = ?').get(defaultClass.id).c;
+  const studentCount = db.prepare('SELECT COUNT(*) as c FROM students WHERE id IN (SELECT student_id FROM class_members WHERE class_id = ?)').get(defaultClass.id).c;
   if (studentCount === 0) {
     const sampleStudents = [
       { nama: 'Budi Santoso', npm: '10020101', avatar: '🦁', score1: 100, score2: 90 },
@@ -438,6 +438,7 @@ app.post('/api/auth/student/register', (req, res) => {
     if (!byCode) return res.status(404).json({ error: 'Kode kelas tidak ditemukan. Tanyakan kode kelas ke dosenmu.' });
     classId = byCode.id;
   }
+  const explicitClassId = classId;
   if (!classId) {
     const firstClass = db.prepare('SELECT id FROM classes LIMIT 1').get();
     classId = firstClass ? firstClass.id : null;
@@ -450,6 +451,7 @@ app.post('/api/auth/student/register', (req, res) => {
       return res.status(409).json({ error: 'NPM/NISN ini sudah terdaftar, silakan login' });
     }
     db.prepare('UPDATE students SET nama = ?, password_hash = ? WHERE id = ?').run(n, hashPassword(password), existing.id);
+    if (explicitClassId) db.prepare('INSERT OR IGNORE INTO class_members (class_id, student_id) VALUES (?, ?)').run(classId, existing.id);
     setSession(res, 'student', existing.id);
     return res.json({ id: existing.id, nama: n, npm: m, class_id: existing.class_id, avatar: existing.avatar });
   }
@@ -691,6 +693,7 @@ function linkClassStudent(classId, npm, nama) {
   let st = db.prepare('SELECT id, class_id FROM students WHERE npm = ?').get(npm);
   if (st) {
     if (!st.class_id) db.prepare('UPDATE students SET class_id = ? WHERE id = ?').run(classId, st.id);
+    else db.prepare('INSERT OR IGNORE INTO class_members (class_id, student_id) VALUES (?, ?)').run(classId, st.id);
     return st;
   }
   const info = db.prepare('INSERT INTO students (class_id, nama, npm, password_hash) VALUES (?, ?, ?, ?)').run(classId, nama, npm, '!unclaimed');
@@ -1781,7 +1784,7 @@ app.get('/api/creator/ngain-summary', requireRole('creator', 'dosen'), (req, res
 // Backward compatible dosen quiz list
 app.get('/api/dosen/classes', requireRole('creator', 'dosen'), (req, res) => {
   res.json(db.prepare(`SELECT c.id, c.name, c.course, c.code, c.created_at,
-      (SELECT COUNT(*) FROM students s WHERE s.class_id = c.id) AS n_students,
+      (SELECT COUNT(*) FROM class_members m WHERE m.class_id = c.id) AS n_students,
       (SELECT COUNT(*) FROM quizzes q WHERE q.class_id = c.id) AS n_quizzes
     FROM classes c WHERE c.dosen_id = ? ORDER BY c.created_at DESC`).all(req.auth.user_id));
 });
@@ -1806,7 +1809,7 @@ app.delete('/api/dosen/classes/:id', requireRole('creator', 'dosen'), (req, res)
 app.get('/api/dosen/classes/:id/students', requireRole('creator', 'dosen'), (req, res) => {
   const c = db.prepare('SELECT id FROM classes WHERE id = ? AND dosen_id = ?').get(req.params.id, req.auth.user_id);
   if (!c) return res.status(404).json({ error: 'Kelas tidak ditemukan' });
-  res.json(db.prepare('SELECT id, nama, npm, avatar, points, created_at FROM students WHERE class_id = ? ORDER BY nama').all(c.id));
+  res.json(db.prepare('SELECT id, nama, npm, avatar, points, created_at FROM students WHERE id IN (SELECT student_id FROM class_members WHERE class_id = ?) ORDER BY nama').all(c.id));
 });
 
 // Daftar Kumpulan Kuis di Kelas Tertentu
@@ -1814,7 +1817,7 @@ app.get('/api/classes/:id/quizzes', requireRole('creator', 'dosen'), (req, res) 
   const c = db.prepare('SELECT id, name, course, code FROM classes WHERE id = ?').get(req.params.id);
   if (!c) return res.status(404).json({ error: 'Kelas tidak ditemukan' });
 
-  const totalStudents = db.prepare('SELECT COUNT(*) as count FROM students WHERE class_id = ?').get(c.id).count;
+  const totalStudents = db.prepare('SELECT COUNT(*) as count FROM students WHERE id IN (SELECT student_id FROM class_members WHERE class_id = ?)').get(c.id).count;
 
   const quizzes = db.prepare(`SELECT q.*,
     (SELECT COUNT(*) FROM questions WHERE quiz_id = q.id) as question_count,
@@ -2149,7 +2152,7 @@ app.get('/api/dosen/classes/:id/results', requireRole('creator', 'dosen'), (req,
 
   const quizzes = db.prepare(`SELECT q.*, (SELECT COUNT(*) FROM attempts a WHERE a.quiz_id = q.id) AS n_attempts
     FROM quizzes q WHERE q.class_id = ? ORDER BY q.created_at DESC`).all(c.id);
-  const students = db.prepare('SELECT id, nama, npm, avatar, points FROM students WHERE class_id = ? ORDER BY nama').all(c.id);
+  const students = db.prepare('SELECT id, nama, npm, avatar, points FROM students WHERE id IN (SELECT student_id FROM class_members WHERE class_id = ?) ORDER BY nama').all(c.id);
   const scores = db.prepare(`SELECT a.student_id, q.type, q.pair_key, a.score
     FROM attempts a JOIN quizzes q ON q.id = a.quiz_id WHERE q.class_id = ?`).all(c.id);
 
@@ -2197,7 +2200,7 @@ app.get('/api/quizzes/:id/attempts-detail', requireRole('creator', 'dosen'), (re
 
   let students = [];
   if (quiz.class_id) {
-    students = db.prepare('SELECT id, nama, npm, avatar, photo_key FROM students WHERE class_id = ? ORDER BY nama ASC').all(quiz.class_id);
+    students = db.prepare('SELECT id, nama, npm, avatar, photo_key FROM students WHERE id IN (SELECT student_id FROM class_members WHERE class_id = ?) ORDER BY nama ASC').all(quiz.class_id);
   } else {
     students = db.prepare(`SELECT DISTINCT s.id, s.nama, s.npm, s.avatar, s.photo_key
       FROM attempts a JOIN students s ON s.id = a.student_id WHERE a.quiz_id = ? ORDER BY s.nama ASC`).all(quiz.id);
@@ -2504,7 +2507,7 @@ app.get('/api/quizzes/:id/berita-acara', requireRole('creator', 'dosen'), requir
   
   let students = [];
   if (quiz.class_id) {
-    students = db.prepare('SELECT id, nama, npm, avatar FROM students WHERE class_id = ? ORDER BY nama ASC').all(quiz.class_id);
+    students = db.prepare('SELECT id, nama, npm, avatar FROM students WHERE id IN (SELECT student_id FROM class_members WHERE class_id = ?) ORDER BY nama ASC').all(quiz.class_id);
   } else {
     students = db.prepare(`SELECT DISTINCT s.id, s.nama, s.npm, s.avatar FROM attempts a JOIN students s ON s.id = a.student_id WHERE a.quiz_id = ? ORDER BY s.nama ASC`).all(quizId);
   }
@@ -2629,7 +2632,7 @@ app.get('/api/quizzes/:id/export-csv', requireRole('creator', 'dosen'), requireP
   if (!quiz) return res.status(404).send('Kuis tidak ditemukan');
 
   const students = quiz.class_id
-    ? db.prepare('SELECT id, nama, npm FROM students WHERE class_id = ? ORDER BY nama ASC').all(quiz.class_id)
+    ? db.prepare('SELECT id, nama, npm FROM students WHERE id IN (SELECT student_id FROM class_members WHERE class_id = ?) ORDER BY nama ASC').all(quiz.class_id)
     : db.prepare(`SELECT DISTINCT s.id, s.nama, s.npm FROM attempts a JOIN students s ON s.id = a.student_id WHERE a.quiz_id = ? ORDER BY s.nama ASC`).all(quizId);
 
   const attempts = db.prepare('SELECT student_id, score, correct_count, total_count, time_spent_sec, tab_switches, created_at FROM attempts WHERE quiz_id = ?').all(quizId);
@@ -2674,7 +2677,7 @@ app.get('/api/classes/:id/gradebook', requireRole('creator', 'dosen'), (req, res
     (SELECT COUNT(*) FROM questions WHERE quiz_id = q.id) as question_count
     FROM quizzes q WHERE q.class_id = ? ORDER BY q.created_at ASC`).all(c.id);
 
-  const students = db.prepare('SELECT id, nama, npm, avatar FROM students WHERE class_id = ? ORDER BY nama ASC').all(c.id);
+  const students = db.prepare('SELECT id, nama, npm, avatar FROM students WHERE id IN (SELECT student_id FROM class_members WHERE class_id = ?) ORDER BY nama ASC').all(c.id);
 
   const attempts = db.prepare(`SELECT a.student_id, a.quiz_id, a.score, a.created_at 
     FROM attempts a JOIN quizzes q ON q.id = a.quiz_id WHERE q.class_id = ?`).all(c.id);
@@ -2748,7 +2751,7 @@ app.get('/api/classes/:id/export-csv', requireRole('creator', 'dosen'), requireP
   const c = db.prepare('SELECT id, name, course FROM classes WHERE id = ?').get(req.params.id);
   if (!c) return res.status(404).send('Kelas tidak ditemukan');
 
-  const students = db.prepare('SELECT id, nama, npm FROM students WHERE class_id = ? ORDER BY nama').all(c.id);
+  const students = db.prepare('SELECT id, nama, npm FROM students WHERE id IN (SELECT student_id FROM class_members WHERE class_id = ?) ORDER BY nama').all(c.id);
   const quizzes = db.prepare('SELECT id, title, type FROM quizzes WHERE class_id = ? ORDER BY created_at ASC').all(c.id);
   const attempts = db.prepare(`SELECT a.student_id, a.quiz_id, a.score FROM attempts a 
     JOIN quizzes q ON q.id = a.quiz_id WHERE q.class_id = ?`).all(c.id);
@@ -2794,8 +2797,8 @@ function requireStudent(req, res, next) {
 app.get('/api/student/quizzes', requireStudent, (req, res) => {
   const rows = db.prepare(`SELECT q.id, q.title, q.description, q.category, q.type, q.cover_emoji, q.duration_min, q.deadline, q.pair_key
     FROM quizzes q 
-    WHERE q.class_id = ? AND q.active = 1
-    ORDER BY q.created_at DESC`).all(req.student.class_id || 0);
+    WHERE q.class_id IN (SELECT class_id FROM class_members WHERE student_id = ?) AND q.active = 1
+    ORDER BY q.created_at DESC`).all(req.student.id);
 
   const done = db.prepare('SELECT quiz_id, score FROM attempts WHERE student_id = ?').all(req.student.id);
   const dmap = Object.fromEntries(done.map(d => [d.quiz_id, d.score]));
@@ -2813,7 +2816,7 @@ app.get('/api/student/quiz/:id', requireStudent, (req, res) => {
   const quiz = db.prepare('SELECT * FROM quizzes WHERE id = ? AND active = 1').get(req.params.id);
   if (!quiz) return res.status(404).json({ error: 'Kuis tidak ditemukan' });
 
-  if (quiz.class_id && req.student.class_id && quiz.class_id !== req.student.class_id) {
+  if (quiz.class_id && !db.prepare('SELECT 1 FROM class_members WHERE class_id = ? AND student_id = ?').get(quiz.class_id, req.student.id)) {
     return res.status(403).json({ error: 'Kuis ini bukan untuk kelas Anda' });
   }
 
@@ -2913,8 +2916,8 @@ app.get('/api/student/results', requireStudent, (req, res) => {
 
 // Public Classes List
 app.get('/api/classes/public', (req, res) => {
-  res.json(db.prepare(`SELECT c.id, c.name, c.course, c.code, COUNT(s.id) AS n_students
-    FROM classes c LEFT JOIN students s ON s.class_id = c.id GROUP BY c.id ORDER BY c.created_at DESC`).all());
+  res.json(db.prepare(`SELECT c.id, c.name, c.course, c.code, COUNT(s.student_id) AS n_students
+    FROM classes c LEFT JOIN class_members s ON s.class_id = c.id GROUP BY c.id ORDER BY c.created_at DESC`).all());
 });
 
 app.post('/api/student/photo', requireStudent, (req, res) => {

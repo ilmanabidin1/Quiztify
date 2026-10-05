@@ -188,6 +188,23 @@ safeAddColumn('room_players', 'team INTEGER');
 safeAddColumn('room_players', 'student_id INTEGER');
 safeAddColumn('dosen', 'ai_used_count INTEGER DEFAULT 0');
 
+// Satu mahasiswa bisa ikut banyak kelas. students.class_id tetap dipakai sebagai kelas utama
+// (beranda dan liga); keanggotaan lengkap ada di class_members dan diisi otomatis lewat trigger.
+db.exec(`
+CREATE TABLE IF NOT EXISTS class_members (
+  class_id INTEGER NOT NULL REFERENCES classes(id) ON DELETE CASCADE,
+  student_id INTEGER NOT NULL REFERENCES students(id) ON DELETE CASCADE,
+  joined_at TEXT DEFAULT (datetime('now')),
+  PRIMARY KEY (class_id, student_id)
+);
+CREATE INDEX IF NOT EXISTS idx_class_members_student ON class_members(student_id);
+INSERT OR IGNORE INTO class_members (class_id, student_id) SELECT class_id, id FROM students WHERE class_id IS NOT NULL;
+CREATE TRIGGER IF NOT EXISTS trg_students_member_ins AFTER INSERT ON students WHEN NEW.class_id IS NOT NULL
+BEGIN INSERT OR IGNORE INTO class_members (class_id, student_id) VALUES (NEW.class_id, NEW.id); END;
+CREATE TRIGGER IF NOT EXISTS trg_students_member_upd AFTER UPDATE OF class_id ON students WHEN NEW.class_id IS NOT NULL
+BEGIN INSERT OR IGNORE INTO class_members (class_id, student_id) VALUES (NEW.class_id, NEW.id); END;
+`);
+
 db.exec(`PRAGMA user_version = ${SCHEMA_VERSION}`);
 
 module.exports = db;
