@@ -2061,6 +2061,14 @@ app.delete('/api/dosen/quizzes/:id', requireRole('creator', 'dosen'), (req, res)
   res.json({ ok: true, message: `Kuis "${q.title}" berhasil dihapus` });
 });
 
+// QR kuis (/?quiz=ID): cari sesi live yang sedang dibuka untuk kuis ini supaya peserta tidak perlu mengetik PIN
+app.get('/api/quizzes/:id/live-room', (req, res) => {
+  const room = db.prepare(`SELECT pin FROM game_rooms WHERE quiz_id = ? AND status != 'finished'
+    ORDER BY created_at DESC LIMIT 1`).get(Number(req.params.id));
+  if (!room) return res.status(404).json({ error: 'Sesi kuis ini belum dibuka. Minta Game PIN ke dosenmu.' });
+  res.json({ pin: room.pin });
+});
+
 // QR Code Kuis Asinkron / Langsung
 app.get('/api/dosen/quizzes/:id/qr', requireRole('creator', 'dosen'), (req, res) => {
   const q = db.prepare('SELECT id, title FROM quizzes WHERE id = ?').get(req.params.id);

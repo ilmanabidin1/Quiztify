@@ -1502,6 +1502,7 @@
           <i class="fa-solid fa-spinner fa-spin"></i> Menunggu host mengumumkan podium juara...
         </div>
         <div id="waiting-leaderboard-preview" style="width:100%;max-width:440px;margin-top:10px"></div>
+        <div id="session-recap-wait" class="session-recap hidden" style="width:100%;max-width:480px;text-align:left"></div>
 
         <!-- Waiting State Quick Learning Retention Buttons -->
         <div style="margin-top:16px;width:100%;max-width:480px;background:rgba(255,255,255,0.04);border-radius:16px;padding:16px;border:1px solid rgba(255,255,255,0.08)">
@@ -2196,9 +2197,19 @@ updateSoundIcon();
 window.addEventListener('DOMContentLoaded', () => {
   const params = new URLSearchParams(window.location.search);
   const pinParam = params.get('pin');
+  const quizParam = params.get('quiz');
   if (pinParam && pinParam.length === 6) {
     document.getElementById('game-pin-input').value = pinParam;
     openJoinModal();
+  } else if (quizParam) {
+    fetch('/api/quizzes/' + encodeURIComponent(quizParam) + '/live-room')
+      .then(r => r.json().then(d => ({ ok: r.ok, d })))
+      .then(({ ok, d }) => {
+        if (!ok) return qzToast(d.error || 'Sesi kuis belum dibuka.', 'info', 7000);
+        document.getElementById('game-pin-input').value = d.pin;
+        openJoinModal();
+      })
+      .catch(() => {});
   }
   buildAvatarPicker();
 });
@@ -2983,6 +2994,8 @@ function renderWaitingState(state) {
   document.getElementById('waiting-my-rank').textContent = state.my_rank ? `#${state.my_rank}` : '-';
 
   fetchQuizReviewData();
+  // Rekap tampil begitu peserta selesai, tanpa menunggu host menutup sesi
+  if (waitingRecapPin !== currentPin) { waitingRecapPin = currentPin; loadSessionRecap('session-recap-wait'); }
 
   const cont = document.getElementById('waiting-leaderboard-preview');
   if (state.leaderboard && state.leaderboard.length > 0) {
@@ -3019,8 +3032,9 @@ function renderLeaderboard(state) {
 
 // ---------- Rekap sesi, kartu hasil & duel ----------
 let sessionRecap = null;
-async function loadSessionRecap() {
-  const box = document.getElementById('session-recap');
+let waitingRecapPin = null;
+async function loadSessionRecap(boxId) {
+  const box = document.getElementById(boxId || 'session-recap');
   try {
     const res = await fetch(`/api/rooms/${currentPin}/my-review?player_token=${playerToken}`);
     const data = await res.json();
